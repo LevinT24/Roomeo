@@ -1,7 +1,7 @@
 # 1. Go to GitHub and fork your repository
 # 2. Clone YOUR FORK (replace with your actual fork URL)
 ```bash
-git clone https://github.com/Shaik-sufyaan/Roomeo.git
+git clone https://github.com/your-fork/Roomeo.git
 ```
 # 3. Enter the project directory
 ```bash
