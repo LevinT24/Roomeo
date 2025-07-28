@@ -1,57 +1,38 @@
+// types/user.ts
 export interface User {
-  id: string
-  email: string
-  name: string
-  profilePicture: string
-  age?: number
-  bio?: string
+  id: string;
+  uid: string; // For Firebase compatibility
+  email: string | null;
+  name: string;
+  age?: number;
+  bio?: string;
+  location?: string;
+  budget?: number;
   preferences?: {
-    smoking: boolean
-    drinking: boolean
-    vegetarian: boolean
-    pets: boolean
-  }
-  userType?: "owner" | "seeker" // owner = has place, seeker = looking for place
-  location?: string
-  budget?: number
-  createdAt: Date
-  updatedAt: Date
+    smoking: boolean;
+    drinking: boolean;
+    vegetarian: boolean;
+    pets: boolean;
+  };
+  profilePicture?: string;
+  userType?: 'seeker' | 'provider' | null;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-export interface Match {
-  id: string
-  user1Id: string
-  user2Id: string
-  createdAt: Date
+export interface UserPreferences {
+  smoking: boolean;
+  drinking: boolean;
+  vegetarian: boolean;
+  pets: boolean;
 }
 
-export interface Swipe {
-  id: string
-  swiperId: string
-  swipedUserId: string
-  liked: boolean
-  createdAt: Date
-}
-
-export interface MarketplaceItem {
-  id: string
-  sellerId: string
-  title: string
-  description: string
-  price: number
-  category: string
-  location: string
-  images: string[]
-  createdAt: Date
-}
-
-export interface Expense {
-  id: string
-  title: string
-  amount: number
-  paidBy: string
-  splitBetween: string[]
-  splitType: "equal" | "unequal"
-  splitAmounts?: { [userId: string]: number }
-  createdAt: Date
+export interface ProfileData {
+  age: number;
+  bio: string;
+  location: string;
+  budget: number;
+  preferences: UserPreferences;
+  profilePicture: string;
+  updatedAt: Date;
 }

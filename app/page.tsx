@@ -29,13 +29,32 @@ export default function Home() {
     console.log("Current page:", currentPage)
   }, [user, loading, currentPage])
 
+  // Handle user authentication state changes
+  useEffect(() => {
+    if (!loading && user) {
+      console.log("User authenticated, checking profile completion...")
+      
+      // If user is authenticated and we're on landing/auth page, redirect to app
+      if (currentPage === "landing" || currentPage === "auth") {
+        console.log("Redirecting authenticated user to app...")
+        setCurrentPage("swipe")
+      }
+    } else if (!loading && !user) {
+      // If user logs out, go back to landing
+      if (currentPage !== "landing" && currentPage !== "auth") {
+        console.log("User logged out, redirecting to landing...")
+        setCurrentPage("landing")
+      }
+    }
+  }, [user, loading, currentPage])
+
   // Clear localStorage on page load to ensure fresh start
   useEffect(() => {
     // Only clear if we're on landing page and no user is set
-    if (currentPage === "landing" && !user) {
+    if (currentPage === "landing" && !user && !loading) {
       localStorage.removeItem("mockUser")
     }
-  }, [])
+  }, [currentPage, user, loading])
 
   if (loading) {
     return (
@@ -50,29 +69,52 @@ export default function Home() {
 
   // Show auth page if requested
   if (currentPage === "auth") {
-    return <AuthPage onBack={() => setCurrentPage("landing")} />
+    return (
+      <AuthPage 
+        onBack={() => setCurrentPage("landing")}
+        onSuccess={() => {
+          console.log("Auth successful, redirecting to app...")
+          setCurrentPage("swipe")
+        }}
+      />
+    )
   }
 
-  // If user is authenticated, check profile completion
+  // If user is authenticated and on app pages, handle profile completion
   if (user && currentPage !== "landing") {
     console.log("User found, checking profile completion...")
     console.log("User age:", user.age)
     console.log("User preferences:", user.preferences)
     console.log("User type:", user.userType)
 
-    // Check if user needs to complete profile setup
+    // Check if user needs profile setup
     if (!user.age || !user.preferences) {
-      console.log("Redirecting to profile setup")
-      return <ProfileSetup onComplete={() => window.location.reload()} />
+      console.log("Showing profile setup")
+      return (
+        <ProfileSetup 
+          onComplete={() => {
+            console.log("Profile setup complete, staying on swipe page")
+            // Don't change page, just let the user state update trigger re-render
+            window.location.reload() // Force reload to get updated user data
+          }} 
+        />
+      )
     }
 
     // Check if user needs to select user type
     if (!user.userType) {
-      console.log("Redirecting to user type selection")
-      return <UserTypeSelection onComplete={() => window.location.reload()} />
+      console.log("Showing user type selection")
+      return (
+        <UserTypeSelection 
+          onComplete={() => {
+            console.log("User type selection complete")
+            window.location.reload() // Force reload to get updated user data
+          }} 
+        />
+      )
     }
 
-    // Show app pages
+    // Show app pages - user is fully set up
     console.log("Showing app page:", currentPage)
 
     // Navigation component for app pages
@@ -165,11 +207,11 @@ export default function Home() {
 
     return (
       <div className="min-h-screen bg-[#F2F5F1]">
-        {currentPage === "swipe" && <SwipePage user={user} />}
-        {currentPage === "matches" && <MatchesPage user={user} />}
-        {currentPage === "marketplace" && <MarketplacePage user={user} />}
-        {currentPage === "expenses" && <ExpensesPage user={user} />}
-        {currentPage === "chat" && <ChatPage user={user} onBack={() => setCurrentPage("matches")} />}
+        {currentPage === "swipe" && <SwipePage user={user as any} />}
+        {currentPage === "matches" && <MatchesPage user={user as any} />}
+        {currentPage === "marketplace" && <MarketplacePage user={user as any} />}
+        {currentPage === "expenses" && <ExpensesPage user={user as any} />}
+        {currentPage === "chat" && <ChatPage user={user as any} onBack={() => setCurrentPage("matches")} />}
 
         <AppNavigation />
       </div>
@@ -179,17 +221,8 @@ export default function Home() {
   // Handle authenticated user wanting to go to app
   const handleGoToApp = () => {
     if (user) {
-      // Check if user profile is complete
-      if (!user.age || !user.preferences) {
-        // Will trigger profile setup flow
-        setCurrentPage("swipe")
-      } else if (!user.userType) {
-        // Will trigger user type selection
-        setCurrentPage("swipe")
-      } else {
-        // User is complete, go to swipe page
-        setCurrentPage("swipe")
-      }
+      // User is authenticated, go to app
+      setCurrentPage("swipe")
     } else {
       // No user, go to auth
       setCurrentPage("auth")
@@ -198,11 +231,15 @@ export default function Home() {
 
   // Handle logout
   const handleLogout = async () => {
-    await logout()
-    setCurrentPage("landing")
+    try {
+      await logout()
+      setCurrentPage("landing")
+    } catch (error) {
+      console.error("Logout error:", error)
+    }
   }
 
-  // ALWAYS show landing page by default
+  // Show landing page by default
   console.log("Showing landing page")
   return (
     <div className="flex flex-col min-h-screen bg-[#F2F5F1] text-[#004D40]">
@@ -416,39 +453,6 @@ export default function Home() {
                   <span className="block transform skew-x-2">READY TO FIND</span>
                   <span className="block text-[#44C76F] transform -skew-x-2">YOUR ROOMMATE?</span>
                 </h2>
-                <div className="w-32 h-3 bg-[#44C76F] mx-auto transform -skew-x-12"></div>
-                <p className="text-xl md:text-2xl font-bold text-[#004D40] max-w-3xl mx-auto leading-tight">
-                  JOIN THOUSANDS OF PEOPLE WHO'VE FOUND THEIR PERFECT LIVING SITUATION THROUGH ROOMIO.
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-6 justify-center">
-                <Button
-                  size="lg"
-                  onClick={handleGoToApp}
-                  className="bg-[#004D40] hover:bg-[#004D40]/80 text-[#F2F5F1] font-black text-xl px-12 py-6 border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#004D40] transition-all"
-                >
-                  {user ? "GO TO APP" : "START MATCHING NOW"}
-                  <Target className="ml-3 h-6 w-6" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => setCurrentPage("auth")}
-                  className="border-4 border-[#44C76F] text-[#44C76F] hover:bg-[#44C76F] hover:text-[#004D40] font-black text-xl px-12 py-6 shadow-[8px_8px_0px_0px_#44C76F] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#44C76F] transition-all bg-transparent"
-                >
-                  JOIN NOW
-                </Button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Contact Section */}
-        <section id="contact" className="w-full py-12 md:py-20 bg-[#004D40] text-[#F2F5F1]">
-          <div className="container px-4 md:px-6">
-            <div className="text-center space-y-8">
-              <div className="space-y-6">
-                <h2 className="text-4xl md:text-6xl font-black tracking-tighter transform skew-x-2">GET IN TOUCH</h2>
                 <div className="w-32 h-3 bg-[#44C76F] mx-auto transform -skew-x-12"></div>
                 <p className="text-xl md:text-2xl font-bold max-w-3xl mx-auto">
                   HAVE QUESTIONS? NEED HELP? WE'RE HERE TO MAKE YOUR ROOMMATE SEARCH AS SMOOTH AS POSSIBLE.

@@ -1,77 +1,65 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 interface AuthPageProps {
-  onBack: () => void
+  onBack: () => void;
+  onSuccess: () => void;
 }
 
-export default function AuthPage({ onBack }: AuthPageProps) {
-  const { signInWithGoogle, createCompleteUser, loading } = useAuth()
-  const [isSignUp, setIsSignUp] = useState(true)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [name, setName] = useState("")
+export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
+  const { 
+    loading, 
+    emailSignUp, 
+    emailSignIn, 
+    googleSignIn 
+  } = useAuth();
+  
+  const [isSignUp, setIsSignUp] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
 
   const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!email) return
-
-    console.log(isSignUp ? "Email sign up clicked!" : "Email sign in clicked!")
-
-    if (isSignUp) {
-      // Create new user with email (incomplete profile for setup flow)
-      const mockUser = {
-        id: `email-user-${Date.now()}`,
-        email: email,
-        name: name || email.split("@")[0],
-        profilePicture: "/placeholder.svg?height=100&width=100&text=" + (name || email.split("@")[0]),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-
-      localStorage.setItem("mockUser", JSON.stringify(mockUser))
-      window.location.reload()
-    } else {
-      // Existing user - create complete profile
-      const mockUser = {
-        id: `email-complete-${Date.now()}`,
-        email: email,
-        name: name || email.split("@")[0],
-        profilePicture: "/placeholder.svg?height=100&width=100&text=" + (name || email.split("@")[0]),
-        age: 25,
-        bio: "I'm an existing user returning to Roomio!",
-        location: "San Francisco, CA",
-        budget: 1500,
-        preferences: {
-          smoking: false,
-          drinking: true,
-          vegetarian: false,
-          pets: true,
-        },
-        userType: "seeker",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-
-      localStorage.setItem("mockUser", JSON.stringify(mockUser))
-      window.location.reload()
+    e.preventDefault();
+    setError("");
+    
+    if (!email || !password) {
+      setError("Email and password are required");
+      return;
     }
-  }
 
-  const handleGoogleAuth = () => {
-    console.log("Google auth clicked!")
-    if (isSignUp) {
-      signInWithGoogle() // Creates incomplete user for setup flow
-    } else {
-      createCompleteUser() // Creates complete user to skip setup
+    try {
+      if (isSignUp) {
+        if (!name) {
+          setError("Name is required for sign up");
+          return;
+        }
+        await emailSignUp(email, password, name);
+      } else {
+        await emailSignIn(email, password);
+      }
+      onSuccess();
+    } catch (error: any) {
+      console.error("Authentication error:", error);
+      setError(error.message || "Authentication failed. Please try again.");
     }
-  }
+  };
+
+  const handleGoogleAuth = async () => {
+    setError("");
+    try {
+      await googleSignIn();
+      onSuccess();
+    } catch (error: any) {
+      console.error("Google auth error:", error);
+      setError(error.message || "Google authentication failed");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F2F5F1] flex flex-col">
@@ -123,6 +111,13 @@ export default function AuthPage({ onBack }: AuthPageProps) {
             </p>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-100 border-2 border-red-500 text-red-700 font-bold text-center">
+              {error}
+            </div>
+          )}
+
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             {/* Email Auth Section */}
             <div className="bg-[#B7C8B5] border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] p-8">
@@ -171,7 +166,7 @@ export default function AuthPage({ onBack }: AuthPageProps) {
 
                 <Button
                   type="submit"
-                  disabled={loading || !email}
+                  disabled={loading}
                   className="w-full bg-[#004D40] hover:bg-[#004D40]/80 text-[#F2F5F1] font-black text-lg py-4 px-6 border-4 border-[#004D40] shadow-[6px_6px_0px_0px_#004D40] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[3px_3px_0px_0px_#004D40] transition-all"
                 >
                   {loading ? "PROCESSING..." : isSignUp ? "CREATE ACCOUNT" : "SIGN IN"}
@@ -262,16 +257,8 @@ export default function AuthPage({ onBack }: AuthPageProps) {
               <span className="text-[#44C76F] font-black">PRIVACY POLICY</span>
             </p>
           </div>
-
-          {/* Debug Info */}
-          <div className="text-center mt-4">
-            <p className="text-xs text-[#004D40] bg-[#D4AF37] p-2 rounded border max-w-2xl mx-auto">
-              🔧 Demo Mode: Both email and Google auth work. New users → Profile setup, Existing users → Skip to
-              matching
-            </p>
-          </div>
         </div>
       </main>
     </div>
-  )
+  );
 }

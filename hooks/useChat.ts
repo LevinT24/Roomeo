@@ -26,7 +26,7 @@ export function useChat(currentUser: User | null) {
           "user-2": "Sophia Clark",
         },
         participantAvatars: {
-          [currentUser.id]: currentUser.profilePicture,
+          [currentUser.id]: currentUser.profilePicture || "/placeholder.svg?height=40&width=40&text=User",
           "user-2": "/placeholder.svg?height=40&width=40&text=Sophia",
         },
         lastMessage: "Hey! Are you still looking for a roommate?",
@@ -43,7 +43,7 @@ export function useChat(currentUser: User | null) {
           "user-3": "Marcus Johnson",
         },
         participantAvatars: {
-          [currentUser.id]: currentUser.profilePicture,
+          [currentUser.id]: currentUser.profilePicture || "/placeholder.svg?height=40&width=40&text=User",
           "user-3": "/placeholder.svg?height=40&width=40&text=Marcus",
         },
         lastMessage: "That sounds great! When can we meet?",
@@ -76,7 +76,7 @@ export function useChat(currentUser: User | null) {
         chatId,
         senderId: currentUser?.id || "",
         senderName: currentUser?.name || "",
-        senderAvatar: currentUser?.profilePicture || "",
+        senderAvatar: currentUser?.profilePicture || "/placeholder.svg?height=40&width=40&text=User",
         message: "Yes! I'm definitely interested. Tell me more about the place.",
         timestamp: new Date(Date.now() - 3600000), // 1 hour ago
         read: true,
@@ -110,7 +110,7 @@ export function useChat(currentUser: User | null) {
       chatId,
       senderId: currentUser.id,
       senderName: currentUser.name,
-      senderAvatar: currentUser.profilePicture,
+      senderAvatar: currentUser.profilePicture || "/placeholder.svg?height=40&width=40&text=User",
       message: message.trim(),
       timestamp: new Date(),
       read: false,

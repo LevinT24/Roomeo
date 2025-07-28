@@ -1,3 +1,4 @@
+// components/ProfileSetup.tsx
 "use client"
 
 import type React from "react"
@@ -6,6 +7,9 @@ import { useAuth } from "@/hooks/useAuth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
+import { updateUserProfile } from "@/services/firestore";
+import { uploadPhoto } from "@/lib/storage";
+import { ProfileData } from "@/types/user";
 
 export default function ProfileSetup({ onComplete }: { onComplete: () => void }) {
   const { user } = useAuth()
@@ -44,29 +48,38 @@ export default function ProfileSetup({ onComplete }: { onComplete: () => void })
   }
 
   const handleSubmit = async () => {
-    if (!user) return
+    if (!user) return;
+    setLoading(true);
 
-    setLoading(true)
+    try {
+      // Upload image if exists
+      let photoUrl = imagePreview || "";
+      if (profileImage) {
+        photoUrl = await uploadPhoto(profileImage, user.uid);
+      }
 
-    // Mock profile update - just update localStorage
-    const updatedUser = {
-      ...user,
-      profilePicture: imagePreview || user.profilePicture,
-      age: Number.parseInt(age),
-      bio: bio.trim(),
-      location: location.trim(),
-      budget: budget ? Number.parseInt(budget) : null,
-      preferences,
-      updatedAt: new Date(),
+      // Prepare profile data
+      const profileData = {
+        age: Number(age),
+        bio,
+        location,
+        budget: budget ? Number(budget) : 0,
+        preferences,
+        profilePicture: photoUrl,
+        updatedAt: new Date(),
+      };
+
+      // Save to Firestore
+      await updateUserProfile(user.uid, profileData);
+      
+      // Trigger completion callback
+      onComplete();
+    } catch (error) {
+      console.error("Profile setup failed:", error);
+    } finally {
+      setLoading(false);
     }
-
-    localStorage.setItem("mockUser", JSON.stringify(updatedUser))
-
-    setTimeout(() => {
-      setLoading(false)
-      onComplete()
-    }, 1000)
-  }
+  };
 
   if (step === 1) {
     return (
