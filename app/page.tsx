@@ -1,3 +1,4 @@
+// page.tsx
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -19,7 +20,8 @@ import { useState, useEffect } from "react"
 export default function Home() {
   const { user, loading, logout } = useAuth()
   const [currentPage, setCurrentPage] = useState<
-    "landing" | "auth" | "swipe" | "matches" | "marketplace" | "expenses" | "chat"
+    "landing" | "auth" | "swipe" | "matches" | "marketplace" | 
+    "expenses" | "chat" | "profile-setup" | "user-type"
   >("landing")
 
   // Debug logging
@@ -34,10 +36,23 @@ export default function Home() {
     if (!loading && user) {
       console.log("User authenticated, checking profile completion...")
       
-      // If user is authenticated and we're on landing/auth page, redirect to app
+      // If user is authenticated and we're on landing/auth page, redirect to profile setup
       if (currentPage === "landing" || currentPage === "auth") {
-        console.log("Redirecting authenticated user to app...")
-        setCurrentPage("swipe")
+        // Check if user needs to complete profile
+        if (!user.age || !user.preferences) {
+          console.log("Redirecting to profile setup")
+          setCurrentPage("profile-setup")
+        } 
+        // Check if user needs to select user type
+        else if (!user.userType) {
+          console.log("Redirecting to user type selection")
+          setCurrentPage("user-type")
+        }
+        // User is fully set up
+        else {
+          console.log("Redirecting to app")
+          setCurrentPage("swipe")
+        }
       }
     } else if (!loading && !user) {
       // If user logs out, go back to landing
@@ -73,49 +88,40 @@ export default function Home() {
       <AuthPage 
         onBack={() => setCurrentPage("landing")}
         onSuccess={() => {
-          console.log("Auth successful, redirecting to app...")
-          setCurrentPage("swipe")
+          // Auth success handled by useEffect above
+          console.log("Auth successful - useEffect will handle redirection")
         }}
       />
     )
   }
 
-  // If user is authenticated and on app pages, handle profile completion
+  // Profile setup page
+  if (currentPage === "profile-setup") {
+    return (
+      <ProfileSetup 
+        onComplete={() => {
+          console.log("Profile setup complete - redirecting to user type selection")
+          setCurrentPage("user-type")
+        }} 
+      />
+    )
+  }
+
+  // User type selection page
+  if (currentPage === "user-type") {
+    return (
+      <UserTypeSelection 
+        onComplete={() => {
+          console.log("User type selection complete - redirecting to app")
+          setCurrentPage("swipe")
+        }} 
+      />
+    )
+  }
+
+  // If user is authenticated and on app pages, handle app navigation
   if (user && currentPage !== "landing") {
-    console.log("User found, checking profile completion...")
-    console.log("User age:", user.age)
-    console.log("User preferences:", user.preferences)
-    console.log("User type:", user.userType)
-
-    // Check if user needs profile setup
-    if (!user.age || !user.preferences) {
-      console.log("Showing profile setup")
-      return (
-        <ProfileSetup 
-          onComplete={() => {
-            console.log("Profile setup complete, staying on swipe page")
-            // Don't change page, just let the user state update trigger re-render
-            window.location.reload() // Force reload to get updated user data
-          }} 
-        />
-      )
-    }
-
-    // Check if user needs to select user type
-    if (!user.userType) {
-      console.log("Showing user type selection")
-      return (
-        <UserTypeSelection 
-          onComplete={() => {
-            console.log("User type selection complete")
-            window.location.reload() // Force reload to get updated user data
-          }} 
-        />
-      )
-    }
-
-    // Show app pages - user is fully set up
-    console.log("Showing app page:", currentPage)
+    console.log("User found, showing app page:", currentPage)
 
     // Navigation component for app pages
     const AppNavigation = () => (
@@ -207,7 +213,7 @@ export default function Home() {
 
     return (
       <div className="min-h-screen bg-[#F2F5F1]">
-        {currentPage === "swipe" && <SwipePage user={user as any} />}
+         {currentPage === "swipe" && <SwipePage user={user as any} />}
         {currentPage === "matches" && <MatchesPage user={user as any} />}
         {currentPage === "marketplace" && <MarketplacePage user={user as any} />}
         {currentPage === "expenses" && <ExpensesPage user={user as any} />}

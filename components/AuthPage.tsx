@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,6 +13,7 @@ interface AuthPageProps {
 export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
   const { 
     loading, 
+    error: authError,
     emailSignUp, 
     emailSignIn, 
     googleSignIn 
@@ -24,9 +25,20 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    if (authError) {
+      setError(authError);
+    }
+  }, [authError]);
+
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    
+    if (authError) {
+      setError(authError);
+      return;
+    }
     
     if (!email || !password) {
       setError("Email and password are required");
@@ -40,30 +52,62 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
           return;
         }
         await emailSignUp(email, password, name);
+        // Let the page.tsx handle redirect based on auth state
       } else {
         await emailSignIn(email, password);
+        // Let the page.tsx handle redirect
       }
-      onSuccess();
     } catch (error: any) {
-      console.error("Authentication error:", error);
       setError(error.message || "Authentication failed. Please try again.");
     }
   };
 
   const handleGoogleAuth = async () => {
     setError("");
+    
+    if (authError) {
+      setError(authError);
+      return;
+    }
+    
     try {
       await googleSignIn();
       onSuccess();
     } catch (error: any) {
-      console.error("Google auth error:", error);
       setError(error.message || "Google authentication failed");
     }
   };
 
+  if (authError) {
+    return (
+      <div className="min-h-screen bg-[#F2F5F1] flex flex-col items-center justify-center p-4">
+        <div className="max-w-md w-full bg-red-100 border-4 border-red-500 p-6 text-center">
+          <h2 className="text-2xl font-black text-red-700 mb-4">Configuration Error</h2>
+          <p className="text-red-700 font-bold mb-4">{authError}</p>
+          <div className="text-sm text-red-600 text-left">
+            <p className="font-bold mb-2">Check these environment variables in .env.local:</p>
+            <ul className="list-disc list-inside space-y-1">
+              <li>NEXT_PUBLIC_FIREBASE_API_KEY</li>
+              <li>NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN</li>
+              <li>NEXT_PUBLIC_FIREBASE_PROJECT_ID</li>
+              <li>NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET</li>
+              <li>NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID</li>
+              <li>NEXT_PUBLIC_FIREBASE_APP_ID</li>
+            </ul>
+          </div>
+          <button 
+            onClick={onBack}
+            className="mt-4 bg-red-600 text-white px-4 py-2 font-bold"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F2F5F1] flex flex-col">
-      {/* Header */}
       <header className="px-4 lg:px-6 h-20 flex items-center border-b-4 border-[#004D40] bg-[#004D40]">
         <button onClick={onBack} className="flex items-center justify-center mr-4">
           <svg
@@ -84,9 +128,7 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-4 relative overflow-hidden">
-        {/* Background Pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(68,199,111,0.1)_25%,rgba(68,199,111,0.1)_50%,transparent_50%,transparent_75%,rgba(68,199,111,0.1)_75%)] bg-[length:20px_20px]"></div>
 
         <div className="max-w-4xl w-full relative z-10">
@@ -111,15 +153,19 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
             </p>
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="mb-6 p-4 bg-red-100 border-2 border-red-500 text-red-700 font-bold text-center">
               {error}
             </div>
           )}
 
+          {loading && (
+            <div className="mb-6 p-4 bg-blue-100 border-2 border-blue-500 text-blue-700 font-bold text-center">
+              Processing... Please wait
+            </div>
+          )}
+
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {/* Email Auth Section */}
             <div className="bg-[#B7C8B5] border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] p-8">
               <h3 className="text-2xl font-black text-[#004D40] mb-6 transform -skew-x-1 text-center">
                 {isSignUp ? "SIGN UP WITH EMAIL" : "SIGN IN WITH EMAIL"}
@@ -136,6 +182,7 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
                       placeholder="Enter your full name"
                       className="w-full border-4 border-[#004D40] font-bold focus:border-[#44C76F] focus:ring-[#44C76F] bg-[#F2F5F1]"
                       required={isSignUp}
+                      disabled={loading}
                     />
                   </div>
                 )}
@@ -149,6 +196,7 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
                     placeholder="Enter your email"
                     className="w-full border-4 border-[#004D40] font-bold focus:border-[#44C76F] focus:ring-[#44C76F] bg-[#F2F5F1]"
                     required
+                    disabled={loading}
                   />
                 </div>
 
@@ -161,13 +209,14 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
                     placeholder="Enter your password"
                     className="w-full border-4 border-[#004D40] font-bold focus:border-[#44C76F] focus:ring-[#44C76F] bg-[#F2F5F1]"
                     required
+                    disabled={loading}
                   />
                 </div>
 
                 <Button
                   type="submit"
-                  disabled={loading}
-                  className="w-full bg-[#004D40] hover:bg-[#004D40]/80 text-[#F2F5F1] font-black text-lg py-4 px-6 border-4 border-[#004D40] shadow-[6px_6px_0px_0px_#004D40] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[3px_3px_0px_0px_#004D40] transition-all"
+                  disabled={loading || !!authError}
+                  className="w-full bg-[#004D40] hover:bg-[#004D40]/80 text-[#F2F5F1] font-black text-lg py-4 px-6 border-4 border-[#004D40] shadow-[6px_6px_0px_0px_#004D40] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[3px_3px_0px_0px_#004D40] transition-all disabled:opacity-50"
                 >
                   {loading ? "PROCESSING..." : isSignUp ? "CREATE ACCOUNT" : "SIGN IN"}
                 </Button>
@@ -177,13 +226,13 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
                 <button
                   onClick={() => setIsSignUp(!isSignUp)}
                   className="text-sm font-black text-[#44C76F] hover:text-[#44C76F]/80 transition-colors"
+                  disabled={loading}
                 >
                   {isSignUp ? "Already have an account? SIGN IN" : "Don't have an account? SIGN UP"}
                 </button>
               </div>
             </div>
 
-            {/* Google Auth Section */}
             <div className="bg-[#B7C8B5] border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] p-8">
               <h3 className="text-2xl font-black text-[#004D40] mb-6 transform -skew-x-1 text-center">
                 {isSignUp ? "SIGN UP WITH GOOGLE" : "SIGN IN WITH GOOGLE"}
@@ -218,8 +267,8 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
 
                 <Button
                   onClick={handleGoogleAuth}
-                  disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-[#F2F5F1] font-black text-lg py-4 px-6 border-4 border-[#004D40] shadow-[6px_6px_0px_0px_#004D40] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[3px_3px_0px_0px_#004D40] transition-all flex items-center justify-center gap-3"
+                  disabled={loading || !!authError}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-[#F2F5F1] font-black text-lg py-4 px-6 border-4 border-[#004D40] shadow-[6px_6px_0px_0px_#004D40] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[3px_3px_0px_0px_#004D40] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                 >
                   <svg className="w-6 h-6" viewBox="0 0 24 24">
                     <path
@@ -249,13 +298,6 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className="text-center mt-8">
-            <p className="text-xs font-bold text-[#004D40] border-2 border-[#004D40] p-3 bg-[#B7C8B5] shadow-[3px_3px_0px_0px_#004D40] max-w-2xl mx-auto">
-              BY CONTINUING, YOU AGREE TO OUR <span className="text-[#44C76F] font-black">TERMS</span> AND{" "}
-              <span className="text-[#44C76F] font-black">PRIVACY POLICY</span>
-            </p>
           </div>
         </div>
       </main>

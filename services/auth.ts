@@ -215,3 +215,7 @@ export const signOutUser = async () => {
     };
   }
 };  
+
+console.log("auth instance:", auth);
+console.log("db instance:", db);
+console.log("🔍 Firestore user profile:", updateProfile);
