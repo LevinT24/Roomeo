@@ -1,23 +1,21 @@
-// lib/storage.ts
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from './firebase';
+//lib/storage.ts
+import { storage } from "./firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
-export async function uploadPhoto(file: File, userId: string): Promise<string> {
+export const uploadPhoto = async (file: File, userId: string) => {
   try {
-    // Create a reference to the file location
-    const timestamp = Date.now();
-    const fileName = `${userId}_${timestamp}_${file.name}`;
-    const storageRef = ref(storage, `profile-pictures/${fileName}`);
+    // Create a unique filename
+    const fileExt = file.name.split('.').pop();
+    const filename = `profile-${Date.now()}.${fileExt}`;
+    const storageRef = ref(storage, `profile-pictures/${userId}/${filename}`);
     
-    // Upload the file
+    // Upload file
     const snapshot = await uploadBytes(storageRef, file);
     
-    // Get the download URL
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    
-    return downloadURL;
+    // Get download URL
+    return await getDownloadURL(snapshot.ref);
   } catch (error) {
-    console.error('Error uploading photo:', error);
-    throw new Error('Failed to upload photo');
+    console.error("Upload failed:", error);
+    throw new Error("Image upload failed");
   }
-}
+};

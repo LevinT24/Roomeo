@@ -52,13 +52,13 @@ export default function ProfileSetup({ onComplete }: { onComplete: () => void })
     setLoading(true);
 
     try {
-      // Upload image if exists
       let photoUrl = imagePreview || "";
+      
+      // Only upload if new image was selected
       if (profileImage) {
         photoUrl = await uploadPhoto(profileImage, user.uid);
       }
 
-      // Prepare profile data
       const profileData = {
         age: Number(age),
         bio,
@@ -67,15 +67,17 @@ export default function ProfileSetup({ onComplete }: { onComplete: () => void })
         preferences,
         profilePicture: photoUrl,
         updatedAt: new Date(),
+        // Add required fields
+        userType: null, // Will be set later
+        name: user.name || "", // Ensure name exists
+        email: user.email || "",
       };
 
-      // Save to Firestore
       await updateUserProfile(user.uid, profileData);
-      
-      // Trigger completion callback
       onComplete();
     } catch (error) {
       console.error("Profile setup failed:", error);
+      // Handle error (show message to user)
     } finally {
       setLoading(false);
     }

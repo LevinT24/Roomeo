@@ -1,8 +1,11 @@
-// lib/firebase.ts - Client-side Firebase configuration
+// lib/firebase.ts - Fixed Firebase configuration
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+
+// Check if running in browser environment
+const isBrowser = typeof window !== 'undefined';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,57 +16,67 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Debug: Log config to check if env vars are loaded
-console.log('🔍 Firebase Config Check:', {
-  apiKey: !!firebaseConfig.apiKey,
-  authDomain: !!firebaseConfig.authDomain,
-  projectId: !!firebaseConfig.projectId,
-  storageBucket: !!firebaseConfig.storageBucket,
-  messagingSenderId: !!firebaseConfig.messagingSenderId,
-  appId: !!firebaseConfig.appId,
+// Debug configuration
+console.log('🔍 Firebase Environment Check:', {
+  NODE_ENV: process.env.NODE_ENV,
+  isBrowser,
+  config: {
+    apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : '❌ MISSING',
+    authDomain: firebaseConfig.authDomain || '❌ MISSING',
+    projectId: firebaseConfig.projectId || '❌ MISSING',
+    storageBucket: firebaseConfig.storageBucket || '❌ MISSING',
+    messagingSenderId: firebaseConfig.messagingSenderId || '❌ MISSING',
+    appId: firebaseConfig.appId ? `${firebaseConfig.appId.substring(0, 10)}...` : '❌ MISSING',
+  }
 });
 
-// Check if all required config values are present
+// Validate configuration
 const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
 const missingKeys = requiredKeys.filter(key => !firebaseConfig[key as keyof typeof firebaseConfig]);
 
 if (missingKeys.length > 0) {
-  console.error('❌ Missing Firebase environment variables:', missingKeys);
-  throw new Error(`Missing Firebase configuration: ${missingKeys.join(', ')}`);
+  const errorMessage = `Missing Firebase configuration: ${missingKeys.join(', ')}. Please check your .env.local file.`;
+  console.error('❌', errorMessage);
+  
+  if (isBrowser) {
+    // Show user-friendly error in browser
+    alert(`Configuration Error: ${errorMessage}`);
+  }
+  
+  throw new Error(errorMessage);
 }
 
-// Initialize Firebase (avoid multiple initialization)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// Validate format of critical fields
+if (firebaseConfig.authDomain && !firebaseConfig.authDomain.includes('.firebaseapp.com')) {
+  console.warn('⚠️ Auth domain should end with .firebaseapp.com');
+}
+
+if (firebaseConfig.storageBucket && !firebaseConfig.storageBucket.includes('.appspot.com')) {
+  console.warn('⚠️ Storage bucket should end with .appspot.com');
+}
+
+// Initialize Firebase
+let app;
+try {
+  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+  console.log('✅ Firebase app initialized:', app.name);
+} catch (error) {
+  console.error('❌ Firebase initialization failed:', error);
+  throw error;
+}
 
 // Initialize services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
-// Export the app for other uses
-export default app;
+// Verify services are working
+try {
+  console.log('✅ Firebase Auth initialized for project:', auth.app.options.projectId);
+  console.log('✅ Firestore initialized');
+  console.log('✅ Storage initialized');
+} catch (error) {
+  console.error('❌ Service initialization failed:', error);
+}
 
-// Test function to verify client setup
-export const testFirebaseClient = () => {
-  console.log('🧪 Testing Firebase Client Setup...');
-  
-  try {
-    console.log('✅ Firebase App:', app.name);
-    console.log('✅ Auth Instance:', !!auth);
-    console.log('✅ Firestore Instance:', !!db);
-    console.log('✅ Storage Instance:', !!storage);
-    console.log('✅ Project ID:', auth.app.options.projectId);
-    
-    return {
-      success: true,
-      projectId: auth.app.options.projectId,
-      authDomain: auth.app.options.authDomain
-    };
-  } catch (error) {
-    console.error('❌ Firebase Client Test Failed:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
-  }
-};
+export default app;

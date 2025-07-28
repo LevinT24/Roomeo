@@ -1,4 +1,4 @@
-// page.tsx
+// app/page.tsx - Fixed user flow logic
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -18,7 +18,7 @@ import ChatPage from "@/components/ChatPage"
 import { useState, useEffect } from "react"
 
 export default function Home() {
-  const { user, loading, logout } = useAuth()
+  const { user, loading, logout, error: authError } = useAuth()
   const [currentPage, setCurrentPage] = useState<
     "landing" | "auth" | "swipe" | "matches" | "marketplace" | 
     "expenses" | "chat" | "profile-setup" | "user-type"
@@ -26,194 +26,180 @@ export default function Home() {
 
   // Debug logging
   useEffect(() => {
-    console.log("Current user:", user)
-    console.log("Loading:", loading)
-    console.log("Current page:", currentPage)
-  }, [user, loading, currentPage])
+    console.log("🔍 App State:", {
+      user: user ? { id: user.id, name: user.name, age: user.age, userType: user.userType, preferences: !!user.preferences } : null,
+      loading,
+      currentPage,
+      authError
+    });
+  }, [user, loading, currentPage, authError]);
 
-  // Handle user authentication state changes
+  // Handle user authentication state and profile completion
   useEffect(() => {
-    if (!loading && user) {
-      console.log("User authenticated, checking profile completion...")
+    // Don't do anything if still loading or there's an auth error
+    if (loading || authError) return;
+
+    console.log("🔄 Checking user flow...");
+
+    if (user) {
+      console.log("✅ User is authenticated");
       
-      // If user is authenticated and we're on landing/auth page, redirect to profile setup
+      // Only redirect if we're on landing or auth pages
       if (currentPage === "landing" || currentPage === "auth") {
-        // Check if user needs to complete profile
+        console.log("🔍 Checking profile completion...");
+        
+        // Check if profile setup is needed (age and preferences are required)
         if (!user.age || !user.preferences) {
-          console.log("Redirecting to profile setup")
-          setCurrentPage("profile-setup")
-        } 
-        // Check if user needs to select user type
-        else if (!user.userType) {
-          console.log("Redirecting to user type selection")
-          setCurrentPage("user-type")
+          console.log("🔄 Profile setup needed - redirecting to profile setup");
+          setCurrentPage("profile-setup");
+          return;
         }
-        // User is fully set up
-        else {
-          console.log("Redirecting to app")
-          setCurrentPage("swipe")
+        
+        // Check if user type selection is needed
+        if (!user.userType) {
+          console.log("🔄 User type selection needed - redirecting to user type selection");
+          setCurrentPage("user-type");
+          return;
         }
+        
+        // User is fully set up - go to main app
+        console.log("✅ User fully set up - redirecting to main app");
+        setCurrentPage("swipe");
       }
-    } else if (!loading && !user) {
-      // If user logs out, go back to landing
+    } else {
+      console.log("❌ No user - checking if we need to redirect to landing");
+      // If user logs out or is not authenticated, go back to landing
       if (currentPage !== "landing" && currentPage !== "auth") {
-        console.log("User logged out, redirecting to landing...")
-        setCurrentPage("landing")
+        console.log("🔄 Redirecting to landing page");
+        setCurrentPage("landing");
       }
     }
-  }, [user, loading, currentPage])
+  }, [user, loading, currentPage, authError]);
 
-  // Clear localStorage on page load to ensure fresh start
-  useEffect(() => {
-    // Only clear if we're on landing page and no user is set
-    if (currentPage === "landing" && !user && !loading) {
-      localStorage.removeItem("mockUser")
-    }
-  }, [currentPage, user, loading])
-
+  // Show loading screen
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F2F5F1] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#004D40] mx-auto mb-4"></div>
-          <p className="text-[#004D40] font-bold">LOADING...</p>
+          <div className="w-16 h-16 bg-[#44C76F] border-4 border-[#004D40] transform rotate-3 flex items-center justify-center mx-auto mb-4 shadow-[6px_6px_0px_0px_#004D40]">
+            <div className="w-8 h-8 border-4 border-[#004D40] border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <p className="text-[#004D40] font-bold text-lg">LOADING ROOMIO...</p>
         </div>
       </div>
-    )
+    );
   }
 
-  // Show auth page if requested
+  // Show configuration error if exists
+  if (authError) {
+    return (
+      <div className="min-h-screen bg-[#F2F5F1] flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-4 border-red-500 shadow-[8px_8px_0px_0px_red] bg-red-100">
+          <CardContent className="p-8 text-center">
+            <div className="w-16 h-16 bg-red-500 border-4 border-red-700 flex items-center justify-center mx-auto mb-4">
+              <span className="text-white font-black text-2xl">!</span>
+            </div>
+            <h2 className="text-2xl font-black text-red-700 mb-4">CONFIGURATION ERROR</h2>
+            <p className="text-red-700 font-bold mb-6">{authError}</p>
+            <div className="text-sm text-red-600 text-left bg-red-50 p-4 border-2 border-red-200">
+              <p className="font-bold mb-2">Required in .env.local:</p>
+              <ul className="list-disc list-inside space-y-1 text-xs">
+                <li>NEXT_PUBLIC_FIREBASE_API_KEY</li>
+                <li>NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN</li>
+                <li>NEXT_PUBLIC_FIREBASE_PROJECT_ID</li>
+                <li>NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET</li>
+                <li>NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID</li>
+                <li>NEXT_PUBLIC_FIREBASE_APP_ID</li>
+              </ul>
+            </div>
+            <Button 
+              onClick={() => window.location.reload()}
+              className="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold"
+            >
+              RELOAD PAGE
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show auth page
   if (currentPage === "auth") {
     return (
       <AuthPage 
         onBack={() => setCurrentPage("landing")}
         onSuccess={() => {
-          // Auth success handled by useEffect above
-          console.log("Auth successful - useEffect will handle redirection")
+          console.log("✅ Auth successful - useEffect will handle redirection");
         }}
       />
-    )
+    );
   }
 
-  // Profile setup page
+  // Show profile setup page
   if (currentPage === "profile-setup") {
     return (
       <ProfileSetup 
         onComplete={() => {
-          console.log("Profile setup complete - redirecting to user type selection")
-          setCurrentPage("user-type")
+          console.log("✅ Profile setup complete - checking next step");
+          // The useEffect will handle the next step based on updated user data
+          // But we can also manually check here
+          if (user && !user.userType) {
+            setCurrentPage("user-type");
+          } else {
+            setCurrentPage("swipe");
+          }
         }} 
       />
-    )
+    );
   }
 
-  // User type selection page
+  // Show user type selection page
   if (currentPage === "user-type") {
     return (
       <UserTypeSelection 
         onComplete={() => {
-          console.log("User type selection complete - redirecting to app")
-          setCurrentPage("swipe")
+          console.log("✅ User type selection complete - going to main app");
+          setCurrentPage("swipe");
         }} 
       />
-    )
+    );
   }
 
-  // If user is authenticated and on app pages, handle app navigation
+  // Show app pages for authenticated users
   if (user && currentPage !== "landing") {
-    console.log("User found, showing app page:", currentPage)
+    console.log("📱 Showing app page:", currentPage);
 
-    // Navigation component for app pages
     const AppNavigation = () => (
       <div className="fixed bottom-0 left-0 right-0 bg-[#F2F5F1] border-t-4 border-[#004D40] px-4 py-2 z-50">
         <div className="flex justify-around max-w-md mx-auto">
-          <button
-            onClick={() => setCurrentPage("swipe")}
-            className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors font-black ${
-              currentPage === "swipe" ? "text-[#004D40] bg-[#44C76F]/20" : "text-[#004D40]"
-            }`}
-          >
-            <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={3}
-                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-              />
-            </svg>
-            <span className="text-xs font-black">DISCOVER</span>
-          </button>
-          <button
-            onClick={() => setCurrentPage("matches")}
-            className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors font-black ${
-              currentPage === "matches" ? "text-[#004D40] bg-[#44C76F]/20" : "text-[#004D40]"
-            }`}
-          >
-            <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={3}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            <span className="text-xs font-black">MATCHES</span>
-          </button>
-          <button
-            onClick={() => setCurrentPage("chat")}
-            className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors font-black ${
-              currentPage === "chat" ? "text-[#004D40] bg-[#44C76F]/20" : "text-[#004D40]"
-            }`}
-          >
-            <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={3}
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-              />
-            </svg>
-            <span className="text-xs font-black">CHAT</span>
-          </button>
-          <button
-            onClick={() => setCurrentPage("marketplace")}
-            className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors font-black ${
-              currentPage === "marketplace" ? "text-[#004D40] bg-[#44C76F]/20" : "text-[#004D40]"
-            }`}
-          >
-            <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={3}
-                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-              />
-            </svg>
-            <span className="text-xs font-black">MARKET</span>
-          </button>
-          <button
-            onClick={() => setCurrentPage("expenses")}
-            className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors font-black ${
-              currentPage === "expenses" ? "text-[#004D40] bg-[#44C76F]/20" : "text-[#004D40]"
-            }`}
-          >
-            <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={3}
-                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-              />
-            </svg>
-            <span className="text-xs font-black">EXPENSES</span>
-          </button>
+          {[
+            { page: "swipe", icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z", label: "DISCOVER" },
+            { page: "matches", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z", label: "MATCHES" },
+            { page: "chat", icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z", label: "CHAT" },
+            { page: "marketplace", icon: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z", label: "MARKET" },
+            { page: "expenses", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1", label: "EXPENSES" }
+          ].map(({ page, icon, label }) => (
+            <button
+              key={page}
+              onClick={() => setCurrentPage(page as any)}
+              className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors font-black ${
+                currentPage === page ? "text-[#004D40] bg-[#44C76F]/20" : "text-[#004D40]"
+              }`}
+            >
+              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d={icon} />
+              </svg>
+              <span className="text-xs font-black">{label}</span>
+            </button>
+          ))}
         </div>
       </div>
-    )
+    );
 
     return (
       <div className="min-h-screen bg-[#F2F5F1]">
-         {currentPage === "swipe" && <SwipePage user={user as any} />}
+        {currentPage === "swipe" && <SwipePage user={user as any} />}
         {currentPage === "matches" && <MatchesPage user={user as any} />}
         {currentPage === "marketplace" && <MarketplacePage user={user as any} />}
         {currentPage === "expenses" && <ExpensesPage user={user as any} />}
@@ -221,32 +207,37 @@ export default function Home() {
 
         <AppNavigation />
       </div>
-    )
+    );
   }
 
-  // Handle authenticated user wanting to go to app
+  // Handle navigation for landing page
   const handleGoToApp = () => {
     if (user) {
-      // User is authenticated, go to app
-      setCurrentPage("swipe")
+      // User is authenticated, determine where to go
+      if (!user.age || !user.preferences) {
+        setCurrentPage("profile-setup");
+      } else if (!user.userType) {
+        setCurrentPage("user-type");
+      } else {
+        setCurrentPage("swipe");
+      }
     } else {
       // No user, go to auth
-      setCurrentPage("auth")
+      setCurrentPage("auth");
     }
-  }
+  };
 
-  // Handle logout
   const handleLogout = async () => {
     try {
-      await logout()
-      setCurrentPage("landing")
+      await logout();
+      setCurrentPage("landing");
     } catch (error) {
-      console.error("Logout error:", error)
+      console.error("Logout error:", error);
     }
-  }
+  };
 
-  // Show landing page by default
-  console.log("Showing landing page")
+  // Show landing page
+  console.log("🏠 Showing landing page");
   return (
     <div className="flex flex-col min-h-screen bg-[#F2F5F1] text-[#004D40]">
       {/* Header */}
@@ -260,26 +251,16 @@ export default function Home() {
           </div>
         </button>
         <nav className="ml-auto flex gap-8 items-center">
-          <Link
-            href="#features"
-            className="text-lg font-black text-[#F2F5F1] hover:text-[#44C76F] transition-colors border-b-2 border-transparent hover:border-[#44C76F] pb-1"
-          >
+          <Link href="#features" className="text-lg font-black text-[#F2F5F1] hover:text-[#44C76F] transition-colors border-b-2 border-transparent hover:border-[#44C76F] pb-1">
             FEATURES
           </Link>
-          <Link
-            href="#how-it-works"
-            className="text-lg font-black text-[#F2F5F1] hover:text-[#44C76F] transition-colors border-b-2 border-transparent hover:border-[#44C76F] pb-1"
-          >
+          <Link href="#how-it-works" className="text-lg font-black text-[#F2F5F1] hover:text-[#44C76F] transition-colors border-b-2 border-transparent hover:border-[#44C76F] pb-1">
             HOW IT WORKS
           </Link>
-          <Link
-            href="#contact"
-            className="text-lg font-black text-[#F2F5F1] hover:text-[#44C76F] transition-colors border-b-2 border-transparent hover:border-[#44C76F] pb-1"
-          >
+          <Link href="#contact" className="text-lg font-black text-[#F2F5F1] hover:text-[#44C76F] transition-colors border-b-2 border-transparent hover:border-[#44C76F] pb-1">
             CONTACT
           </Link>
 
-          {/* Show user controls if logged in */}
           {user && (
             <div className="flex items-center gap-4">
               <Button
