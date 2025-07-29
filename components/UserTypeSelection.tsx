@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { updateUserProfile } from "@/services/firestore";
+import { updateUserProfile } from "@/services/supabase";
 
 export default function UserTypeSelection({ onComplete }: { onComplete: () => void }) {
   const { user } = useAuth()
@@ -24,11 +24,15 @@ export default function UserTypeSelection({ onComplete }: { onComplete: () => vo
     try {
       console.log("🔄 Updating user profile with userType:", selectedType);
       
-      // ✅ Save userType to Firestore
-      await updateUserProfile(user.uid, {
+      // ✅ Save userType to Supabase
+      const success = await updateUserProfile(user.id, {
         userType: selectedType,
         updatedAt: new Date(),
       });
+
+      if (!success) {
+        throw new Error("Failed to update user profile");
+      }
 
       console.log("✅ User type saved successfully");
 

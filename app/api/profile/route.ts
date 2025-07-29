@@ -1,7 +1,6 @@
 // app/api/profile/route.ts
 import { NextRequest, NextResponse } from "next/server"
-import { adminAuth, adminDb } from "@/lib/firebase-admin"
-import { FieldValue } from "firebase-admin/firestore"
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,28 +15,41 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.split(" ")[1]
     
-    // Verify token
-    const decodedToken = await adminAuth.verifyIdToken(token)
-    const uid = decodedToken.uid
+    // Initialize Supabase client
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+    
+    // Verify token and get user
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      )
+    }
 
-    // Get user from Firestore
-    const userRef = adminDb.collection("users").doc(uid)
-    const doc = await userRef.get()
+    // Get user from database
+    const { data: profile, error: profileError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .single()
 
-    if (!doc.exists) {
+    if (profileError || !profile) {
       return NextResponse.json(
         { success: false, message: "User not found" },
         { status: 404 }
       )
     }
-
-    const profile = doc.data()
     
     return NextResponse.json({
       success: true,
       profile: {
-        id: uid,
-        email: decodedToken.email,
+        id: user.id,
+        email: user.email,
         name: profile?.name || "",
         profilePicture: profile?.profilePicture || "",
         age: profile?.age || null,
@@ -69,11 +81,23 @@ export async function PUT(request: NextRequest) {
     }
 
     const token = authHeader.split(" ")[1]
-    
-    // Verify token
-    const decodedToken = await adminAuth.verifyIdToken(token)
-    const uid = decodedToken.uid
     const profileData = await request.json()
+    
+    // Initialize Supabase client
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+    
+    // Verify token and get user
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      )
+    }
 
     // Validate required fields
     if (!profileData.age || !profileData.preferences) {
@@ -83,12 +107,21 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Update user in Firestore
-    const userRef = adminDb.collection("users").doc(uid)
-    await userRef.set({
-      ...profileData,
-      updatedAt: FieldValue.serverTimestamp()
-    }, { merge: true })
+    // Update user in database
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({
+        ...profileData,
+        updatedAt: new Date().toISOString()
+      })
+      .eq("id", user.id)
+
+    if (updateError) {
+      return NextResponse.json(
+        { success: false, message: "Failed to update profile" },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({
       success: true,

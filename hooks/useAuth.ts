@@ -1,163 +1,222 @@
-// hooks/useAuth.ts - Fixed with proper user flow
+// hooks/useAuth.ts - Client-side only authentication
 import { useEffect, useState } from "react";
-import { auth, db } from "@/lib/firebase";
-import { onAuthStateChanged, User as FirebaseUser, signOut } from "firebase/auth";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, updateProfile } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
-import { User } from "@/types/user";
+import { supabase } from "@/lib/supabase";
+import { User, createFallbackUser } from "@/types/user";
+import { getUserProfile, updateUserProfile } from "@/services/supabase";
+import type { AuthChangeEvent, Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Check Firebase configuration on mount
-  useEffect(() => {
+  const handleUserSession = async (supabaseUser: SupabaseUser) => {
     try {
-      console.log("🔍 Firebase Auth Config Check:");
-      console.log("- Auth instance:", !!auth);
-      console.log("- API Key:", auth.app.options.apiKey ? "✅ Present" : "❌ Missing");
-      console.log("- Auth Domain:", auth.app.options.authDomain || "❌ Missing");
-      console.log("- Project ID:", auth.app.options.projectId || "❌ Missing");
-      
-      if (!auth.app.options.apiKey || !auth.app.options.authDomain || !auth.app.options.projectId) {
-        throw new Error("Firebase configuration is incomplete. Check your .env.local file.");
-      }
-    } catch (configError) {
-      console.error("❌ Firebase configuration error:", configError);
-      setError(configError instanceof Error ? configError.message : "Firebase configuration error");
+      console.log("📊 Loading user profile for:", supabaseUser.id);
+      const profile = await getUserProfile(supabaseUser.id);
+      console.log("📊 Profile loaded:", profile);
+
+      const userData: User = {
+        id: supabaseUser.id,
+        uid: supabaseUser.id,
+        email: supabaseUser.email ?? null,
+        name: profile?.name || supabaseUser.user_metadata?.full_name || "",
+        userType: profile?.userType,
+        profilePicture:
+          profile?.profilePicture || supabaseUser.user_metadata?.avatar_url || "",
+        createdAt: profile?.createdAt,
+        updatedAt: profile?.updatedAt,
+        age: profile?.age,
+        bio: profile?.bio || "",
+        location: profile?.location || "",
+        budget: profile?.budget,
+        preferences: profile?.preferences || {
+          smoking: false,
+          drinking: false,
+          vegetarian: false,
+          pets: false,
+        },
+      };
+
+      console.log("✅ Setting user state:", userData);
+      setUser(userData);
+      console.log("✅ User state updated successfully");
+    } catch (error) {
+      console.error("❌ Error loading user profile:", error);
+      console.log("✅ Setting fallback user");
+      setUser(createFallbackUser(supabaseUser));
+    }
+  };
+
+  // Check Supabase configuration and set up auth listener
+  useEffect(() => {
+    console.log("🔍 Supabase Auth Config Check:");
+    console.log("- Supabase client initialized:", !!supabase);
+
+    if (!supabase) {
+      setError("Supabase configuration is incomplete. Check your environment variables.");
       setLoading(false);
       return;
     }
 
-    // Set up auth state listener only if config is valid
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      console.log("🔄 Auth state changed:", firebaseUser ? `User: ${firebaseUser.uid}` : "No user");
-      
+    const getInitialSession = async () => {
       try {
-        if (firebaseUser) {
-          // Get user profile from Firestore
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const userDoc = await getDoc(userDocRef);
-          const profileData = userDoc.exists() ? userDoc.data() : null;
-          
-          console.log("📊 Profile data from Firestore:", profileData);
-          
-          const userData: User = {
-            id: firebaseUser.uid,
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            name: profileData?.name || firebaseUser.displayName || "",
-            profilePicture: profileData?.profilePicture || firebaseUser.photoURL || "",
-            age: profileData?.age || null,
-            bio: profileData?.bio || "",
-            location: profileData?.location || "",
-            budget: profileData?.budget || null,
-            preferences: profileData?.preferences || null,
-            userType: profileData?.userType || null,
-            createdAt: profileData?.createdAt,
-            updatedAt: profileData?.updatedAt,
-          };
-          
-          setUser(userData);
-          console.log("✅ User state updated:", userData);
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error("❌ Error getting initial session:", error);
+          setError(error.message);
+          setLoading(false);
+          return;
+        }
+
+        if (session?.user) {
+          await handleUserSession(session.user);
         } else {
           setUser(null);
-          console.log("✅ User state cleared");
         }
-      } catch (firestoreError) {
-        console.error("❌ Error loading user profile:", firestoreError);
-        // Set basic user data as fallback
-        if (firebaseUser) {
-          setUser({
-            id: firebaseUser.uid,
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            name: firebaseUser.displayName || "",
-            profilePicture: firebaseUser.photoURL || "",
-          });
+        setLoading(false);
+      } catch (err) {
+        console.error("❌ Error in getInitialSession:", err);
+        setError("Failed to initialize authentication");
+        setLoading(false);
+      }
+    };
+
+    getInitialSession();
+
+    console.log("🔄 Setting up auth state listener...");
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event: AuthChangeEvent, session: Session | null) => {
+        console.log("🔄 Auth state changed:", event, session?.user ? "User logged in" : "User logged out");
+
+        try {
+          if (session?.user) {
+            await handleUserSession(session.user);
+          } else {
+            console.log("✅ Setting user to null (logged out)");
+            setUser(null);
+          }
+          setLoading(false);
+        } catch (err) {
+          console.error("❌ Error in auth state change handler:", err);
+          setLoading(false);
         }
       }
-      
-      setLoading(false);
-    });
+    );
 
-    return unsubscribe;
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, []);
+
+  const updateProfilePicture = async (imageUrl: string) => {
+    try {
+      console.log("🔄 Updating profile picture:", imageUrl);
+
+      if (!user?.id) {
+        throw new Error("No user logged in");
+      }
+
+      const success = await updateUserProfile(user.id, {
+        profilePicture: imageUrl,
+      });
+
+      if (success && user) {
+        setUser({
+          ...user,
+          profilePicture: imageUrl,
+          updatedAt: new Date(),
+        });
+        console.log("✅ Profile picture updated successfully");
+      } else {
+        throw new Error("Failed to update profile picture");
+      }
+    } catch (error) {
+      console.error("❌ Error updating profile picture:", error);
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      console.log("🔄 Logging out user...");
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      console.log("✅ User signed out");
+    } catch (error) {
+      console.error("❌ Error signing out:", error);
+      throw error;
+    }
+  };
 
   const emailSignUp = async (email: string, password: string, name: string) => {
     try {
       setLoading(true);
       setError(null);
-      console.log("🔄 Starting email signup for:", email);
+      console.log("🔄 Starting email signup...", { email, name });
 
-      // Create user with Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
-      
-      console.log("✅ User created in Firebase Auth:", firebaseUser.uid);
-
-      // Update Firebase Auth profile
-      await updateProfile(firebaseUser, {
-        displayName: name,
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+          },
+        },
       });
-      
-      console.log("✅ Firebase Auth profile updated");
 
-      // Create user document in Firestore with minimal required data
-      const userDoc = {
-        id: firebaseUser.uid,
-        uid: firebaseUser.uid,
-        email: email,
-        name: name,
-        profilePicture: "",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        // Add these default values
-        age: null,
-        preferences: null,
-        userType: null,
-        bio: "",
-        location: "",
-        budget: 0,
-        lifestyle: {}
-      };
+      if (error) throw error;
 
-      await setDoc(doc(db, 'users', firebaseUser.uid), userDoc);
-      
-      // The auth state listener will automatically update the user state
-      
+      const supabaseUser = data.user;
+      console.log("✅ User created in Supabase Auth:", supabaseUser?.id);
+
+      if (supabaseUser) {
+        const userDoc = {
+          id: supabaseUser.id,
+          uid: supabaseUser.id,
+          email: email,
+          name: name,
+          profilePicture: "",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isVerified: false,
+          age: null,
+          bio: "",
+          location: "",
+          budget: null,
+          preferences: {
+            smoking: false,
+            drinking: false,
+            vegetarian: false,
+            pets: false,
+          },
+          userType: null,
+          lifestyle: {},
+        };
+
+        const { error: profileError } = await supabase
+          .from("users")
+          .insert(userDoc);
+
+        if (profileError) {
+          console.error("❌ Error creating user profile:", profileError);
+          throw profileError;
+        }
+
+        console.log("✅ User document created in Supabase");
+      }
+
+      console.log("✅ Email signup completed successfully");
     } catch (error: any) {
       console.error("❌ Email signup error:", error);
+      setError(error.message || "Signup failed. Please try again.");
+      throw error;
+    } finally {
       setLoading(false);
-      
-      let errorMessage = "Signup failed. Please try again.";
-      
-      if (error.code) {
-        switch (error.code) {
-          case 'auth/email-already-in-use':
-            errorMessage = "An account with this email already exists.";
-            break;
-          case 'auth/weak-password':
-            errorMessage = "Password should be at least 6 characters.";
-            break;
-          case 'auth/invalid-email':
-            errorMessage = "Please enter a valid email address.";
-            break;
-          case 'auth/network-request-failed':
-            errorMessage = "Network error. Please check your connection.";
-            break;
-          case 'auth/configuration-not-found':
-            errorMessage = "Firebase configuration error. Please check your environment variables.";
-            break;
-          case 'auth/invalid-api-key':
-            errorMessage = "Invalid Firebase API key. Please check your configuration.";
-            break;
-        }
-      }
-      
-      setError(errorMessage);
-      throw new Error(errorMessage);
     }
   };
 
@@ -165,36 +224,22 @@ export function useAuth() {
     try {
       setLoading(true);
       setError(null);
-      console.log("🔄 Starting email signin for:", email);
-      
-      await signInWithEmailAndPassword(auth, email, password);
-      console.log("✅ Email signin successful");
-      
-      // The auth state listener will handle updating user state
-      
+      console.log("🔄 Starting email signin...", { email });
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      console.log("✅ Email signin successful:", data.user?.id);
     } catch (error: any) {
       console.error("❌ Email signin error:", error);
+      setError(error.message || "Signin failed. Please try again.");
+      throw error;
+    } finally {
       setLoading(false);
-      
-      let errorMessage = "Sign in failed. Please try again.";
-      
-      if (error.code) {
-        switch (error.code) {
-          case 'auth/user-not-found':
-          case 'auth/wrong-password':
-            errorMessage = "Invalid email or password.";
-            break;
-          case 'auth/invalid-email':
-            errorMessage = "Please enter a valid email address.";
-            break;
-          case 'auth/network-request-failed':
-            errorMessage = "Network error. Please check your connection.";
-            break;
-        }
-      }
-      
-      setError(errorMessage);
-      throw new Error(errorMessage);
     }
   };
 
@@ -203,81 +248,34 @@ export function useAuth() {
       setLoading(true);
       setError(null);
       console.log("🔄 Starting Google signin...");
-      
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const firebaseUser = result.user;
-      
-      console.log("✅ Google signin successful:", firebaseUser.uid);
-      
-      // Check if user document exists, create if not
-      const userDocRef = doc(db, 'users', firebaseUser.uid);
-      const userDoc = await getDoc(userDocRef);
-      
-      if (!userDoc.exists()) {
-        // Create user document for new Google users
-        const userDocData = {
-          id: firebaseUser.uid,
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || "",
-          name: firebaseUser.displayName || "",
-          profilePicture: firebaseUser.photoURL || "",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          // Profile setup will be required
-          age: null,
-          bio: "",
-          location: "",
-          budget: null,
-          preferences: null,
-          userType: null,
-        };
 
-        await setDoc(userDocRef, userDocData);
-        console.log("✅ New Google user document created");
-      }
-      
-      // The auth state listener will handle updating user state
-      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) throw error;
+
+      console.log("✅ Google signin initiated");
     } catch (error: any) {
       console.error("❌ Google signin error:", error);
-      setLoading(false);
-      
-      let errorMessage = "Google sign in failed. Please try again.";
-      
-      if (error.code) {
-        switch (error.code) {
-          case 'auth/popup-closed-by-user':
-            errorMessage = "Sign in was cancelled.";
-            break;
-          case 'auth/network-request-failed':
-            errorMessage = "Network error. Please check your connection.";
-            break;
-        }
-      }
-      
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    }
-  };
-
-  const logout = async () => {
-    try {
-      await signOut(auth);
-      console.log("✅ User signed out");
-    } catch (error) {
-      console.error("❌ Error signing out:", error);
+      setError(error.message || "Google signin failed. Please try again.");
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
-  return { 
-    user, 
-    loading, 
+  return {
+    user,
+    loading,
     error,
-    logout, 
-    emailSignUp, 
-    emailSignIn, 
-    googleSignIn 
+    logout,
+    emailSignUp,
+    emailSignIn,
+    googleSignIn,
+    updateProfilePicture,
   };
 }

@@ -35,12 +35,16 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
     e.preventDefault();
     setError("");
     
+    console.log("🔄 Starting email authentication...", { isSignUp, email, name });
+    
     if (authError) {
+      console.log("❌ Auth error detected:", authError);
       setError(authError);
       return;
     }
     
     if (!email || !password) {
+      console.log("❌ Missing email or password");
       setError("Email and password are required");
       return;
     }
@@ -48,16 +52,22 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
     try {
       if (isSignUp) {
         if (!name) {
+          console.log("❌ Missing name for signup");
           setError("Name is required for sign up");
           return;
         }
+        console.log("🔄 Calling emailSignUp...");
         await emailSignUp(email, password, name);
+        console.log("✅ Email signup completed");
         // Let the page.tsx handle redirect based on auth state
       } else {
+        console.log("🔄 Calling emailSignIn...");
         await emailSignIn(email, password);
+        console.log("✅ Email signin completed");
         // Let the page.tsx handle redirect
       }
     } catch (error: any) {
+      console.error("❌ Authentication error:", error);
       setError(error.message || "Authentication failed. Please try again.");
     }
   };
@@ -65,15 +75,21 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
   const handleGoogleAuth = async () => {
     setError("");
     
+    console.log("🔄 Starting Google authentication...");
+    
     if (authError) {
+      console.log("❌ Auth error detected:", authError);
       setError(authError);
       return;
     }
     
     try {
+      console.log("🔄 Calling googleSignIn...");
       await googleSignIn();
+      console.log("✅ Google signin completed");
       onSuccess();
     } catch (error: any) {
+      console.error("❌ Google authentication error:", error);
       setError(error.message || "Google authentication failed");
     }
   };
@@ -87,12 +103,8 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
           <div className="text-sm text-red-600 text-left">
             <p className="font-bold mb-2">Check these environment variables in .env.local:</p>
             <ul className="list-disc list-inside space-y-1">
-              <li>NEXT_PUBLIC_FIREBASE_API_KEY</li>
-              <li>NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN</li>
-              <li>NEXT_PUBLIC_FIREBASE_PROJECT_ID</li>
-              <li>NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET</li>
-              <li>NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID</li>
-              <li>NEXT_PUBLIC_FIREBASE_APP_ID</li>
+              <li>NEXT_PUBLIC_SUPABASE_URL</li>
+              <li>NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
             </ul>
           </div>
           <button 

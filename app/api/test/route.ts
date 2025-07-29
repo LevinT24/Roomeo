@@ -1,32 +1,24 @@
-// /app/api/test/firebase-debug/route.ts - FIXED VERSION
+// /app/api/test/supabase-debug/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import admin from 'firebase-admin';
+import { createClient } from '@supabase/supabase-js';
 
-// Initialize Firebase Admin if not already initialized
-function initializeFirebaseAdmin() {
-  if (admin.apps.length === 0) {
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-    
-    const serviceAccount = {
-      type: "service_account",
-      project_id: process.env.FIREBASE_PROJECT_ID,
-      private_key: privateKey,
-      client_email: process.env.FIREBASE_CLIENT_EMAIL,
-    };
-
-    return admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
-      projectId: process.env.FIREBASE_PROJECT_ID
-    });
+// Initialize Supabase client
+function initializeSupabase() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase environment variables');
   }
-  return admin.app();
+  
+  return createClient(supabaseUrl, supabaseAnonKey);
 }
 
 export async function GET(request: NextRequest) {
   const results = {
     timestamp: new Date().toISOString(),
     environment: {} as Record<string, any>,
-    firebase: {} as Record<string, any>,
+    supabase: {} as Record<string, any>,
     connections: {} as Record<string, any>,
     errors: [] as string[],
     warnings: [] as string[],
@@ -34,13 +26,12 @@ export async function GET(request: NextRequest) {
   };
 
   try {
-    console.log('🔍 Starting Firebase Debug...');
+    console.log('🔍 Starting Supabase Debug...');
 
     // 1. Check Environment Variables
     const requiredVars = [
-      'FIREBASE_PRIVATE_KEY',
-      'FIREBASE_CLIENT_EMAIL', 
-      'FIREBASE_PROJECT_ID'
+      'NEXT_PUBLIC_SUPABASE_URL',
+      'NEXT_PUBLIC_SUPABASE_ANON_KEY'
     ];
 
     requiredVars.forEach(varName => {
@@ -48,7 +39,7 @@ export async function GET(request: NextRequest) {
       results.environment[varName] = {
         exists: !!value,
         length: value ? value.length : 0,
-        preview: value ? (varName.includes('PRIVATE_KEY') ? 'Present (Hidden)' : `${value.substring(0, 20)}...`) : 'Missing'
+        preview: value ? `${value.substring(0, 20)}...` : 'Missing'
       };
 
       if (!value) {
@@ -56,81 +47,51 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // 2. Analyze Private Key Format
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-    if (privateKey) {
-      results.firebase.private_key_analysis = {
-        has_begin_marker: privateKey.includes('-----BEGIN PRIVATE KEY-----'),
-        has_end_marker: privateKey.includes('-----END PRIVATE KEY-----'),
-        has_escaped_newlines: privateKey.includes('\\n'),
-        has_actual_newlines: privateKey.includes('\n'),
-        has_quotes: privateKey.startsWith('"') || privateKey.startsWith("'"),
-        length: privateKey.length
-      };
-
-      // Common private key issues
-      if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
-        results.errors.push('❌ Private key missing BEGIN marker');
-      }
-      if (!privateKey.includes('-----END PRIVATE KEY-----')) {
-        results.errors.push('❌ Private key missing END marker');
-      }
-      if (!privateKey.includes('\\n') && !privateKey.includes('\n')) {
-        results.errors.push('❌ Private key appears to be on one line');
-      }
-    }
-
-    // 3. Test Firebase Admin Initialization
+    // 2. Test Supabase Client Initialization
     try {
-      const app = initializeFirebaseAdmin();
-      results.firebase.admin_init = '✅ Success';
+      const supabase = initializeSupabase();
+      results.supabase.client_init = '✅ Success';
       
-      // Test Firestore with a valid collection name
+      // Test database connection
       try {
-        const db = admin.firestore();
-        // Use a valid collection name (not reserved)
-        await db.collection('connection-test').limit(1).get();
-        results.connections.firestore = '✅ Connected and working perfectly!';
-      } catch (firestoreError: any) {
-        // Try alternative test method
-        try {
-          const db = admin.firestore();
-          // Just test the connection without querying
-          const testRef = db.collection('debug-test').doc('test');
-          results.connections.firestore = '✅ Connection established';
-        } catch (altError: any) {
-          results.connections.firestore = `❌ ${firestoreError.message}`;
-          results.errors.push(`Firestore: ${firestoreError.message}`);
+        const { data, error } = await supabase
+          .from('users')
+          .select('count')
+          .limit(1);
+        
+        if (error) {
+          results.connections.database = `❌ ${error.message}`;
+          results.errors.push(`Database: ${error.message}`);
+        } else {
+          results.connections.database = '✅ Connected and working perfectly!';
         }
+      } catch (dbError: any) {
+        results.connections.database = `❌ ${dbError.message}`;
+        results.errors.push(`Database: ${dbError.message}`);
       }
 
       // Test Auth
       try {
-        const auth = admin.auth();
-        results.connections.auth = '✅ Initialized and ready';
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          results.connections.auth = `❌ ${error.message}`;
+          results.errors.push(`Auth: ${error.message}`);
+        } else {
+          results.connections.auth = '✅ Initialized and ready';
+        }
       } catch (authError: any) {
         results.connections.auth = `❌ ${authError.message}`;
         results.errors.push(`Auth: ${authError.message}`);
       }
 
-    } catch (adminError: any) {
-      results.firebase.admin_init = `❌ ${adminError.message}`;
-      results.errors.push(`Firebase Admin: ${adminError.message}`);
-      
-      // Specific error handling for common issues
-      if (adminError.message.includes('DECODER routines::unsupported')) {
-        results.errors.push('🔧 SOLUTION: Your private key is corrupted. Generate a new one from Firebase Console.');
-      }
-      if (adminError.message.includes('Invalid key format')) {
-        results.errors.push('🔧 SOLUTION: Check private key formatting - ensure proper newlines.');
-      }
+    } catch (clientError: any) {
+      results.supabase.client_init = `❌ ${clientError.message}`;
+      results.errors.push(`Supabase Client: ${clientError.message}`);
     }
 
-    // 4. Set final status
+    // 3. Set final status
     if (results.errors.length === 0) {
-      results.status = '🎉 Firebase is working perfectly!';
-    } else if (results.errors.some(e => e.includes('DECODER routines'))) {
-      results.status = '❌ Private key is corrupted';
+      results.status = '🎉 Supabase is working perfectly!';
     } else {
       results.status = `❌ ${results.errors.length} error(s) found`;
     }
@@ -138,21 +99,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       ...results,
       success_message: results.errors.length === 0 ? 
-        '🎉 Your Firebase integration is working perfectly! You can now use Firestore and Auth in your app.' : 
+        '🎉 Your Supabase integration is working perfectly! You can now use the database and Auth in your app.' : 
         undefined,
       next_steps: results.errors.length === 0 ? [
-        '✅ Firebase Admin SDK: Working',
-        '✅ Firestore Database: Connected', 
-        '✅ Firebase Auth: Ready',
+        '✅ Supabase Client: Working',
+        '✅ Database: Connected', 
+        '✅ Auth: Ready',
         '🚀 You can now build your app features!'
       ] : [
         'Fix any remaining errors above',
-        'Check Firebase Console settings',
-        'Verify security rules if needed'
+        'Check Supabase Console settings',
+        'Verify RLS policies if needed'
       ],
       test_endpoints: {
-        firestore_write: 'POST /api/test/firebase-debug (test writing to Firestore)',
-        auth_test: 'Create auth endpoints using Firebase Admin Auth'
+        database_write: 'POST /api/test (test writing to database)',
+        auth_test: 'Use client-side auth with Supabase'
       }
     });
 
@@ -161,37 +122,45 @@ export async function GET(request: NextRequest) {
       success: false,
       error: error.message,
       stack: error.stack,
-      help: 'This is a fatal error. Check your environment variables and Firebase setup.'
+      help: 'This is a fatal error. Check your environment variables and Supabase setup.'
     }, { status: 500 });
   }
 }
 
-// Test Firestore write operation
+// Test database write operation
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // Test Firestore write with proper collection name
-    const app = initializeFirebaseAdmin();
-    const db = admin.firestore();
+    // Test database write
+    const supabase = initializeSupabase();
     
-    const testDoc = await db.collection('debug-tests').add({
-      message: body.message || '🚀 Firebase is working!',
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      success: true,
-      test_type: 'connection_verification'
-    });
+    const { data, error } = await supabase
+      .from('users')
+      .insert({
+        id: 'test-user-' + Date.now(),
+        email: 'test@example.com',
+        name: 'Test User',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json({
       success: true,
-      message: '🎉 Firebase Firestore write test successful!',
-      document_id: testDoc.id,
-      collection: 'debug-tests',
+      message: '🎉 Supabase database write test successful!',
+      user_id: data.id,
+      table: 'users',
       timestamp: new Date().toISOString(),
       next_steps: [
-        'Your Firebase integration is fully working!',
+        'Your Supabase integration is fully working!',
         'You can now build your chat, user management, and other features',
-        'Check Firebase Console to see the test document created'
+        'Check Supabase Console to see the test record created'
       ]
     });
 
@@ -199,7 +168,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: false,
       error: error.message,
-      help: 'Write test failed - check Firestore security rules'
+      help: 'Write test failed - check database RLS policies'
     }, { status: 500 });
   }
 }

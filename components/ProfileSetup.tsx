@@ -7,8 +7,8 @@ import { useAuth } from "@/hooks/useAuth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { updateUserProfile } from "@/services/firestore";
-import { uploadPhoto } from "@/lib/storage";
+import { updateUserProfile } from "@/services/supabase";
+import { uploadImage } from "@/lib/storage";
 import { ProfileData } from "@/types/user";
 
 export default function ProfileSetup({ onComplete }: { onComplete: () => void }) {
@@ -56,7 +56,13 @@ export default function ProfileSetup({ onComplete }: { onComplete: () => void })
       
       // Only upload if new image was selected
       if (profileImage) {
-        photoUrl = await uploadPhoto(profileImage, user.uid);
+        const uploadResult = await uploadImage(profileImage, user.id);
+        if (uploadResult.success && uploadResult.url) {
+          photoUrl = uploadResult.url;
+        } else {
+          console.error("Upload failed:", uploadResult.error);
+          throw new Error(uploadResult.error || "Upload failed");
+        }
       }
 
       const profileData = {
@@ -73,7 +79,17 @@ export default function ProfileSetup({ onComplete }: { onComplete: () => void })
         email: user.email || "",
       };
 
+<<<<<<< HEAD
       await updateUserProfile(user.uid, profileData);
+=======
+      // Save to Supabase
+      const success = await updateUserProfile(user.id, profileData);
+      if (!success) {
+        throw new Error("Failed to update profile");
+      }
+      
+      // Trigger completion callback
+>>>>>>> a0172b36006a3930cb581030549060ac0b0f93b9
       onComplete();
     } catch (error) {
       console.error("Profile setup failed:", error);
