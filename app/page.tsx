@@ -13,7 +13,7 @@ import UserTypeSelection from "@/components/UserTypeSelection"
 import SwipePage from "@/components/SwipePage"
 import MatchesPage from "@/components/MatchesPage"
 import MarketplacePage from "@/components/MarketplacePage"
-import ExpensesPage from "@/components/ExpensesPage"
+import ExpensesPage from "@/components/ExpensesPage"  
 import ChatPage from "@/components/ChatPage"
 import { useState, useEffect } from "react"
 
