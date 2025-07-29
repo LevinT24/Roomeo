@@ -7,8 +7,8 @@ import { useAuth } from "@/hooks/useAuth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { updateUserProfile } from "@/services/firestore";
-import { uploadPhoto } from "@/lib/storage";
+import { updateUserProfile } from "@/services/supabase";
+import { uploadImage } from "@/lib/storage";
 import { ProfileData } from "@/types/user";
 
 export default function ProfileSetup({ onComplete }: { onComplete: () => void }) {
@@ -55,7 +55,13 @@ export default function ProfileSetup({ onComplete }: { onComplete: () => void })
       // Upload image if exists
       let photoUrl = imagePreview || "";
       if (profileImage) {
-        photoUrl = await uploadPhoto(profileImage, user.uid);
+        const uploadResult = await uploadImage(profileImage, user.id);
+        if (uploadResult.success && uploadResult.url) {
+          photoUrl = uploadResult.url;
+        } else {
+          console.error("Upload failed:", uploadResult.error);
+          throw new Error(uploadResult.error || "Upload failed");
+        }
       }
 
       // Prepare profile data
@@ -69,8 +75,11 @@ export default function ProfileSetup({ onComplete }: { onComplete: () => void })
         updatedAt: new Date(),
       };
 
-      // Save to Firestore
-      await updateUserProfile(user.uid, profileData);
+      // Save to Supabase
+      const success = await updateUserProfile(user.id, profileData);
+      if (!success) {
+        throw new Error("Failed to update profile");
+      }
       
       // Trigger completion callback
       onComplete();

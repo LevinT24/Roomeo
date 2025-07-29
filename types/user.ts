@@ -1,7 +1,7 @@
 // types/user.ts
 export interface User {
   id: string;
-  uid: string; // For Firebase compatibility
+  uid: string; // For Supabase compatibility
   email: string | null;
   name: string;
   age?: number;
