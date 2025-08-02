@@ -8,8 +8,9 @@
   import { Input } from "@/components/ui/input"
   import { Card, CardContent } from "@/components/ui/card"
   import { updateUserProfile } from "@/services/supabase";
+import { uploadImage } from "@/lib/storage";
 
-  import { ProfileData } from "@/types/user";
+import { ProfileData } from "@/types/user";
 
   export default function ProfileSetup({ onComplete }: { onComplete: () => void }) {
     const { user } = useAuth()
@@ -27,6 +28,8 @@
       pets: false,
     })
     const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+    const [uploadError, setUploadError] = useState<string | null>(null)
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
@@ -50,18 +53,26 @@
     const handleSubmit = async () => {
       if (!user) return;
       setLoading(true);
+      setError(null);
+      setUploadError(null);
 
       try {
         let photoUrl = imagePreview || "";
         
         // Only upload if new image was selected
         if (profileImage) {
+          console.log("🔄 Starting image upload...");
           const uploadResult = await uploadImage(profileImage, user.id);
+          
           if (uploadResult.success && uploadResult.url) {
             photoUrl = uploadResult.url;
+            console.log("✅ Image upload successful:", photoUrl);
           } else {
-            console.error("Upload failed:", uploadResult.error);
-            throw new Error(uploadResult.error || "Upload failed");
+            console.error("❌ Upload failed:", uploadResult.error);
+            setUploadError(uploadResult.error || "Upload failed");
+            
+            // Continue without the image rather than failing completely
+            console.log("⚠️ Continuing profile setup without uploaded image");
           }
         }
 
@@ -80,16 +91,17 @@
         };
 
         // Save to Supabase
+        console.log("🔄 Saving profile data...");
         const success = await updateUserProfile(user.id, profileData);
         if (!success) {
           throw new Error("Failed to update profile");
         }
         
-
+        console.log("✅ Profile setup completed successfully");
         onComplete();
       } catch (error) {
-        console.error("Profile setup failed:", error);
-        // Handle error (show message to user)
+        console.error("❌ Profile setup failed:", error);
+        setError(error instanceof Error ? error.message : "Profile setup failed");
       } finally {
         setLoading(false);
       }
@@ -141,6 +153,16 @@
                   >
                     CHOOSE PHOTO
                   </label>
+                </div>
+
+                {/* Optional: Skip photo upload */}
+                <div className="text-center">
+                  <button
+                    onClick={() => setStep(2)}
+                    className="text-[#004D40] font-bold underline hover:text-[#44C76F] transition-colors"
+                  >
+                    SKIP FOR NOW
+                  </button>
                 </div>
 
                 <Button
@@ -251,6 +273,28 @@
                   </div>
                 ))}
               </div>
+
+              {/* Error Messages */}
+              {error && (
+                <div className="p-4 border-4 border-red-500 bg-red-100 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-red-600 font-black">⚠️</span>
+                    <span className="font-black text-red-700">PROFILE SETUP ERROR</span>
+                  </div>
+                  <p className="text-red-700 font-bold text-sm">{error}</p>
+                </div>
+              )}
+              
+              {uploadError && (
+                <div className="p-4 border-4 border-orange-500 bg-orange-100 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-orange-600 font-black">⚠️</span>
+                    <span className="font-black text-orange-700">IMAGE UPLOAD WARNING</span>
+                  </div>
+                  <p className="text-orange-700 font-bold text-sm">{uploadError}</p>
+                  <p className="text-orange-600 text-xs mt-1">Profile will be saved without the uploaded image.</p>
+                </div>
+              )}
 
               <Button
                 onClick={handleSubmit}
