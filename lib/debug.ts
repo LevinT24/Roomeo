@@ -82,7 +82,8 @@ export async function debugTableExists(tableName: string) {
       console.error('❌ Table check failed:', error);
       return {
         exists: false,
-        error: error.message
+        error: error.message,
+        code: error.code
       };
     }
     
@@ -95,6 +96,40 @@ export async function debugTableExists(tableName: string) {
     console.error('❌ Table check failed:', error);
     return {
       exists: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+export async function debugRLSPolicies() {
+  console.log('🔍 Checking RLS policies...');
+  
+  try {
+    // Test with a simple query to see if RLS is blocking access
+    const { data, error } = await supabase
+      .from('users')
+      .select('count')
+      .limit(1);
+    
+    if (error) {
+      console.error('❌ RLS policy test failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        code: error.code,
+        suggestion: 'Check RLS policies in Supabase dashboard'
+      };
+    }
+    
+    console.log('✅ RLS policies working correctly');
+    return {
+      success: true,
+      message: 'RLS policies are configured correctly'
+    };
+  } catch (error) {
+    console.error('❌ RLS policy test failed:', error);
+    return {
+      success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
     };
   }

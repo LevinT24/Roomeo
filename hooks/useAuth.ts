@@ -2,19 +2,78 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { User, createFallbackUser } from "@/types/user";
-import { getUserProfile, updateUserProfile } from "@/services/supabase";
+import { getUserProfile, updateUserProfile, ensureUserProfile } from "@/services/supabase";
 import type { AuthChangeEvent, Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleUserSession = async (supabaseUser: SupabaseUser) => {
+    // Prevent multiple simultaneous calls
+    if (isProcessing) {
+      console.log("⏳ Already processing user session, skipping...");
+      return;
+    }
+    
+    setIsProcessing(true);
     try {
       console.log("📊 Loading user profile for:", supabaseUser.id);
       const profile = await getUserProfile(supabaseUser.id);
       console.log("📊 Profile loaded:", profile);
+
+      // If no profile exists, try to create one and then create a fallback user
+      if (!profile) {
+        console.log("📝 No profile found - attempting to create user profile");
+        
+        // Try to create a user profile in the database
+        const profileCreated = await ensureUserProfile(
+          supabaseUser.id,
+          supabaseUser.email || "",
+          supabaseUser.user_metadata?.full_name || ""
+        );
+        
+        if (profileCreated) {
+          console.log("✅ User profile created in database");
+          // Try to fetch the profile again
+          const newProfile = await getUserProfile(supabaseUser.id);
+          if (newProfile) {
+            const userData: User = {
+              id: supabaseUser.id,
+              uid: supabaseUser.id,
+              email: supabaseUser.email ?? null,
+              name: newProfile?.name || supabaseUser.user_metadata?.full_name || "",
+              userType: newProfile?.userType,
+              profilePicture:
+                newProfile?.profilePicture || supabaseUser.user_metadata?.avatar_url || "",
+              createdAt: newProfile?.createdAt,
+              updatedAt: newProfile?.updatedAt,
+              age: newProfile?.age,
+              bio: newProfile?.bio || "",
+              location: newProfile?.location || "",
+              budget: newProfile?.budget,
+              preferences: newProfile?.preferences || {
+                smoking: false,
+                drinking: false,
+                vegetarian: false,
+                pets: false,
+              },
+            };
+            setUser(userData);
+            console.log("✅ User state updated with new profile");
+            return;
+          }
+        }
+        
+        // If profile creation failed or profile still not found, create fallback user
+        console.log("📝 Creating fallback user");
+        const fallbackUser = createFallbackUser(supabaseUser);
+        setUser(fallbackUser);
+        console.log("✅ Fallback user created:", fallbackUser);
+        return;
+      }
 
       const userData: User = {
         id: supabaseUser.id,
@@ -43,8 +102,10 @@ export function useAuth() {
       console.log("✅ User state updated successfully");
     } catch (error) {
       console.error("❌ Error loading user profile:", error);
-      console.log("✅ Setting fallback user");
+      console.log("✅ Setting fallback user due to error");
       setUser(createFallbackUser(supabaseUser));
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -175,39 +236,15 @@ export function useAuth() {
       console.log("✅ User created in Supabase Auth:", supabaseUser?.id);
 
       if (supabaseUser) {
-        const userDoc = {
-          id: supabaseUser.id,
-          uid: supabaseUser.id,
-          email: email,
-          name: name,
-          profilePicture: "",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          isVerified: false,
-          age: null,
-          bio: "",
-          location: "",
-          budget: null,
-          preferences: {
-            smoking: false,
-            drinking: false,
-            vegetarian: false,
-            pets: false,
-          },
-          userType: null,
-          lifestyle: {},
-        };
-
-        const { error: profileError } = await supabase
-          .from("users")
-          .insert(userDoc);
-
-        if (profileError) {
-          console.error("❌ Error creating user profile:", profileError);
-          throw profileError;
+        // Use the ensureUserProfile function to create the user profile
+        const profileCreated = await ensureUserProfile(supabaseUser.id, email, name);
+        
+        if (!profileCreated) {
+          console.error("❌ Error creating user profile");
+          throw new Error("Failed to create user profile");
         }
 
-        console.log("✅ User document created in Supabase");
+        console.log("✅ User profile created in Supabase");
       }
 
       console.log("✅ Email signup completed successfully");

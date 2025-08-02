@@ -16,6 +16,9 @@ import MarketplacePage from "@/components/MarketplacePage"
 import ExpensesPage from "@/components/ExpensesPage"  
 import ChatPage from "@/components/ChatPage"
 import { useState, useEffect } from "react"
+import LoadingSpinner from "@/components/LoadingSpinner"
+import ErrorBoundary from "@/components/ErrorBoundary"
+import DebugInfo from "@/components/DebugInfo"
 
 export default function Home() {
   const { user, loading, logout, error: authError } = useAuth()
@@ -76,18 +79,22 @@ export default function Home() {
     }
   }, [user, loading, currentPage, authError]);
 
-  // Show loading screen
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#F2F5F1] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-[#44C76F] border-4 border-[#004D40] transform rotate-3 flex items-center justify-center mx-auto mb-4 shadow-[6px_6px_0px_0px_#004D40]">
-            <div className="w-8 h-8 border-4 border-[#004D40] border-t-transparent rounded-full animate-spin"></div>
-          </div>
-          <p className="text-[#004D40] font-bold text-lg">LOADING ROOMIO...</p>
-        </div>
-      </div>
-    );
+  // Show loading screen with timeout
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (loading) {
+        console.log("⚠️ Loading timeout reached, forcing continue...");
+        setLoadingTimeout(true);
+      }
+    }, 10000); // 10 second timeout
+    
+    return () => clearTimeout(timer);
+  }, [loading]);
+  
+  if (loading && !loadingTimeout) {
+    return <LoadingSpinner />;
   }
 
   // Show configuration error if exists
@@ -198,15 +205,18 @@ export default function Home() {
     );
 
     return (
-      <div className="min-h-screen bg-[#F2F5F1]">
-        {currentPage === "swipe" && <SwipePage user={user as any} />}
-        {currentPage === "matches" && <MatchesPage user={user as any} />}
-        {currentPage === "marketplace" && <MarketplacePage user={user as any} />}
-        {currentPage === "expenses" && <ExpensesPage user={user as any} />}
-        {currentPage === "chat" && <ChatPage user={user as any} onBack={() => setCurrentPage("matches")} />}
+      <ErrorBoundary>
+        <div className="min-h-screen bg-[#F2F5F1]">
+          {currentPage === "swipe" && <SwipePage user={user as any} />}
+          {currentPage === "matches" && <MatchesPage user={user as any} />}
+          {currentPage === "marketplace" && <MarketplacePage user={user as any} />}
+          {currentPage === "expenses" && <ExpensesPage user={user as any} />}
+          {currentPage === "chat" && <ChatPage user={user as any} onBack={() => setCurrentPage("matches")} />}
 
-        <AppNavigation />
-      </div>
+          <AppNavigation />
+          <DebugInfo />
+        </div>
+      </ErrorBoundary>
     );
   }
 
@@ -239,7 +249,8 @@ export default function Home() {
   // Show landing page
   console.log("🏠 Showing landing page");
   return (
-    <div className="flex flex-col min-h-screen bg-[#F2F5F1] text-[#004D40]">
+    <ErrorBoundary>
+      <div className="flex flex-col min-h-screen bg-[#F2F5F1] text-[#004D40]">
       {/* Header */}
       <header className="px-4 lg:px-6 h-20 flex items-center border-b-4 border-[#004D40] bg-[#004D40]">
         <button onClick={() => setCurrentPage("landing")} className="flex items-center justify-center">
@@ -498,5 +509,7 @@ export default function Home() {
         </div>
       </footer>
     </div>
-  )
+    <DebugInfo />
+  </ErrorBoundary>
+  );
 }
