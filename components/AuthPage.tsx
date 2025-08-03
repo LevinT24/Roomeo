@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useRouter } from "next/navigation";
+
 
 interface AuthPageProps {
   onBack: () => void;
@@ -11,12 +13,13 @@ interface AuthPageProps {
 }
 
 export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
-  const { 
-    loading, 
+  const {
+    user,
+    loading,
     error: authError,
-    emailSignUp, 
-    emailSignIn, 
-    googleSignIn 
+    emailSignUp,
+    emailSignIn,
+    googleSignIn
   } = useAuth();
   
   const [isSignUp, setIsSignUp] = useState(true);
@@ -30,6 +33,13 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
       setError(authError);
     }
   }, [authError]);
+  
+  const router = useRouter();
+  useEffect(() => {
+    if (user) {
+      router.push("/profile-setup"); // or main app page
+    }
+  }, [user]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
