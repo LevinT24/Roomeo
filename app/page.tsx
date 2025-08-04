@@ -26,6 +26,7 @@ export default function Home() {
     "landing" | "auth" | "swipe" | "matches" | "marketplace" | 
     "expenses" | "chat" | "profile-setup" | "user-type"
   >("landing")
+  const [authMode, setAuthMode] = useState<"signup" | "signin">("signup")
 
   // Debug logging
   useEffect(() => {
@@ -39,10 +40,7 @@ export default function Home() {
 
   // Handle user authentication state and profile completion
   useEffect(() => {
-    // Don't do anything if still loading or there's an auth error
-    if (loading || authError) return;
-
-    console.log("🔄 Checking user flow...");
+    console.log("🔄 Checking user flow...", { user: !!user, loading, currentPage, authError });
 
     if (user) {
       console.log("✅ User is authenticated");
@@ -51,17 +49,13 @@ export default function Home() {
       if (currentPage === "landing" || currentPage === "auth") {
         console.log("🔍 Checking profile completion...");
         
-        // Check if profile setup is needed (age and preferences are required)
-        if (!user.age || !user.preferences) {
+        // Check if profile setup is needed (age, preferences, AND userType are required)
+        if (!user.age || !user.preferences || !user.userType) {
           console.log("🔄 Profile setup needed - redirecting to profile setup");
+          console.log("   - Missing age:", !user.age);
+          console.log("   - Missing preferences:", !user.preferences);
+          console.log("   - Missing userType:", !user.userType);
           setCurrentPage("profile-setup");
-          return;
-        }
-        
-        // Check if user type selection is needed
-        if (!user.userType) {
-          console.log("🔄 User type selection needed - redirecting to user type selection");
-          setCurrentPage("user-type");
           return;
         }
         
@@ -69,8 +63,8 @@ export default function Home() {
         console.log("✅ User fully set up - redirecting to main app");
         setCurrentPage("swipe");
       }
-    } else {
-      console.log("❌ No user - checking if we need to redirect to landing");
+    } else if (!loading && !authError) {
+      console.log("❌ No user and not loading - checking if we need to redirect to landing");
       // If user logs out or is not authenticated, go back to landing
       if (currentPage !== "landing" && currentPage !== "auth") {
         console.log("🔄 Redirecting to landing page");
@@ -85,15 +79,17 @@ export default function Home() {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (loading) {
-        console.log("⚠️ Loading timeout reached, forcing continue...");
+        console.log("⚠️ Main page loading timeout reached, allowing fallback...");
         setLoadingTimeout(true);
       }
-    }, 10000); // 10 second timeout
+    }, 10000); // 10 second timeout for main page
     
     return () => clearTimeout(timer);
   }, [loading]);
   
-  if (loading && !loadingTimeout) {
+  // Show loading screen with timeout, but allow user to proceed if they exist
+  // Only show loading if we don't have a user AND we haven't timed out
+  if (loading && !loadingTimeout && !user && !authError) {
     return <LoadingSpinner />;
   }
 
@@ -135,6 +131,7 @@ export default function Home() {
   if (currentPage === "auth") {
     return (
       <AuthPage 
+        initialMode={authMode}
         onBack={() => setCurrentPage("landing")}
         onSuccess={() => {
           console.log("✅ Auth successful - useEffect will handle redirection");
@@ -148,14 +145,8 @@ export default function Home() {
     return (
       <ProfileSetup 
         onComplete={() => {
-          console.log("✅ Profile setup complete - checking next step");
-          // The useEffect will handle the next step based on updated user data
-          // But we can also manually check here
-          if (user && !user.userType) {
-            setCurrentPage("user-type");
-          } else {
-            setCurrentPage("swipe");
-          }
+          console.log("✅ Profile setup complete - going to main app");
+          setCurrentPage("swipe");
         }} 
       />
     );
@@ -224,10 +215,8 @@ export default function Home() {
   const handleGoToApp = () => {
     if (user) {
       // User is authenticated, determine where to go
-      if (!user.age || !user.preferences) {
+      if (!user.age || !user.preferences || !user.userType) {
         setCurrentPage("profile-setup");
-      } else if (!user.userType) {
-        setCurrentPage("user-type");
       } else {
         setCurrentPage("swipe");
       }
@@ -327,14 +316,30 @@ export default function Home() {
                   {user ? "GO TO APP" : "GET STARTED NOW"}
                   <Target className="ml-3 h-6 w-6" />
                 </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => setCurrentPage("auth")}
-                  className="border-4 border-[#44C76F] text-[#44C76F] hover:bg-[#44C76F] hover:text-[#004D40] font-black text-xl px-12 py-6 shadow-[8px_8px_0px_0px_#44C76F] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#44C76F] transition-all bg-transparent"
-                >
-                  SIGN UP FREE
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => {
+                      setCurrentPage("auth");
+                      setAuthMode("signup");
+                    }}
+                    className="border-4 border-[#44C76F] text-[#44C76F] hover:bg-[#44C76F] hover:text-[#004D40] font-black text-xl px-8 py-6 shadow-[8px_8px_0px_0px_#44C76F] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#44C76F] transition-all bg-transparent"
+                  >
+                    SIGN UP FREE
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => {
+                      setCurrentPage("auth");
+                      setAuthMode("signin");
+                    }}
+                    className="border-4 border-[#F2F5F1] text-[#F2F5F1] hover:bg-[#F2F5F1] hover:text-[#004D40] font-black text-xl px-8 py-6 shadow-[8px_8px_0px_0px_#F2F5F1] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#F2F5F1] transition-all bg-transparent"
+                  >
+                    SIGN IN
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

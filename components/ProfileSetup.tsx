@@ -82,10 +82,9 @@
           location,
           budget: budget ? Number(budget) : 0,
           preferences,
-          profilePicture: photoUrl,
-          updatedAt: new Date(),
-          // Set the user type based on selection
-          userType: userType,
+          profilepicture: photoUrl, // Fixed: use lowercase to match database
+          updatedat: new Date().toISOString(), // Fixed: use lowercase and ISO string
+          usertype: userType, // Fixed: use lowercase to match database
           name: user.name || "",
           email: user.email || "",
         };

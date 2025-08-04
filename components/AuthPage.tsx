@@ -10,9 +10,10 @@ import { useRouter } from "next/navigation";
 interface AuthPageProps {
   onBack: () => void;
   onSuccess: () => void;
+  initialMode?: "signup" | "signin";
 }
 
-export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
+export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: AuthPageProps) {
   const {
     user,
     loading,
@@ -22,7 +23,7 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
     googleSignIn
   } = useAuth();
   
-  const [isSignUp, setIsSignUp] = useState(true);
+  const [isSignUp, setIsSignUp] = useState(initialMode === "signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -36,22 +37,17 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
   
   const router = useRouter();
   useEffect(() => {
-    if (user) {
-      router.push("/profile-setup"); // or main app page
+    if (user && !loading) {
+      console.log("✅ Auth successful, calling onSuccess callback");
+      onSuccess(); // Use the callback instead of router.push
     }
-  }, [user]);
+  }, [user, loading, onSuccess]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     
     console.log("🔄 Starting email authentication...", { isSignUp, email, name });
-    
-    if (authError) {
-      console.log("❌ Auth error detected:", authError);
-      setError(authError);
-      return;
-    }
     
     if (!email || !password) {
       console.log("❌ Missing email or password");
@@ -69,12 +65,15 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
         console.log("🔄 Calling emailSignUp...");
         await emailSignUp(email, password, name);
         console.log("✅ Email signup completed");
-        // Let the page.tsx handle redirect based on auth state
+        setError(""); // Clear any previous errors
+        setIsSignUp(false); // Switch to sign in mode
+        setPassword(""); // Clear password for security
+        setError("Account created! Please check your email for confirmation, then sign in.");
       } else {
         console.log("🔄 Calling emailSignIn...");
         await emailSignIn(email, password);
         console.log("✅ Email signin completed");
-        // Let the page.tsx handle redirect
+        onSuccess(); // Call success callback
       }
     } catch (error: any) {
       console.error("❌ Authentication error:", error);
@@ -237,7 +236,7 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
 
                 <Button
                   type="submit"
-                  disabled={loading || !!authError}
+                  disabled={loading}
                   className="w-full bg-[#004D40] hover:bg-[#004D40]/80 text-[#F2F5F1] font-black text-lg py-4 px-6 border-4 border-[#004D40] shadow-[6px_6px_0px_0px_#004D40] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[3px_3px_0px_0px_#004D40] transition-all disabled:opacity-50"
                 >
                   {loading ? "PROCESSING..." : isSignUp ? "CREATE ACCOUNT" : "SIGN IN"}
@@ -289,7 +288,7 @@ export default function AuthPage({ onBack, onSuccess }: AuthPageProps) {
 
                 <Button
                   onClick={handleGoogleAuth}
-                  disabled={loading || !!authError}
+                  disabled={loading}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-[#F2F5F1] font-black text-lg py-4 px-6 border-4 border-[#004D40] shadow-[6px_6px_0px_0px_#004D40] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[3px_3px_0px_0px_#004D40] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                 >
                   <svg className="w-6 h-6" viewBox="0 0 24 24">

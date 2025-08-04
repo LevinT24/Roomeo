@@ -26,7 +26,7 @@ interface SwipePageProps {
 }
 
 export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
-  const { user: authUser } = useAuth()
+  const { user: authUser, logout } = useAuth()
   const [profiles, setProfiles] = useState<User[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -55,7 +55,7 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
       // First, get the current user's profile to determine their type
       const { data: currentUserProfile, error: profileError } = await supabase
         .from('users')
-        .select('userType')
+        .select('usertype')
         .eq('id', currentUser.id)
         .single()
 
@@ -65,13 +65,13 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
         return
       }
 
-      if (!currentUserProfile?.userType) {
+      if (!currentUserProfile?.usertype) {
         setError('User type not set. Please complete your profile setup.')
         return
       }
 
       // Determine the opposite type to fetch
-      const targetUserType = currentUserProfile.userType === 'seeker' ? 'provider' : 'seeker'
+      const targetUserType = currentUserProfile.usertype === 'seeker' ? 'provider' : 'seeker'
 
       // Fetch users with the opposite type
       const { data: oppositeUsers, error: usersError } = await supabase
@@ -83,11 +83,11 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
           age,
           bio,
           location,
-          profilePicture,
-          userType,
+          profilepicture,
+          usertype,
           preferences
         `)
-        .eq('userType', targetUserType)
+        .eq('usertype', targetUserType)
         .neq('id', currentUser.id) // Exclude current user
         .not('age', 'is', null) // Only include users who have completed their profile
 
@@ -105,8 +105,8 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
         age: profile.age,
         bio: profile.bio || '',
         location: profile.location || '',
-        profilePicture: profile.profilePicture || '/placeholder.svg',
-        userType: profile.userType,
+        profilePicture: profile.profilepicture || '/placeholder.svg',
+        userType: profile.usertype,
         preferences: profile.preferences || {
           smoking: false,
           drinking: false,
@@ -151,6 +151,15 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
 
     console.log(liked ? "Liked!" : "Passed!")
     setCurrentIndex((prev) => prev + 1)
+  }
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+      console.log("✅ User logged out successfully")
+    } catch (error) {
+      console.error("❌ Error logging out:", error)
+    }
   }
 
   // Loading state
@@ -255,6 +264,19 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V5a2 2 0 10-4 0v.083A6 6 0 004 11v3.159c0 .538-.214 1.055-.595 1.436L2 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                  />
+                </svg>
+              </button>
+              <button 
+                onClick={handleLogout}
+                className="text-[#F2F5F1] hover:text-[#44C76F] focus:outline-none"
+                title="Logout"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                   />
                 </svg>
               </button>

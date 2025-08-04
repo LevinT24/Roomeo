@@ -8,7 +8,7 @@ import { updateUserProfile } from "@/services/supabase";
 
 export default function UserTypeSelection({ onComplete }: { onComplete: () => void }) {
   const { user } = useAuth()
-  const [selectedType, setSelectedType] = useState<"owner" | "seeker" | null>(null)
+  const [selectedType, setSelectedType] = useState<"provider" | "seeker" | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -103,9 +103,9 @@ export default function UserTypeSelection({ onComplete }: { onComplete: () => vo
 
           <div className="grid md:grid-cols-2 gap-6 mb-8">
             <div
-              onClick={() => !loading && setSelectedType("owner")}
+              onClick={() => !loading && setSelectedType("provider")}
               className={`p-8 border-4 border-[#004D40] cursor-pointer transition-all transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#004D40] ${
-                selectedType === "owner"
+                selectedType === "provider"
                   ? "bg-[#44C76F] text-[#004D40] shadow-[8px_8px_0px_0px_#004D40]"
                   : "bg-[#F2F5F1] text-[#004D40] shadow-[6px_6px_0px_0px_#004D40] hover:bg-[#B7C8B5]"
               } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
@@ -113,7 +113,7 @@ export default function UserTypeSelection({ onComplete }: { onComplete: () => vo
               <div className="text-center">
                 <div
                   className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] ${
-                    selectedType === "owner" ? "bg-[#F2F5F1] text-[#44C76F]" : "bg-[#44C76F] text-[#004D40]"
+                    selectedType === "provider" ? "bg-[#F2F5F1] text-[#44C76F]" : "bg-[#44C76F] text-[#004D40]"
                   }`}
                 >
                   <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
@@ -128,7 +128,7 @@ export default function UserTypeSelection({ onComplete }: { onComplete: () => vo
                 <p className="font-bold leading-tight">
                   I own or rent a place and I'm looking for a roommate to share it with
                 </p>
-                {selectedType === "owner" && (
+                {selectedType === "provider" && (
                   <div className="mt-4 text-sm font-black text-[#004D40] bg-[#F2F5F1] p-2 border-2 border-[#004D40]">
                     ✓ SELECTED
                   </div>
@@ -189,7 +189,7 @@ export default function UserTypeSelection({ onComplete }: { onComplete: () => vo
           {selectedType && (
             <div className="mt-4 text-center">
               <p className="text-sm font-bold text-[#004D40] bg-[#F2F5F1] p-3 border-2 border-[#004D40] shadow-[2px_2px_0px_0px_#004D40]">
-                {selectedType === "owner" 
+                {selectedType === "provider" 
                   ? "🏠 You'll see people looking for places to share"
                   : "🔍 You'll see people who have places available"
                 }
