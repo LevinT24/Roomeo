@@ -14,7 +14,7 @@ interface ChatPageProps {
 }
 
 export default function ChatPage({ user, onBack }: ChatPageProps) {
-  const { chats, messages, loadMessages, sendMessage, createOrGetChat } = useChat(user)
+  const { chats, messages, loadMessages, sendMessage, createOrGetChatWith } = useChat(user)
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
   const [newMessage, setNewMessage] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -29,10 +29,19 @@ export default function ChatPage({ user, onBack }: ChatPageProps) {
 
   useEffect(() => {
     if (selectedChatId) {
-      const unsubscribe = loadMessages(selectedChatId)
-      return unsubscribe
+      let cleanup: (() => void) | undefined
+      
+      const setupMessages = async () => {
+        cleanup = await loadMessages(selectedChatId)
+      }
+      
+      setupMessages()
+      
+      return () => {
+        if (cleanup) cleanup()
+      }
     }
-  }, [selectedChatId])
+  }, [selectedChatId, loadMessages])
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,8 +52,7 @@ export default function ChatPage({ user, onBack }: ChatPageProps) {
   }
 
   const selectedChat = chats.find((chat) => chat.id === selectedChatId)
-  const otherParticipantId = selectedChat?.participants.find((id) => id !== user.id)
-  const otherParticipantName = otherParticipantId ? selectedChat?.participantNames[otherParticipantId] : ""
+  const otherParticipantName = selectedChat?.other_user_name || ""
 
   return (
     <div className="bg-white text-black min-h-screen flex flex-col max-h-screen">
@@ -74,40 +82,33 @@ export default function ChatPage({ user, onBack }: ChatPageProps) {
               <p className="text-gray-600 font-bold">No chats yet. Start matching to begin conversations!</p>
             ) : (
               <div className="space-y-2">
-                {chats.map((chat) => {
-                  const otherParticipantId = chat.participants.find((id) => id !== user.id)
-                  const otherParticipantName = otherParticipantId ? chat.participantNames[otherParticipantId] : ""
-                  const otherParticipantAvatar = otherParticipantId ? chat.participantAvatars[otherParticipantId] : ""
-
-                  return (
-                    <div
-                      key={chat.id}
-                      onClick={() => setSelectedChatId(chat.id)}
-                      className={`p-3 rounded-lg cursor-pointer border-2 border-black transition-all ${
-                        selectedChatId === chat.id
-                          ? "bg-[#F05224] text-white shadow-[4px_4px_0px_0px_#000000]"
-                          : "bg-white hover:bg-gray-100 shadow-[2px_2px_0px_0px_#000000]"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={otherParticipantAvatar || "/placeholder.svg?height=40&width=40"}
-                          alt={otherParticipantName}
-                          className="w-10 h-10 rounded-full border-2 border-black"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-black truncate">{otherParticipantName}</p>
-                          {chat.lastMessage && (
-                            <p className="text-sm opacity-75 truncate">
-                              {chat.lastMessageSender === user.id ? "You: " : ""}
-                              {chat.lastMessage}
-                            </p>
-                          )}
-                        </div>
+                {chats.map((chat) => (
+                  <div
+                    key={chat.id}
+                    onClick={() => setSelectedChatId(chat.id)}
+                    className={`p-3 rounded-lg cursor-pointer border-2 border-black transition-all ${
+                      selectedChatId === chat.id
+                        ? "bg-[#F05224] text-white shadow-[4px_4px_0px_0px_#000000]"
+                        : "bg-white hover:bg-gray-100 shadow-[2px_2px_0px_0px_#000000]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={chat.other_user_avatar || "/placeholder.svg?height=40&width=40"}
+                        alt={chat.other_user_name}
+                        className="w-10 h-10 rounded-full border-2 border-black"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black truncate">{chat.other_user_name}</p>
+                        {chat.last_message && (
+                          <p className="text-sm opacity-75 truncate">
+                            {chat.last_message}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  )
-                })}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -123,18 +124,18 @@ export default function ChatPage({ user, onBack }: ChatPageProps) {
                   {(messages[selectedChatId] || []).map((message) => (
                     <div
                       key={message.id}
-                      className={`flex ${message.senderId === user.id ? "justify-end" : "justify-start"}`}
+                      className={`flex ${message.sender_id === user.id ? "justify-end" : "justify-start"}`}
                     >
                       <div
                         className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg border-2 border-black font-bold ${
-                          message.senderId === user.id
+                          message.sender_id === user.id
                             ? "bg-[#F05224] text-white shadow-[3px_3px_0px_0px_#000000]"
                             : "bg-gray-100 text-black shadow-[3px_3px_0px_0px_#000000]"
                         }`}
                       >
-                        <p>{message.message}</p>
+                        <p>{message.content}</p>
                         <p className="text-xs opacity-75 mt-1">
-                          {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          {new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
                     </div>

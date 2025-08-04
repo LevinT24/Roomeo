@@ -128,8 +128,8 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
     const currentProfile = profiles[currentIndex]
     
     if (liked && currentUser?.id) {
-      // TODO: Save the like/match to database
       try {
+        // Save the like to matches table
         const { error } = await supabase
           .from('matches')
           .insert({
@@ -142,7 +142,30 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
         if (error) {
           console.error('Error saving match:', error)
         } else {
-          console.log('Match saved successfully!')
+          console.log('✅ Like saved successfully!')
+          
+          // Check if it's a mutual match
+          const { data: mutualMatch, error: mutualError } = await supabase
+            .from('matches')
+            .select('*')
+            .eq('user_id', currentProfile.id)
+            .eq('matched_user_id', currentUser.id)
+            .eq('liked', true)
+            .single()
+
+          if (mutualMatch && !mutualError) {
+            // IT'S A MUTUAL MATCH! 🎉
+            console.log('🎉 MUTUAL MATCH FOUND!')
+            
+            // Create or get existing chat
+            await createChatForMatch(currentUser.id, currentProfile.id)
+            
+            // Show match animation/notification (TODO: Add visual feedback)
+            alert(`🎉 It's a Match with ${currentProfile.name}! You can now chat!`)
+            
+            // Navigate to matches page to see the new match
+            // For now we'll let the user continue swiping
+          }
         }
       } catch (err) {
         console.error('Error saving match:', err)
@@ -151,6 +174,44 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
 
     console.log(liked ? "Liked!" : "Passed!")
     setCurrentIndex((prev) => prev + 1)
+  }
+
+  const createChatForMatch = async (user1Id: string, user2Id: string) => {
+    try {
+      // Check if chat already exists between these users
+      const { data: existingChat, error: chatCheckError } = await supabase
+        .from('chats')
+        .select('*')
+        .or(`and(user1_id.eq.${user1Id},user2_id.eq.${user2Id}),and(user1_id.eq.${user2Id},user2_id.eq.${user1Id})`)
+        .single()
+
+      if (existingChat) {
+        console.log('✅ Chat already exists:', existingChat.id)
+        return existingChat
+      }
+
+      // Create new chat
+      const { data: newChat, error: createError } = await supabase
+        .from('chats')
+        .insert({
+          user1_id: user1Id,
+          user2_id: user2Id,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+
+      if (createError) {
+        console.error('Error creating chat:', createError)
+        return null
+      }
+
+      console.log('✅ New chat created:', newChat.id)
+      return newChat
+    } catch (error) {
+      console.error('Error in createChatForMatch:', error)
+      return null
+    }
   }
 
   const handleLogout = async () => {

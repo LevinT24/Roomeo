@@ -1,146 +1,171 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import type { Chat, ChatMessage } from "@/types/chat"
+import { useState, useEffect, useCallback } from "react"
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { User } from "@/types/user"
+import { 
+  getUserChats, 
+  getChatMessages, 
+  sendMessage as sendChatMessage, 
+  createOrGetChat,
+  subscribeToMessages,
+  unsubscribeFromMessages,
+  markMessagesAsRead,
+  type Chat,
+  type ChatMessage
+} from "@/services/chat"
 
 export function useChat(currentUser: User | null) {
   const [chats, setChats] = useState<Chat[]>([])
   const [messages, setMessages] = useState<{ [chatId: string]: ChatMessage[] }>({})
   const [loading, setLoading] = useState(true)
+  const [activeSubscriptions, setActiveSubscriptions] = useState<{ [chatId: string]: RealtimeChannel }>({})
 
-  // Mock data
+  // Load user chats on mount
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser?.id) {
       setLoading(false)
       return
     }
 
-    // Mock chats
-    const mockChats: Chat[] = [
-      {
-        id: "chat-1",
-        participants: [currentUser.id, "user-2"],
-        participantNames: {
-          [currentUser.id]: currentUser.name,
-          "user-2": "Sophia Clark",
-        },
-        participantAvatars: {
-          [currentUser.id]: currentUser.profilePicture || "/placeholder.svg?height=40&width=40&text=User",
-          "user-2": "/placeholder.svg?height=40&width=40&text=Sophia",
-        },
-        lastMessage: "Hey! Are you still looking for a roommate?",
-        lastMessageTime: new Date(),
-        lastMessageSender: "user-2",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: "chat-2",
-        participants: [currentUser.id, "user-3"],
-        participantNames: {
-          [currentUser.id]: currentUser.name,
-          "user-3": "Marcus Johnson",
-        },
-        participantAvatars: {
-          [currentUser.id]: currentUser.profilePicture || "/placeholder.svg?height=40&width=40&text=User",
-          "user-3": "/placeholder.svg?height=40&width=40&text=Marcus",
-        },
-        lastMessage: "That sounds great! When can we meet?",
-        lastMessageTime: new Date(Date.now() - 3600000), // 1 hour ago
-        lastMessageSender: currentUser.id,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ]
+    loadUserChats()
+  }, [currentUser?.id])
 
-    setChats(mockChats)
-    setLoading(false)
-  }, [currentUser])
+  const loadUserChats = async () => {
+    if (!currentUser?.id) return
 
-  const loadMessages = (chatId: string) => {
-    // Mock messages
-    const mockMessages: ChatMessage[] = [
-      {
-        id: "msg-1",
-        chatId,
-        senderId: "user-2",
-        senderName: "Sophia Clark",
-        senderAvatar: "/placeholder.svg?height=40&width=40&text=Sophia",
-        message: "Hey! Are you still looking for a roommate?",
-        timestamp: new Date(Date.now() - 7200000), // 2 hours ago
-        read: true,
-      },
-      {
-        id: "msg-2",
-        chatId,
-        senderId: currentUser?.id || "",
-        senderName: currentUser?.name || "",
-        senderAvatar: currentUser?.profilePicture || "/placeholder.svg?height=40&width=40&text=User",
-        message: "Yes! I'm definitely interested. Tell me more about the place.",
-        timestamp: new Date(Date.now() - 3600000), // 1 hour ago
-        read: true,
-      },
-      {
-        id: "msg-3",
-        chatId,
-        senderId: "user-2",
-        senderName: "Sophia Clark",
-        senderAvatar: "/placeholder.svg?height=40&width=40&text=Sophia",
-        message: "It's a 2BR apartment in downtown. Rent is $1200/month split between us. Very clean and modern!",
-        timestamp: new Date(Date.now() - 1800000), // 30 minutes ago
-        read: true,
-      },
-    ]
-
-    setMessages((prev) => ({
-      ...prev,
-      [chatId]: mockMessages,
-    }))
-
-    // Return a mock unsubscribe function
-    return () => {}
+    try {
+      setLoading(true)
+      const result = await getUserChats(currentUser.id)
+      
+      if (result.success && result.chats) {
+        setChats(result.chats)
+      } else {
+        console.error('Failed to load chats:', result.error)
+      }
+    } catch (error) {
+      console.error('Error loading chats:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const sendMessage = async (chatId: string, message: string) => {
-    if (!currentUser || !message.trim()) return
+  // Load messages for a specific chat
+  const loadMessages = useCallback(async (chatId: string) => {
+    try {
+      const result = await getChatMessages(chatId)
+      
+      if (result.success && result.messages) {
+        setMessages(prev => ({
+          ...prev,
+          [chatId]: result.messages || []
+        }))
 
-    const newMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      chatId,
-      senderId: currentUser.id,
-      senderName: currentUser.name,
-      senderAvatar: currentUser.profilePicture || "/placeholder.svg?height=40&width=40&text=User",
-      message: message.trim(),
-      timestamp: new Date(),
-      read: false,
+        // Subscribe to real-time messages for this chat
+        if (!activeSubscriptions[chatId]) {
+          console.log(`🔔 Creating subscription for chat: ${chatId}`)
+          const channel = subscribeToMessages(chatId, (newMessage) => {
+            console.log(`📨 Received new message in chat ${chatId}:`, newMessage)
+            setMessages(prev => {
+              const existingMessages = prev[chatId] || []
+              // Check if message already exists to prevent duplicates
+              const messageExists = existingMessages.some(msg => msg.id === newMessage.id)
+              if (messageExists) return prev
+              
+              return {
+                ...prev,
+                [chatId]: [...existingMessages, newMessage]
+              }
+            })
+          })
+
+          setActiveSubscriptions(prev => ({
+            ...prev,
+            [chatId]: channel
+          }))
+        }
+
+        // Mark messages as read
+        if (currentUser?.id) {
+          await markMessagesAsRead(chatId, currentUser.id)
+        }
+      } else {
+        console.error('Failed to load messages:', result.error)
+      }
+    } catch (error) {
+      console.error('Error loading messages:', error)
     }
 
-    setMessages((prev) => ({
-      ...prev,
-      [chatId]: [...(prev[chatId] || []), newMessage],
-    }))
+    // Return cleanup function
+    return () => {
+      const channel = activeSubscriptions[chatId]
+      if (channel) {
+        unsubscribeFromMessages(channel)
+        setActiveSubscriptions(prev => {
+          const newSubs = { ...prev }
+          delete newSubs[chatId]
+          return newSubs
+        })
+      }
+    }
+  }, [activeSubscriptions, currentUser?.id])
 
-    // Update chat's last message
-    setChats((prev) =>
-      prev.map((chat) =>
-        chat.id === chatId
-          ? {
-              ...chat,
-              lastMessage: message.trim(),
-              lastMessageTime: new Date(),
-              lastMessageSender: currentUser.id,
-              updatedAt: new Date(),
-            }
-          : chat,
-      ),
-    )
-  }
+  // Send a message
+  const sendMessage = useCallback(async (chatId: string, content: string) => {
+    if (!currentUser?.id || !content.trim()) return
 
-  const createOrGetChat = async (otherUser: User): Promise<string | null> => {
-    // Mock chat creation
-    return "chat-1"
-  }
+    try {
+      const result = await sendChatMessage(chatId, currentUser.id, content)
+      
+      if (result.success && result.message) {
+        // Add message to local state immediately for better UX
+        setMessages(prev => ({
+          ...prev,
+          [chatId]: [...(prev[chatId] || []), result.message!]
+        }))
+        console.log('Message sent successfully')
+      } else {
+        console.error('Failed to send message:', result.error)
+      }
+    } catch (error) {
+      console.error('Error sending message:', error)
+    }
+  }, [currentUser?.id])
+
+  // Create or get chat between current user and another user
+  const createOrGetChatWith = useCallback(async (otherUserId: string) => {
+    if (!currentUser?.id) return null
+
+    try {
+      const result = await createOrGetChat(currentUser.id, otherUserId)
+      
+      if (result.success && result.chat) {
+        // Add chat to list if it doesn't exist
+        setChats(prev => {
+          const exists = prev.find(chat => chat.id === result.chat!.id)
+          if (exists) return prev
+          return [result.chat!, ...prev]
+        })
+        
+        return result.chat
+      } else {
+        console.error('Failed to create/get chat:', result.error)
+        return null
+      }
+    } catch (error) {
+      console.error('Error creating/getting chat:', error)
+      return null
+    }
+  }, [currentUser?.id])
+
+  // Cleanup subscriptions on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(activeSubscriptions).forEach(channel => {
+        unsubscribeFromMessages(channel)
+      })
+    }
+  }, [activeSubscriptions])
 
   return {
     chats,
@@ -148,6 +173,7 @@ export function useChat(currentUser: User | null) {
     loading,
     loadMessages,
     sendMessage,
-    createOrGetChat,
+    createOrGetChatWith,
+    refreshChats: loadUserChats
   }
 }

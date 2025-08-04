@@ -199,7 +199,15 @@ export default function Home() {
       <ErrorBoundary>
         <div className="min-h-screen bg-[#F2F5F1]">
           {currentPage === "swipe" && <SwipePage user={user as any} />}
-          {currentPage === "matches" && <MatchesPage user={user as any} />}
+          {currentPage === "matches" && (
+            <MatchesPage 
+              user={user as any} 
+              onStartChat={(matchUserId, matchUserName) => {
+                console.log(`Starting chat with ${matchUserName} (${matchUserId})`)
+                setCurrentPage("chat")
+              }}
+            />
+          )}
           {currentPage === "marketplace" && <MarketplacePage user={user as any} />}
           {currentPage === "expenses" && <ExpensesPage user={user as any} />}
           {currentPage === "chat" && <ChatPage user={user as any} onBack={() => setCurrentPage("matches")} />}
