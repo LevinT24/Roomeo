@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useAuth } from "@/hooks/useAuth"
+import { supabase } from "@/lib/supabase"
 
 interface User {
   id: string
@@ -8,63 +10,199 @@ interface User {
   name: string
   profilePicture: string
   age?: number
+  bio?: string
+  location?: string
   preferences?: {
     smoking: boolean
     drinking: boolean
     vegetarian: boolean
     pets: boolean
   }
-  userType?: "owner" | "seeker"
+  userType?: "seeker" | "provider" | null
 }
 
 interface SwipePageProps {
-  user: User
+  user?: User // Make it optional since we'll fetch from useAuth
 }
 
-export default function SwipePage({ user }: SwipePageProps) {
-  const [profiles] = useState([
-    {
-      id: "1",
-      name: "Sophia Clark",
-      age: 28,
-      profilePicture: "/placeholder.svg?height=400&width=400&text=Sophia",
-      userType: "owner",
-      preferences: { smoking: false, drinking: true, vegetarian: false, pets: true },
-      bio: "I'm a creative professional looking for a roommate who appreciates a clean and organized living space.",
-    },
-    {
-      id: "2",
-      name: "Marcus Johnson",
-      age: 26,
-      profilePicture: "/placeholder.svg?height=400&width=400&text=Marcus",
-      userType: "owner",
-      preferences: { smoking: false, drinking: false, vegetarian: true, pets: false },
-      bio: "Software engineer who loves cooking and quiet evenings. Looking for a responsible roommate.",
-    },
-    {
-      id: "3",
-      name: "Emma Rodriguez",
-      age: 24,
-      profilePicture: "/placeholder.svg?height=400&width=400&text=Emma",
-      userType: "owner",
-      preferences: { smoking: false, drinking: true, vegetarian: false, pets: true },
-      bio: "Graduate student seeking a friendly roommate to share a cozy apartment near campus.",
-    },
-  ])
+export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
+  const { user: authUser } = useAuth()
+  const [profiles, setProfiles] = useState<User[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSwipe = (liked: boolean) => {
+  // Use the user from props or auth
+  const currentUser = propUser || authUser
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      fetchOppositeTypeUsers()
+    }
+  }, [currentUser])
+
+  const fetchOppositeTypeUsers = async () => {
+    if (!currentUser?.id) {
+      setError("User not found")
+      setLoading(false)
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+
+      // First, get the current user's profile to determine their type
+      const { data: currentUserProfile, error: profileError } = await supabase
+        .from('users')
+        .select('userType')
+        .eq('id', currentUser.id)
+        .single()
+
+      if (profileError) {
+        console.error('Error fetching user profile:', profileError)
+        setError('Failed to fetch user profile')
+        return
+      }
+
+      if (!currentUserProfile?.userType) {
+        setError('User type not set. Please complete your profile setup.')
+        return
+      }
+
+      // Determine the opposite type to fetch
+      const targetUserType = currentUserProfile.userType === 'seeker' ? 'provider' : 'seeker'
+
+      // Fetch users with the opposite type
+      const { data: oppositeUsers, error: usersError } = await supabase
+        .from('users')
+        .select(`
+          id,
+          email,
+          name,
+          age,
+          bio,
+          location,
+          profilePicture,
+          userType,
+          preferences
+        `)
+        .eq('userType', targetUserType)
+        .neq('id', currentUser.id) // Exclude current user
+        .not('age', 'is', null) // Only include users who have completed their profile
+
+      if (usersError) {
+        console.error('Error fetching opposite type users:', usersError)
+        setError('Failed to fetch potential matches')
+        return
+      }
+
+      // Transform the data to match our interface
+      const formattedProfiles: User[] = (oppositeUsers || []).map(profile => ({
+        id: profile.id,
+        email: profile.email || '',
+        name: profile.name || 'Unknown User',
+        age: profile.age,
+        bio: profile.bio || '',
+        location: profile.location || '',
+        profilePicture: profile.profilePicture || '/placeholder.svg',
+        userType: profile.userType,
+        preferences: profile.preferences || {
+          smoking: false,
+          drinking: false,
+          vegetarian: false,
+          pets: false
+        }
+      }))
+
+      setProfiles(formattedProfiles)
+    } catch (err) {
+      console.error('Unexpected error:', err)
+      setError('An unexpected error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSwipe = async (liked: boolean) => {
+    const currentProfile = profiles[currentIndex]
+    
+    if (liked && currentUser?.id) {
+      // TODO: Save the like/match to database
+      try {
+        const { error } = await supabase
+          .from('matches')
+          .insert({
+            user_id: currentUser.id,
+            matched_user_id: currentProfile.id,
+            liked: true,
+            created_at: new Date().toISOString()
+          })
+
+        if (error) {
+          console.error('Error saving match:', error)
+        } else {
+          console.log('Match saved successfully!')
+        }
+      } catch (err) {
+        console.error('Error saving match:', err)
+      }
+    }
+
     console.log(liked ? "Liked!" : "Passed!")
     setCurrentIndex((prev) => prev + 1)
   }
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F2F5F1] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#44C76F] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-2xl font-black text-[#004D40] transform -skew-x-2">FINDING MATCHES...</h2>
+          <p className="text-lg font-bold text-[#004D40] mt-2">Looking for compatible roommates</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#F2F5F1] flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-3xl font-black text-[#004D40] mb-4 transform -skew-x-2">OOPS!</h2>
+          <p className="text-lg font-bold text-[#004D40] mb-6">{error}</p>
+          <button
+            onClick={fetchOppositeTypeUsers}
+            className="bg-[#44C76F] text-[#004D40] font-black px-6 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+          >
+            TRY AGAIN
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // No more profiles state
   if (currentIndex >= profiles.length) {
     return (
       <div className="min-h-screen bg-[#F2F5F1] flex items-center justify-center">
         <div className="text-center">
+          <div className="text-8xl mb-6">🏠</div>
           <h2 className="text-4xl font-black text-[#004D40] mb-4 transform -skew-x-2">NO MORE PROFILES</h2>
-          <p className="text-xl font-bold text-[#004D40]">CHECK BACK LATER FOR NEW MATCHES!</p>
-          <div className="w-24 h-3 bg-[#44C76F] mx-auto transform skew-x-12 mt-4"></div>
+          <p className="text-xl font-bold text-[#004D40] mb-6">CHECK BACK LATER FOR NEW MATCHES!</p>
+          <div className="w-24 h-3 bg-[#44C76F] mx-auto transform skew-x-12 mb-6"></div>
+          <button
+            onClick={() => {
+              setCurrentIndex(0)
+              fetchOppositeTypeUsers()
+            }}
+            className="bg-[#44C76F] text-[#004D40] font-black px-6 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+          >
+            REFRESH
+          </button>
         </div>
       </div>
     )
@@ -123,7 +261,7 @@ export default function SwipePage({ user }: SwipePageProps) {
               <img
                 alt="User Profile"
                 className="w-10 h-10 rounded-full object-cover border-2 border-[#44C76F]"
-                src={user?.profilePicture || "/placeholder.svg?height=40&width=40"}
+                src={currentUser?.profilePicture || "/placeholder.svg?height=40&width=40"}
               />
             </div>
           </nav>
@@ -145,15 +283,18 @@ export default function SwipePage({ user }: SwipePageProps) {
                       {currentProfile.name}, {currentProfile.age}
                     </h2>
                     <p className="text-base font-bold">
-                      {currentProfile.userType === "owner" ? "HAS A PLACE" : "LOOKING FOR A PLACE"}
+                      {currentProfile.userType === "provider" ? "HAS A PLACE" : "LOOKING FOR A PLACE"}
                     </p>
+                    {currentProfile.location && (
+                      <p className="text-sm font-bold opacity-90">📍 {currentProfile.location}</p>
+                    )}
                   </div>
                 </div>
                 <div className="p-4 space-y-3">
-                  <div className="flex items-center text-[#004D40] space-x-3">
+                  <div className="flex items-center text-[#004D40] space-x-3 flex-wrap gap-2">
                     <span className="flex items-center gap-1 font-black text-sm">
                       <svg
-                        className="w-4 h-4 text-[#44C76F]"
+                        className={`w-4 h-4 ${currentProfile.preferences?.smoking ? 'text-red-500' : 'text-[#44C76F]'}`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -183,13 +324,35 @@ export default function SwipePage({ user }: SwipePageProps) {
                       </svg>
                       {currentProfile.preferences?.pets ? "PET-FRIENDLY" : "NO PETS"}
                     </span>
+                    {currentProfile.preferences?.vegetarian && (
+                      <span className="flex items-center gap-1 font-black text-sm">
+                        <span className="text-[#44C76F]">🌱</span>
+                        VEGETARIAN
+                      </span>
+                    )}
+                    {currentProfile.preferences?.drinking && (
+                      <span className="flex items-center gap-1 font-black text-sm">
+                        <span className="text-[#44C76F]">🍺</span>
+                        DRINKS
+                      </span>
+                    )}
                   </div>
-                  <p className="text-[#004D40] font-bold leading-relaxed border-l-4 border-[#44C76F] pl-3 text-sm">
-                    {currentProfile.bio}
-                  </p>
+                  {currentProfile.bio && (
+                    <p className="text-[#004D40] font-bold leading-relaxed border-l-4 border-[#44C76F] pl-3 text-sm">
+                      {currentProfile.bio}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
+            
+            {/* Profile counter */}
+            <div className="text-center mb-4">
+              <p className="text-[#004D40] font-black text-sm">
+                {currentIndex + 1} OF {profiles.length}
+              </p>
+            </div>
+
             <div className="flex justify-center items-center space-x-8">
               {/* Cross/Pass Button */}
               <button

@@ -8,13 +8,13 @@
   import { Input } from "@/components/ui/input"
   import { Card, CardContent } from "@/components/ui/card"
   import { updateUserProfile } from "@/services/supabase";
-import { uploadImage } from "@/lib/storage";
-
-import { ProfileData } from "@/types/user";
+  import { uploadImage } from "@/lib/storage";
+  import { ProfileData } from "@/types/user";
 
   export default function ProfileSetup({ onComplete }: { onComplete: () => void }) {
     const { user } = useAuth()
     const [step, setStep] = useState(1)
+    const [userType, setUserType] = useState<"seeker" | "provider" | null>(null)
     const [profileImage, setProfileImage] = useState<File | null>(null)
     const [imagePreview, setImagePreview] = useState<string>("")
     const [age, setAge] = useState("")
@@ -51,7 +51,7 @@ import { ProfileData } from "@/types/user";
     }
 
     const handleSubmit = async () => {
-      if (!user) return;
+      if (!user || !userType) return;
       setLoading(true);
       setError(null);
       setUploadError(null);
@@ -84,9 +84,9 @@ import { ProfileData } from "@/types/user";
           preferences,
           profilePicture: photoUrl,
           updatedAt: new Date(),
-          // Add required fields
-          userType: null, // Will be set later
-          name: user.name || "", // Ensure name exists
+          // Set the user type based on selection
+          userType: userType,
+          name: user.name || "",
           email: user.email || "",
         };
 
@@ -107,7 +107,65 @@ import { ProfileData } from "@/types/user";
       }
     };
 
+    // Step 1: User Type Selection
     if (step === 1) {
+      return (
+        <div className="min-h-screen bg-[#F2F5F1] flex items-center justify-center p-4">
+          <Card className="w-full max-w-md border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] bg-[#B7C8B5]">
+            <CardContent className="p-8">
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-black text-[#004D40] mb-2 transform -skew-x-2">WHAT ARE YOU LOOKING FOR?</h2>
+                <div className="w-24 h-3 bg-[#44C76F] mx-auto transform skew-x-12 mb-4"></div>
+                <p className="text-[#004D40] font-bold">Choose your roommate journey</p>
+              </div>
+
+              <div className="space-y-4">
+                <button
+                  onClick={() => setUserType("seeker")}
+                  className={`w-full p-6 rounded-lg border-4 transition-all ${
+                    userType === "seeker"
+                      ? "bg-[#44C76F] border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] text-[#004D40]"
+                      : "bg-[#F2F5F1] border-[#004D40] hover:bg-[#B7C8B5] text-[#004D40]"
+                  }`}
+                >
+                  <div className="text-center">
+                    <div className="text-4xl mb-2">🏠</div>
+                    <h3 className="font-black text-lg mb-2">LOOKING FOR OWNERS</h3>
+                    <p className="font-bold text-sm">I need a place to live</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setUserType("provider")}
+                  className={`w-full p-6 rounded-lg border-4 transition-all ${
+                    userType === "provider"
+                      ? "bg-[#44C76F] border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] text-[#004D40]"
+                      : "bg-[#F2F5F1] border-[#004D40] hover:bg-[#B7C8B5] text-[#004D40]"
+                  }`}
+                >
+                  <div className="text-center">
+                    <div className="text-4xl mb-2">👥</div>
+                    <h3 className="font-black text-lg mb-2">LOOKING FOR ROOMMATES</h3>
+                    <p className="font-bold text-sm">I have a place and need roommates</p>
+                  </div>
+                </button>
+              </div>
+
+              <Button
+                onClick={() => setStep(2)}
+                disabled={!userType}
+                className="w-full mt-6 bg-[#004D40] hover:bg-[#004D40]/80 text-[#F2F5F1] font-black py-3 border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+              >
+                CONTINUE
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+
+    // Step 2: Photo Upload
+    if (step === 2) {
       return (
         <div className="min-h-screen bg-[#F2F5F1] flex items-center justify-center p-4">
           <Card className="w-full max-w-md border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] bg-[#B7C8B5]">
@@ -158,7 +216,7 @@ import { ProfileData } from "@/types/user";
                 {/* Optional: Skip photo upload */}
                 <div className="text-center">
                   <button
-                    onClick={() => setStep(2)}
+                    onClick={() => setStep(3)}
                     className="text-[#004D40] font-bold underline hover:text-[#44C76F] transition-colors"
                   >
                     SKIP FOR NOW
@@ -166,8 +224,7 @@ import { ProfileData } from "@/types/user";
                 </div>
 
                 <Button
-                  onClick={() => setStep(2)}
-                  disabled={!profileImage}
+                  onClick={() => setStep(3)}
                   className="w-full bg-[#004D40] hover:bg-[#004D40]/80 text-[#F2F5F1] font-black py-3 border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
                 >
                   CONTINUE
@@ -179,6 +236,7 @@ import { ProfileData } from "@/types/user";
       )
     }
 
+    // Step 3: Profile Details
     return (
       <div className="min-h-screen bg-[#F2F5F1] flex items-center justify-center p-4">
         <Card className="w-full max-w-md border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] bg-[#B7C8B5]">
@@ -298,7 +356,7 @@ import { ProfileData } from "@/types/user";
 
               <Button
                 onClick={handleSubmit}
-                disabled={!age || loading}
+                disabled={!age || !userType || loading}
                 className="w-full bg-[#004D40] hover:bg-[#004D40]/80 text-[#F2F5F1] font-black py-3 border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
               >
                 {loading ? "SETTING UP..." : "COMPLETE SETUP"}
