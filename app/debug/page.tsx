@@ -18,9 +18,9 @@ export default function DebugPage() {
     setLoading(testName)
     try {
       const result = await testFn()
-      setResults(prev => ({ ...prev, [testName]: result }))
+      setResults((prev: any) => ({ ...prev, [testName]: result }))
     } catch (error) {
-      setResults(prev => ({ 
+      setResults((prev: any) => ({ 
         ...prev, 
         [testName]: { 
           success: false, 
@@ -38,7 +38,7 @@ export default function DebugPage() {
   
   const testUserProfile = async () => {
     if (!user) {
-      setResults(prev => ({ 
+      setResults((prev: any) => ({ 
         ...prev, 
         profile: { success: false, error: 'No user logged in' } 
       }))
@@ -49,7 +49,7 @@ export default function DebugPage() {
 
   const testEnsureProfile = async () => {
     if (!user) {
-      setResults(prev => ({ 
+      setResults((prev: any) => ({ 
         ...prev, 
         ensureProfile: { success: false, error: 'No user logged in' } 
       }))
@@ -60,7 +60,7 @@ export default function DebugPage() {
 
   const testImageUpload = async () => {
     if (!user) {
-      setResults(prev => ({ 
+      setResults((prev: any) => ({ 
         ...prev, 
         upload: { success: false, error: 'No user logged in' } 
       }))

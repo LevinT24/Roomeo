@@ -47,6 +47,17 @@ export async function updateUserProfile(uid: string, updates: any): Promise<bool
     console.log("🔍 Current auth user during update:", currentAuthUser?.id);
     console.log("🔍 Auth error during update:", authError);
     
+    // Verify the user is authenticated and matches the profile being updated
+    if (authError || !currentAuthUser) {
+      console.error("❌ User not authenticated during update");
+      return false;
+    }
+    
+    if (currentAuthUser.id !== uid) {
+      console.error("❌ Auth user ID doesn't match profile ID being updated");
+      return false;
+    }
+    
     // Convert camelCase field names to lowercase to match database schema
     const convertedUpdates = { ...updates };
     
