@@ -1,6 +1,7 @@
+// hooks/useChat.ts - Enhanced chat with session recovery
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { User } from "@/types/user"
 import { 
@@ -14,45 +15,59 @@ import {
   type Chat,
   type ChatMessage
 } from "@/services/chat"
+import { useAuth } from "@/hooks/useAuth"
 
 export function useChat(currentUser: User | null) {
+  const { sessionValid } = useAuth()
   const [chats, setChats] = useState<Chat[]>([])
   const [messages, setMessages] = useState<{ [chatId: string]: ChatMessage[] }>({})
   const [loading, setLoading] = useState(true)
   const [activeSubscriptions, setActiveSubscriptions] = useState<{ [chatId: string]: RealtimeChannel }>({})
+  
+  // Refs for state management
+  const lastUserIdRef = useRef<string | null>(null)
+  const connectionRetryRef = useRef<NodeJS.Timeout>()
+  const reconnectAttemptsRef = useRef<{ [chatId: string]: number }>({})
 
-  // Load user chats on mount
-  useEffect(() => {
-    if (!currentUser?.id) {
+  // Load user chats with session validation
+  const loadUserChats = useCallback(async () => {
+    if (!currentUser?.id || !sessionValid) {
+      console.log("Cannot load chats: user or session invalid")
       setLoading(false)
       return
     }
 
-    loadUserChats()
-  }, [currentUser?.id])
-
-  const loadUserChats = async () => {
-    if (!currentUser?.id) return
-
     try {
       setLoading(true)
+      console.log("Loading chats for user:", currentUser.id)
+      
       const result = await getUserChats(currentUser.id)
       
       if (result.success && result.chats) {
         setChats(result.chats)
+        console.log(`Loaded ${result.chats.length} chats`)
       } else {
         console.error('Failed to load chats:', result.error)
+        setChats([])
       }
     } catch (error) {
       console.error('Error loading chats:', error)
+      setChats([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentUser?.id, sessionValid])
 
-  // Load messages for a specific chat
+  // Enhanced message loading with retry logic
   const loadMessages = useCallback(async (chatId: string) => {
+    if (!currentUser?.id || !sessionValid) {
+      console.log("Cannot load messages: user or session invalid")
+      return
+    }
+
     try {
+      console.log(`Loading messages for chat: ${chatId}`)
+      
       const result = await getChatMessages(chatId)
       
       if (result.success && result.messages) {
@@ -61,34 +76,13 @@ export function useChat(currentUser: User | null) {
           [chatId]: result.messages || []
         }))
 
-        // Subscribe to real-time messages for this chat
-        if (!activeSubscriptions[chatId]) {
-          console.log(`🔔 Creating subscription for chat: ${chatId}`)
-          const channel = subscribeToMessages(chatId, (newMessage) => {
-            console.log(`📨 Received new message in chat ${chatId}:`, newMessage)
-            setMessages(prev => {
-              const existingMessages = prev[chatId] || []
-              // Check if message already exists to prevent duplicates
-              const messageExists = existingMessages.some(msg => msg.id === newMessage.id)
-              if (messageExists) return prev
-              
-              return {
-                ...prev,
-                [chatId]: [...existingMessages, newMessage]
-              }
-            })
-          })
-
-          setActiveSubscriptions(prev => ({
-            ...prev,
-            [chatId]: channel
-          }))
-        }
+        // Set up realtime subscription with retry logic
+        await setupRealtimeSubscription(chatId)
 
         // Mark messages as read
-        if (currentUser?.id) {
-          await markMessagesAsRead(chatId, currentUser.id)
-        }
+        await markMessagesAsRead(chatId, currentUser.id)
+        
+        console.log(`Loaded ${result.messages.length} messages for chat ${chatId}`)
       } else {
         console.error('Failed to load messages:', result.error)
       }
@@ -98,45 +92,133 @@ export function useChat(currentUser: User | null) {
 
     // Return cleanup function
     return () => {
-      const channel = activeSubscriptions[chatId]
-      if (channel) {
-        unsubscribeFromMessages(channel)
-        setActiveSubscriptions(prev => {
-          const newSubs = { ...prev }
-          delete newSubs[chatId]
-          return newSubs
-        })
-      }
+      cleanupSubscription(chatId)
     }
-  }, [activeSubscriptions, currentUser?.id])
+  }, [currentUser?.id, sessionValid])
 
-  // Send a message
-  const sendMessage = useCallback(async (chatId: string, content: string) => {
-    if (!currentUser?.id || !content.trim()) return
+  // Enhanced realtime subscription with reconnection
+  const setupRealtimeSubscription = useCallback(async (chatId: string) => {
+    if (!sessionValid) {
+      console.log("Session invalid, skipping subscription setup")
+      return
+    }
+
+    // Clean up existing subscription
+    if (activeSubscriptions[chatId]) {
+      console.log(`Cleaning up existing subscription for chat: ${chatId}`)
+      unsubscribeFromMessages(activeSubscriptions[chatId])
+    }
 
     try {
+      console.log(`Setting up realtime subscription for chat: ${chatId}`)
+      
+      const channel = subscribeToMessages(chatId, (newMessage) => {
+        console.log(`📨 Received realtime message in chat ${chatId}:`, newMessage.id)
+        
+        setMessages(prev => {
+          const existingMessages = prev[chatId] || []
+          
+          // Check if message already exists to prevent duplicates
+          const messageExists = existingMessages.some(msg => msg.id === newMessage.id)
+          if (messageExists) {
+            console.log("Message already exists, skipping duplicate")
+            return prev
+          }
+          
+          return {
+            ...prev,
+            [chatId]: [...existingMessages, newMessage]
+          }
+        })
+
+        // Reset retry counter on successful message
+        reconnectAttemptsRef.current[chatId] = 0
+      })
+
+      // Monitor subscription status
+      if (channel) {
+        setActiveSubscriptions(prev => ({
+          ...prev,
+          [chatId]: channel
+        }))
+        
+        console.log(`✅ Realtime subscription active for chat: ${chatId}`)
+      }
+
+    } catch (error) {
+      console.error(`Failed to set up subscription for chat ${chatId}:`, error)
+      
+      // Retry logic
+      const retryCount = reconnectAttemptsRef.current[chatId] || 0
+      if (retryCount < 3) {
+        reconnectAttemptsRef.current[chatId] = retryCount + 1
+        
+        console.log(`Retrying subscription setup (attempt ${retryCount + 1}/3)`)
+        setTimeout(() => setupRealtimeSubscription(chatId), 2000 * (retryCount + 1))
+      }
+    }
+  }, [sessionValid, activeSubscriptions])
+
+  // Clean up subscription
+  const cleanupSubscription = useCallback((chatId: string) => {
+    const channel = activeSubscriptions[chatId]
+    if (channel) {
+      console.log(`Cleaning up subscription for chat: ${chatId}`)
+      unsubscribeFromMessages(channel)
+      
+      setActiveSubscriptions(prev => {
+        const newSubs = { ...prev }
+        delete newSubs[chatId]
+        return newSubs
+      })
+    }
+  }, [activeSubscriptions])
+
+  // Enhanced send message with retry
+  const sendMessage = useCallback(async (chatId: string, content: string) => {
+    if (!currentUser?.id || !content.trim()) {
+      console.log("Cannot send message: missing user or content")
+      return
+    }
+
+    if (!sessionValid) {
+      console.log("Cannot send message: session invalid")
+      throw new Error("Session expired. Please refresh the page.")
+    }
+
+    try {
+      console.log(`Sending message to chat: ${chatId}`)
+      
       const result = await sendChatMessage(chatId, currentUser.id, content)
       
       if (result.success && result.message) {
-        // Add message to local state immediately for better UX
+        // Add message to local state for immediate UI feedback
         setMessages(prev => ({
           ...prev,
           [chatId]: [...(prev[chatId] || []), result.message!]
         }))
+        
         console.log('Message sent successfully')
       } else {
         console.error('Failed to send message:', result.error)
+        throw new Error(result.error || 'Failed to send message')
       }
     } catch (error) {
       console.error('Error sending message:', error)
+      throw error
     }
-  }, [currentUser?.id])
+  }, [currentUser?.id, sessionValid])
 
-  // Create or get chat between current user and another user
+  // Create or get chat with validation
   const createOrGetChatWith = useCallback(async (otherUserId: string) => {
-    if (!currentUser?.id) return null
+    if (!currentUser?.id || !sessionValid) {
+      console.log("Cannot create chat: user or session invalid")
+      return null
+    }
 
     try {
+      console.log(`Creating/getting chat with user: ${otherUserId}`)
+      
       const result = await createOrGetChat(currentUser.id, otherUserId)
       
       if (result.success && result.chat) {
@@ -147,6 +229,7 @@ export function useChat(currentUser: User | null) {
           return [result.chat!, ...prev]
         })
         
+        console.log(`Chat created/retrieved: ${result.chat.id}`)
         return result.chat
       } else {
         console.error('Failed to create/get chat:', result.error)
@@ -156,16 +239,120 @@ export function useChat(currentUser: User | null) {
       console.error('Error creating/getting chat:', error)
       return null
     }
-  }, [currentUser?.id])
+  }, [currentUser?.id, sessionValid])
 
-  // Cleanup subscriptions on unmount
+  // Reconnect all subscriptions when session recovers
+  const reconnectAllSubscriptions = useCallback(async () => {
+    if (!sessionValid || !currentUser?.id) return
+
+    console.log("Reconnecting all chat subscriptions...")
+    
+    // Clean up existing subscriptions
+    Object.keys(activeSubscriptions).forEach(chatId => {
+      cleanupSubscription(chatId)
+    })
+
+    // Reload chats and reconnect subscriptions for chats with messages
+    await loadUserChats()
+    
+    // Reconnect to chats that have loaded messages
+    Object.keys(messages).forEach(chatId => {
+      if (messages[chatId].length > 0) {
+        setupRealtimeSubscription(chatId)
+      }
+    })
+  }, [sessionValid, currentUser?.id, activeSubscriptions, messages, loadUserChats, cleanupSubscription, setupRealtimeSubscription])
+
+  // Handle user changes and session recovery
+  useEffect(() => {
+    if (!currentUser?.id) {
+      // Clear state when user logs out
+      setChats([])
+      setMessages({})
+      setLoading(false)
+      lastUserIdRef.current = null
+      
+      // Clean up all subscriptions
+      Object.values(activeSubscriptions).forEach(channel => {
+        unsubscribeFromMessages(channel)
+      })
+      setActiveSubscriptions({})
+      
+      return
+    }
+
+    // Handle user change
+    if (lastUserIdRef.current !== currentUser.id) {
+      console.log("User changed, reloading chats...")
+      lastUserIdRef.current = currentUser.id
+      
+      // Clean up previous user's subscriptions
+      Object.values(activeSubscriptions).forEach(channel => {
+        unsubscribeFromMessages(channel)
+      })
+      setActiveSubscriptions({})
+      
+      // Reset state and load new user's chats
+      setChats([])
+      setMessages({})
+      reconnectAttemptsRef.current = {}
+      
+      loadUserChats()
+      return
+    }
+
+    // Handle session recovery
+    if (sessionValid && chats.length === 0 && !loading) {
+      console.log("Session recovered, reloading chats...")
+      loadUserChats()
+    }
+  }, [currentUser?.id, sessionValid, loadUserChats, chats.length, loading, activeSubscriptions])
+
+  // Session recovery effect
+  useEffect(() => {
+    if (sessionValid && currentUser?.id && Object.keys(activeSubscriptions).length === 0) {
+      // Session recovered but no active subscriptions
+      const hasLoadedChats = Object.keys(messages).length > 0
+      
+      if (hasLoadedChats) {
+        console.log("Session recovered, reconnecting subscriptions...")
+        reconnectAllSubscriptions()
+      }
+    }
+  }, [sessionValid, currentUser?.id, activeSubscriptions, messages, reconnectAllSubscriptions])
+
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (connectionRetryRef.current) {
+        clearTimeout(connectionRetryRef.current)
+      }
+      
       Object.values(activeSubscriptions).forEach(channel => {
         unsubscribeFromMessages(channel)
       })
     }
   }, [activeSubscriptions])
+
+  // Connection health monitoring
+  useEffect(() => {
+    if (!sessionValid || !currentUser?.id) return
+
+    const checkConnectionHealth = () => {
+      const activeChats = Object.keys(messages).filter(chatId => messages[chatId].length > 0)
+      const activeSubscriptionCount = Object.keys(activeSubscriptions).length
+      
+      if (activeChats.length > 0 && activeSubscriptionCount === 0) {
+        console.log("Detected missing subscriptions, attempting recovery...")
+        reconnectAllSubscriptions()
+      }
+    }
+
+    // Check connection health every 30 seconds
+    const healthCheck = setInterval(checkConnectionHealth, 30000)
+    
+    return () => clearInterval(healthCheck)
+  }, [sessionValid, currentUser?.id, messages, activeSubscriptions, reconnectAllSubscriptions])
 
   return {
     chats,
@@ -174,6 +361,12 @@ export function useChat(currentUser: User | null) {
     loadMessages,
     sendMessage,
     createOrGetChatWith,
-    refreshChats: loadUserChats
+    refreshChats: loadUserChats,
+    reconnectSubscriptions: reconnectAllSubscriptions,
+    connectionHealth: {
+      activeSubscriptions: Object.keys(activeSubscriptions).length,
+      totalChats: chats.length,
+      sessionValid
+    }
   }
 }

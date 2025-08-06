@@ -1,4 +1,4 @@
-// app/page.tsx - Fixed user flow logic
+// app/page.tsx - Updated with stable session management
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -16,13 +16,14 @@ import MarketplacePage from "@/components/MarketplacePage"
 import ExpensesPage from "@/components/ExpensesPage"  
 import ChatPage from "@/components/ChatPage"
 import SettingsMenu from "@/components/SettingsMenu"
+import SessionRecovery from "@/components/SessionRecovery"
 import { useState, useEffect } from "react"
 import LoadingSpinner from "@/components/LoadingSpinner"
 import ErrorBoundary from "@/components/ErrorBoundary"
 import DebugInfo from "@/components/DebugInfo"
 
 export default function Home() {
-  const { user, loading, logout, error: authError } = useAuth()
+  const { user, loading, logout, error: authError, sessionValid } = useAuth()
   const [currentPage, setCurrentPage] = useState<
     "landing" | "auth" | "swipe" | "matches" | "marketplace" | 
     "expenses" | "chat" | "profile-setup" | "user-type"
@@ -32,19 +33,32 @@ export default function Home() {
   // Debug logging
   useEffect(() => {
     console.log("🔍 App State:", {
-      user: user ? { id: user.id, name: user.name, age: user.age, userType: user.userType, preferences: !!user.preferences } : null,
+      user: user ? { 
+        id: user.id, 
+        name: user.name, 
+        age: user.age, 
+        userType: user.userType, 
+        preferences: !!user.preferences 
+      } : null,
       loading,
       currentPage,
-      authError
+      authError,
+      sessionValid
     });
-  }, [user, loading, currentPage, authError]);
+  }, [user, loading, currentPage, authError, sessionValid]);
 
   // Handle user authentication state and profile completion
   useEffect(() => {
-    console.log("🔄 Checking user flow...", { user: !!user, loading, currentPage, authError });
+    console.log("🔄 Checking user flow...", { 
+      user: !!user, 
+      loading, 
+      currentPage, 
+      authError, 
+      sessionValid 
+    });
 
-    if (user) {
-      console.log("✅ User is authenticated");
+    if (user && sessionValid) {
+      console.log("✅ User is authenticated with valid session");
       
       // Only redirect if we're on landing or auth pages
       if (currentPage === "landing" || currentPage === "auth") {
@@ -64,7 +78,7 @@ export default function Home() {
         console.log("✅ User fully set up - redirecting to main app");
         setCurrentPage("swipe");
       }
-    } else if (!loading && !authError) {
+    } else if (!loading && !authError && !user) {
       console.log("❌ No user and not loading - checking if we need to redirect to landing");
       // If user logs out or is not authenticated, go back to landing
       if (currentPage !== "landing" && currentPage !== "auth") {
@@ -72,7 +86,7 @@ export default function Home() {
         setCurrentPage("landing");
       }
     }
-  }, [user, loading, currentPage, authError]);
+  }, [user, loading, currentPage, authError, sessionValid]);
 
   // Show loading screen with timeout
   const [loadingTimeout, setLoadingTimeout] = useState(false);
@@ -88,8 +102,7 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [loading]);
   
-  // Show loading screen with timeout, but allow user to proceed if they exist
-  // Only show loading if we don't have a user AND we haven't timed out
+  // Show loading screen but allow user to proceed if they exist
   if (loading && !loadingTimeout && !user && !authError) {
     return <LoadingSpinner />;
   }
@@ -108,12 +121,8 @@ export default function Home() {
             <div className="text-sm text-red-600 text-left bg-red-50 p-4 border-2 border-red-200">
               <p className="font-bold mb-2">Required in .env.local:</p>
               <ul className="list-disc list-inside space-y-1 text-xs">
-                <li>NEXT_PUBLIC_FIREBASE_API_KEY</li>
-                <li>NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN</li>
-                <li>NEXT_PUBLIC_FIREBASE_PROJECT_ID</li>
-                <li>NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET</li>
-                <li>NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID</li>
-                <li>NEXT_PUBLIC_FIREBASE_APP_ID</li>
+                <li>NEXT_PUBLIC_SUPABASE_URL</li>
+                <li>NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
               </ul>
             </div>
             <Button 
@@ -128,40 +137,60 @@ export default function Home() {
     );
   }
 
+  // Session recovery overlay
+  const SessionRecoveryOverlay = () => (
+    user && !sessionValid ? (
+      <SessionRecovery 
+        onRecovered={() => {
+          console.log("✅ Session recovered, continuing with app");
+        }}
+      />
+    ) : null
+  );
+
   // Show auth page
   if (currentPage === "auth") {
     return (
-      <AuthPage 
-        initialMode={authMode}
-        onBack={() => setCurrentPage("landing")}
-        onSuccess={() => {
-          console.log("✅ Auth successful - useEffect will handle redirection");
-        }}
-      />
+      <>
+        <AuthPage 
+          initialMode={authMode}
+          onBack={() => setCurrentPage("landing")}
+          onSuccess={() => {
+            console.log("✅ Auth successful - useEffect will handle redirection");
+          }}
+        />
+        <SessionRecoveryOverlay />
+      </>
     );
   }
 
   // Show profile setup page
   if (currentPage === "profile-setup") {
     return (
-      <ProfileSetup 
-        onComplete={() => {
-          console.log("✅ Profile setup complete - going to main app");
-          setCurrentPage("swipe");
-        }} 
-      />
+      <>
+        <ProfileSetup 
+          onComplete={() => {
+            console.log("✅ Profile setup complete - going to main app");
+            setCurrentPage("swipe");
+          }} 
+        />
+        <SessionRecoveryOverlay />
+      </>
     );
   }
 
   // Show user type selection page
   if (currentPage === "user-type") {
     return (
-      <UserTypeSelection 
-        onComplete={() => {
-          console.log("✅ User type selection complete - going to main app");
-          setCurrentPage("swipe");
-        }} 
-      />
+      <>
+        <UserTypeSelection 
+          onComplete={() => {
+            console.log("✅ User type selection complete - going to main app");
+            setCurrentPage("swipe");
+          }} 
+        />
+        <SessionRecoveryOverlay />
+      </>
     );
   }
 
@@ -208,7 +237,12 @@ export default function Home() {
                 </div>
                 <span className="font-black text-lg tracking-tight transform -skew-x-6 text-[#004D40]">ROOMIO</span>
               </div>
-              <SettingsMenu user={user} />
+              <div className="flex items-center space-x-2">
+                {/* Session status indicator */}
+                <div className={`w-3 h-3 rounded-full ${sessionValid ? 'bg-green-500' : 'bg-orange-500'}`} 
+                     title={sessionValid ? 'Session active' : 'Session recovering'} />
+                <SettingsMenu user={user} />
+              </div>
             </div>
           </div>
 
@@ -230,6 +264,7 @@ export default function Home() {
           </div>
 
           <AppNavigation />
+          <SessionRecoveryOverlay />
           <DebugInfo />
         </div>
       </ErrorBoundary>
@@ -238,7 +273,7 @@ export default function Home() {
 
   // Handle navigation for landing page
   const handleGoToApp = () => {
-    if (user) {
+    if (user && sessionValid) {
       // User is authenticated, determine where to go
       if (!user.age || !user.preferences || !user.userType) {
         setCurrentPage("profile-setup");
@@ -286,7 +321,7 @@ export default function Home() {
             CONTACT
           </Link>
 
-          {user && (
+          {user && sessionValid && (
             <div className="flex items-center gap-4">
               <Button
                 onClick={handleGoToApp}
@@ -338,7 +373,7 @@ export default function Home() {
                   onClick={handleGoToApp}
                   className="bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black text-xl px-12 py-6 border-4 border-[#F2F5F1] shadow-[8px_8px_0px_0px_#F2F5F1] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#F2F5F1] transition-all"
                 >
-                  {user ? "GO TO APP" : "GET STARTED NOW"}
+                  {user && sessionValid ? "GO TO APP" : "GET STARTED NOW"}
                   <Target className="ml-3 h-6 w-6" />
                 </Button>
                 <div className="flex flex-col sm:flex-row gap-4">
@@ -370,6 +405,7 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Rest of landing page content remains the same... */}
         {/* Features Section */}
         <section id="features" className="w-full py-12 md:py-20 bg-[#44C76F] text-[#004D40]">
           <div className="container px-4 md:px-6">
@@ -539,6 +575,7 @@ export default function Home() {
         </div>
       </footer>
     </div>
+    <SessionRecoveryOverlay />
     <DebugInfo />
   </ErrorBoundary>
   );

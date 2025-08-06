@@ -1,285 +1,352 @@
-// hooks/useAuth.ts - Client-side only authentication
-import { useEffect, useState } from "react";
+// hooks/useAuth.ts - Stable session management with persistence
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { User, createFallbackUser } from "@/types/user";
-import { getUserProfile, updateUserProfile, ensureUserProfile } from "@/services/supabase";
+import { getUserProfile, ensureUserProfile } from "@/services/supabase";
 import type { AuthChangeEvent, Session, User as SupabaseUser } from '@supabase/supabase-js';
 
+interface AuthState {
+  user: User | null;
+  loading: boolean;
+  error: string | null;
+  sessionValid: boolean;
+}
+
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    loading: true,
+    error: null,
+    sessionValid: false
+  });
 
-  const handleUserSession = async (supabaseUser: SupabaseUser) => {
-    // Prevent multiple simultaneous calls
-    if (isProcessing) {
-      console.log("⏳ Already processing user session, skipping...");
-      return;
-    }
-    
-    setIsProcessing(true);
-    setLoading(true);
-    setError(null);
-    
-    // Add timeout for user session processing  
-    const sessionTimeout = setTimeout(() => {
-      console.log("⚠️ User session processing timeout, forcing completion");
-      setIsProcessing(false);
-      setLoading(false);
-      // Don't create fallback user here - let the profile loading logic handle it
-    }, 10000);
-    
+  // Refs to prevent multiple simultaneous operations
+  const isProcessingRef = useRef(false);
+  const lastUserIdRef = useRef<string | null>(null);
+  const sessionTimeoutRef = useRef<NodeJS.Timeout>();
+
+  // Session recovery and validation
+  const validateSession = useCallback(async (): Promise<boolean> => {
     try {
-      console.log("📊 Loading user profile for:", supabaseUser.id);
-      const profile = await getUserProfile(supabaseUser.id);
-      console.log("📊 Profile loaded:", profile);
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.warn("Session validation error:", error);
+        return false;
+      }
 
-      // If no profile exists, try to create one first, then fallback
-      if (!profile) {
-        console.log("📝 No profile found - attempting to create user profile");
+      if (!session || !session.user) {
+        return false;
+      }
+
+      // Check if session is expired
+      const now = Math.floor(Date.now() / 1000);
+      if (session.expires_at && session.expires_at < now) {
+        console.log("Session expired, attempting refresh...");
         
-        // Try to create a user profile in the database
-        const profileCreated = await ensureUserProfile(
-          supabaseUser.id,
-          supabaseUser.email || "",
-          supabaseUser.user_metadata?.full_name || ""
-        );
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
         
-        if (profileCreated) {
-          console.log("✅ User profile created in database");
-          // Try to fetch the profile again
-          const newProfile = await getUserProfile(supabaseUser.id);
-          if (newProfile) {
-            const userData: User = {
-              id: supabaseUser.id,
-              uid: supabaseUser.id,
-              email: supabaseUser.email ?? null,
-              name: newProfile?.name || supabaseUser.user_metadata?.full_name || "",
-              userType: newProfile?.usertype, // Fixed: use lowercase from database
-              profilePicture:
-                newProfile?.profilepicture || supabaseUser.user_metadata?.avatar_url || "", // Fixed: use lowercase
-              createdAt: newProfile?.createdat, // Fixed: use lowercase
-              updatedAt: newProfile?.updatedat, // Fixed: use lowercase
-              age: newProfile?.age,
-              bio: newProfile?.bio || "",
-              location: newProfile?.location || "",
-              budget: newProfile?.budget,
-              preferences: newProfile?.preferences || {
-                smoking: false,
-                drinking: false,
-                vegetarian: false,
-                pets: false,
-              },
-            };
-            setUser(userData);
-            console.log("✅ User state updated with new profile");
-            return;
-          }
+        if (refreshError || !refreshData.session) {
+          console.warn("Session refresh failed:", refreshError);
+          return false;
         }
         
-        // Only create fallback user if profile creation completely failed
-        console.log("📝 Profile creation failed - creating fallback user");
-        const fallbackUser = createFallbackUser(supabaseUser);
-        setUser(fallbackUser);
-        console.log("✅ Fallback user created:", fallbackUser);
-        return;
+        return true;
       }
 
-      const userData: User = {
-        id: supabaseUser.id,
-        uid: supabaseUser.id,
-        email: supabaseUser.email ?? null,
-        name: profile?.name || supabaseUser.user_metadata?.full_name || "",
-        userType: profile?.usertype, // Fixed: use lowercase from database
-        profilePicture:
-          profile?.profilepicture || supabaseUser.user_metadata?.avatar_url || "", // Fixed: use lowercase
-        createdAt: profile?.createdat, // Fixed: use lowercase
-        updatedAt: profile?.updatedat, // Fixed: use lowercase
-        age: profile?.age,
-        bio: profile?.bio || "",
-        location: profile?.location || "",
-        budget: profile?.budget,
-        preferences: profile?.preferences || {
-          smoking: false,
-          drinking: false,
-          vegetarian: false,
-          pets: false,
-        },
-      };
-
-      console.log("✅ Setting user state:", userData);
-      setUser(userData);
-      console.log("✅ User state updated successfully");
+      return true;
     } catch (error) {
-      console.error("❌ Error loading user profile:", error);
-      console.log("✅ Setting fallback user due to error");
-      const fallbackUser = createFallbackUser(supabaseUser);
-      setUser(fallbackUser);
-      console.log("✅ Fallback user set:", fallbackUser);
-    } finally {
-      clearTimeout(sessionTimeout);
-      setIsProcessing(false);
-      setLoading(false);
+      console.error("Session validation failed:", error);
+      return false;
     }
-  };
+  }, []);
 
-  // Check Supabase configuration and set up auth listener
-  useEffect(() => {
-    let isMounted = true;
-    let loadingTimeout: NodeJS.Timeout;
-    
-    console.log("🔍 Supabase Auth Config Check:");
-    console.log("- Supabase client initialized:", !!supabase);
+  // Load user profile with caching
+  const loadUserProfile = useCallback(async (supabaseUser: SupabaseUser): Promise<User> => {
+    try {
+      console.log("Loading profile for user:", supabaseUser.id);
+      
+      // Try to get profile from database
+      const profile = await getUserProfile(supabaseUser.id);
+      
+      if (profile) {
+        return {
+          id: supabaseUser.id,
+          uid: supabaseUser.id,
+          email: supabaseUser.email ?? null,
+          name: profile.name || supabaseUser.user_metadata?.full_name || "",
+          userType: profile.usertype,
+          profilePicture: profile.profilepicture || supabaseUser.user_metadata?.avatar_url || "",
+          createdAt: profile.createdat ? new Date(profile.createdat) : undefined,
+          updatedAt: profile.updatedat ? new Date(profile.updatedat) : undefined,
+          age: profile.age,
+          bio: profile.bio || "",
+          location: profile.location || "",
+          budget: profile.budget,
+          preferences: profile.preferences || {
+            smoking: false,
+            drinking: false,
+            vegetarian: false,
+            pets: false,
+          },
+        };
+      }
 
-    if (!supabase) {
-      setError("Supabase configuration is incomplete. Check your environment variables.");
-      setLoading(false);
+      // If no profile exists, try to create one
+      console.log("No profile found, creating one...");
+      const profileCreated = await ensureUserProfile(
+        supabaseUser.id,
+        supabaseUser.email || "",
+        supabaseUser.user_metadata?.full_name || ""
+      );
+      
+      if (profileCreated) {
+        // Try to fetch the new profile
+        const newProfile = await getUserProfile(supabaseUser.id);
+        if (newProfile) {
+          return {
+            id: supabaseUser.id,
+            uid: supabaseUser.id,
+            email: supabaseUser.email ?? null,
+            name: newProfile.name || supabaseUser.user_metadata?.full_name || "",
+            userType: newProfile.usertype,
+            profilePicture: newProfile.profilepicture || supabaseUser.user_metadata?.avatar_url || "",
+            createdAt: newProfile.createdat ? new Date(newProfile.createdat) : undefined,
+            updatedAt: newProfile.updatedat ? new Date(newProfile.updatedat) : undefined,
+            age: newProfile.age,
+            bio: newProfile.bio || "",
+            location: newProfile.location || "",
+            budget: newProfile.budget,
+            preferences: newProfile.preferences || {
+              smoking: false,
+              drinking: false,
+              vegetarian: false,
+              pets: false,
+            },
+          };
+        }
+      }
+
+      // Fallback to basic user data
+      console.log("Using fallback user data");
+      return createFallbackUser(supabaseUser);
+
+    } catch (error) {
+      console.error("Error loading user profile:", error);
+      return createFallbackUser(supabaseUser);
+    }
+  }, []);
+
+  // Handle session changes
+  const handleSessionChange = useCallback(async (session: Session | null) => {
+    // Prevent multiple simultaneous processing
+    if (isProcessingRef.current) {
+      console.log("Session change already in progress, skipping...");
       return;
     }
 
-    // Set a timeout to force loading to false after 12 seconds
-    loadingTimeout = setTimeout(() => {
-      if (isMounted) {
-        console.log("⚠️ Auth loading timeout reached, forcing loading to false");
-        setLoading(false);
-        setIsProcessing(false);
-      }
-    }, 12000);
+    isProcessingRef.current = true;
 
-    const getInitialSession = async () => {
-      try {
-        console.log("🔄 Getting initial session...");
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
-
-        if (!isMounted) return;
-
-        if (error) {
-          console.error("❌ Error getting initial session:", error);
-          setError(error.message);
-          setLoading(false);
+    try {
+      if (session?.user) {
+        // Skip if same user to prevent unnecessary updates
+        if (lastUserIdRef.current === session.user.id) {
+          console.log("Same user, skipping profile reload");
+          setState(prev => ({ ...prev, loading: false, sessionValid: true }));
           return;
         }
 
-        console.log("✅ Initial session result:", session?.user ? "User found" : "No user");
+        console.log("Loading user profile for session change:", session.user.id);
+        lastUserIdRef.current = session.user.id;
 
-        if (session?.user) {
-          await handleUserSession(session.user);
-        } else {
-          setUser(null);
-        }
+        const userData = await loadUserProfile(session.user);
         
-        if (isMounted) {
-          clearTimeout(loadingTimeout);
-          setLoading(false);
-          setIsProcessing(false);
+        setState({
+          user: userData,
+          loading: false,
+          error: null,
+          sessionValid: true
+        });
+
+        console.log("User session established:", userData.id);
+      } else {
+        // No session - clear user data
+        console.log("No session, clearing user data");
+        lastUserIdRef.current = null;
+        
+        setState({
+          user: null,
+          loading: false,
+          error: null,
+          sessionValid: false
+        });
+      }
+    } catch (error) {
+      console.error("Error handling session change:", error);
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: "Failed to load user session"
+      }));
+    } finally {
+      isProcessingRef.current = false;
+    }
+  }, [loadUserProfile]);
+
+  // Initialize auth and set up listeners
+  useEffect(() => {
+    let mounted = true;
+    let authSubscription: { data: { subscription: any } } | null = null;
+
+    const initializeAuth = async () => {
+      try {
+        console.log("Initializing auth...");
+
+        // Get initial session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error getting initial session:", error);
+          if (mounted) {
+            setState(prev => ({ 
+              ...prev, 
+              loading: false, 
+              error: error.message 
+            }));
+          }
+          return;
         }
-      } catch (err) {
-        console.error("❌ Error in getInitialSession:", err);
-        if (isMounted) {
-          clearTimeout(loadingTimeout);
-          setError("Failed to initialize authentication");
-          setLoading(false);
-          setIsProcessing(false);
+
+        // Handle initial session
+        if (mounted) {
+          await handleSessionChange(session);
+        }
+
+        // Set up auth state listener
+        authSubscription = supabase.auth.onAuthStateChange(
+          async (event: AuthChangeEvent, session: Session | null) => {
+            if (!mounted) return;
+
+            console.log("Auth state changed:", event, session?.user ? "User present" : "No user");
+
+            // Handle different auth events
+            switch (event) {
+              case 'SIGNED_IN':
+              case 'TOKEN_REFRESHED':
+                await handleSessionChange(session);
+                break;
+              case 'SIGNED_OUT':
+                await handleSessionChange(null);
+                break;
+              case 'USER_UPDATED':
+                if (session?.user) {
+                  await handleSessionChange(session);
+                }
+                break;
+              default:
+                console.log("Unhandled auth event:", event);
+            }
+          }
+        );
+
+        console.log("Auth listener set up successfully");
+
+      } catch (error) {
+        console.error("Auth initialization failed:", error);
+        if (mounted) {
+          setState(prev => ({
+            ...prev,
+            loading: false,
+            error: "Authentication initialization failed"
+          }));
         }
       }
     };
 
-    getInitialSession();
+    // Set loading timeout
+    sessionTimeoutRef.current = setTimeout(() => {
+      if (mounted && state.loading) {
+        console.log("Auth loading timeout reached");
+        setState(prev => ({ ...prev, loading: false }));
+      }
+    }, 15000);
 
-    console.log("🔄 Setting up auth state listener...");
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, session: Session | null) => {
-        if (!isMounted) return;
+    initializeAuth();
+
+    // Cleanup
+    return () => {
+      mounted = false;
+      if (sessionTimeoutRef.current) {
+        clearTimeout(sessionTimeoutRef.current);
+      }
+      if (authSubscription?.data?.subscription) {
+        authSubscription.data.subscription.unsubscribe();
+      }
+    };
+  }, []); // Empty dependency array - only run once
+
+  // Session recovery for focus/visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && state.user) {
+        console.log("App became visible, validating session...");
         
-        console.log("🔄 Auth state changed:", event, session?.user ? "User logged in" : "User logged out");
-
-        try {
-          if (session?.user) {
-            await handleUserSession(session.user);
-          } else {
-            console.log("✅ Setting user to null (logged out)");
-            setUser(null);
-            setError(null); // Clear any previous errors when logging out
-          }
-          
-          if (isMounted) {
-            setLoading(false);
-            setIsProcessing(false);
-          }
-        } catch (err) {
-          console.error("❌ Error in auth state change handler:", err);
-          
-          if (isMounted) {
-            setLoading(false);
-            setIsProcessing(false);
-            // Let the regular profile loading handle user creation
-            // Don't create fallback users here as it might override real profile data
-          }
+        const isValid = await validateSession();
+        
+        if (!isValid) {
+          console.log("Session invalid, clearing user data");
+          setState(prev => ({
+            ...prev,
+            user: null,
+            sessionValid: false,
+            error: "Session expired"
+          }));
+        } else {
+          console.log("Session valid");
+          setState(prev => ({ ...prev, sessionValid: true }));
         }
       }
-    );
+    };
+
+    const handleFocus = async () => {
+      if (state.user) {
+        await handleVisibilityChange();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
 
     return () => {
-      isMounted = false;
-      clearTimeout(loadingTimeout);
-      console.log("🧹 Cleaning up auth listener");
-      subscription?.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
     };
-  }, []);
+  }, [state.user, validateSession]);
 
-  const updateProfilePicture = async (imageUrl: string) => {
+  // Auth actions
+  const logout = useCallback(async () => {
     try {
-      console.log("🔄 Updating profile picture:", imageUrl);
-
-      if (!user?.id) {
-        throw new Error("No user logged in");
-      }
-
-      const success = await updateUserProfile(user.id, {
-        profilePicture: imageUrl,
-      });
-
-      if (success && user) {
-        setUser({
-          ...user,
-          profilePicture: imageUrl,
-          updatedAt: new Date(),
-        });
-        console.log("✅ Profile picture updated successfully");
-      } else {
-        throw new Error("Failed to update profile picture");
-      }
-    } catch (error) {
-      console.error("❌ Error updating profile picture:", error);
-      throw error;
-    }
-  };
-
-  const logout = async () => {
-    try {
-      console.log("🔄 Logging out user...");
+      console.log("Logging out user...");
+      isProcessingRef.current = true;
+      
+      setState(prev => ({ ...prev, loading: true }));
+      
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      console.log("✅ User signed out");
+      
+      console.log("Logout successful");
     } catch (error) {
-      console.error("❌ Error signing out:", error);
+      console.error("Logout error:", error);
       throw error;
+    } finally {
+      isProcessingRef.current = false;
     }
-  };
+  }, []);
 
-  const emailSignUp = async (email: string, password: string, name: string) => {
+  const emailSignUp = useCallback(async (email: string, password: string, name: string) => {
     try {
-      setLoading(true);
-      setError(null);
-      console.log("🔄 Starting email signup...", { email, name });
-
-      // Debug: Check auth state before signup
-      const { data: { session: beforeSession } } = await supabase.auth.getSession();
-      console.log("🔍 Auth session before signup:", beforeSession?.user?.id || "No session");
+      setState(prev => ({ ...prev, loading: true, error: null }));
+      console.log("Starting email signup...", { email, name });
 
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -291,56 +358,21 @@ export function useAuth() {
         },
       });
 
-      if (error) {
-        console.error("❌ Supabase Auth signup error:", error);
-        throw error;
-      }
+      if (error) throw error;
 
-      const supabaseUser = data.user;
-      console.log("✅ User created in Supabase Auth:");
-      console.log("   - User ID:", supabaseUser?.id);
-      console.log("   - User email:", supabaseUser?.email);
-      console.log("   - User confirmed:", supabaseUser?.email_confirmed_at ? "Yes" : "No");
-      console.log("   - User metadata:", supabaseUser?.user_metadata);
-
-      // Debug: Check auth state after signup
-      const { data: { session: afterSession } } = await supabase.auth.getSession();
-      console.log("🔍 Auth session after signup:", afterSession?.user?.id || "No session");
-      console.log("🔍 Access token exists:", !!afterSession?.access_token);
-
-      if (supabaseUser) {
-        console.log("🔄 About to create user profile...");
-        
-        // Use the ensureUserProfile function to create the user profile
-        const profileCreated = await ensureUserProfile(supabaseUser.id, email, name);
-        
-        if (!profileCreated) {
-          console.error("❌ Error creating user profile");
-          console.error("❌ This usually means RLS policies are blocking the insert");
-          throw new Error("Failed to create user profile");
-        }
-
-        console.log("✅ User profile created in Supabase");
-      } else {
-        console.error("❌ No user returned from Supabase Auth signup");
-      }
-
-      console.log("✅ Email signup completed successfully");
+      console.log("Signup successful:", data.user?.id);
+      
     } catch (error: any) {
-      console.error("❌ Email signup error:", error);
-      console.error("❌ Error stack:", error.stack);
-      setError(error.message || "Signup failed. Please try again.");
+      console.error("Signup error:", error);
+      setState(prev => ({ ...prev, error: error.message, loading: false }));
       throw error;
-    } finally {
-      setLoading(false);
     }
-  };
+  }, []);
 
-  const emailSignIn = async (email: string, password: string) => {
+  const emailSignIn = useCallback(async (email: string, password: string) => {
     try {
-      setLoading(true);
-      setError(null);
-      console.log("🔄 Starting email signin...", { email });
+      setState(prev => ({ ...prev, loading: true, error: null }));
+      console.log("Starting email signin...");
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -348,7 +380,6 @@ export function useAuth() {
       });
 
       if (error) {
-        // Handle specific error cases
         if (error.message.includes('Invalid login credentials')) {
           throw new Error('Invalid email or password. Please check your credentials and try again.');
         }
@@ -358,21 +389,19 @@ export function useAuth() {
         throw error;
       }
 
-      console.log("✅ Email signin successful:", data.user?.id);
+      console.log("Signin successful:", data.user?.id);
+      
     } catch (error: any) {
-      console.error("❌ Email signin error:", error);
-      setError(error.message || "Signin failed. Please try again.");
+      console.error("Signin error:", error);
+      setState(prev => ({ ...prev, error: error.message, loading: false }));
       throw error;
-    } finally {
-      setLoading(false);
     }
-  };
+  }, []);
 
-  const googleSignIn = async () => {
+  const googleSignIn = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
-      console.log("🔄 Starting Google signin...");
+      setState(prev => ({ ...prev, loading: true, error: null }));
+      console.log("Starting Google signin...");
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -383,24 +412,68 @@ export function useAuth() {
 
       if (error) throw error;
 
-      console.log("✅ Google signin initiated");
+      console.log("Google signin initiated");
+      
     } catch (error: any) {
-      console.error("❌ Google signin error:", error);
-      setError(error.message || "Google signin failed. Please try again.");
+      console.error("Google signin error:", error);
+      setState(prev => ({ ...prev, error: error.message, loading: false }));
       throw error;
-    } finally {
-      setLoading(false);
     }
-  };
+  }, []);
+
+  const updateProfilePicture = useCallback(async (imageUrl: string) => {
+    if (!state.user?.id) {
+      throw new Error("No user logged in");
+    }
+
+    try {
+      console.log("Updating profile picture:", imageUrl);
+
+      // Update in database (handled by updateUserProfile service)
+      // Just update local state for immediate UI feedback
+      setState(prev => ({
+        ...prev,
+        user: prev.user ? {
+          ...prev.user,
+          profilePicture: imageUrl,
+          updatedAt: new Date(),
+        } : null
+      }));
+
+      console.log("Profile picture updated successfully");
+    } catch (error) {
+      console.error("Error updating profile picture:", error);
+      throw error;
+    }
+  }, [state.user?.id]);
+
+  // Session refresh utility
+  const refreshSession = useCallback(async () => {
+    try {
+      console.log("Manually refreshing session...");
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error) throw error;
+      
+      console.log("Session refreshed successfully");
+      return true;
+    } catch (error) {
+      console.error("Session refresh failed:", error);
+      return false;
+    }
+  }, []);
 
   return {
-    user,
-    loading,
-    error,
+    user: state.user,
+    loading: state.loading,
+    error: state.error,
+    sessionValid: state.sessionValid,
     logout,
     emailSignUp,
     emailSignIn,
     googleSignIn,
     updateProfilePicture,
+    refreshSession,
+    validateSession
   };
 }
