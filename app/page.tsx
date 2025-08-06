@@ -21,6 +21,7 @@ import { useState, useEffect } from "react"
 import LoadingSpinner from "@/components/LoadingSpinner"
 import ErrorBoundary from "@/components/ErrorBoundary"
 import DebugInfo from "@/components/DebugInfo"
+import { FriendsPanel, FriendsPanelToggle } from "@/components/friends"
 
 export default function Home() {
   const { user, loading, logout, error: authError, sessionValid } = useAuth()
@@ -29,6 +30,7 @@ export default function Home() {
     "expenses" | "chat" | "profile-setup" | "user-type"
   >("landing")
   const [authMode, setAuthMode] = useState<"signup" | "signin">("signup")
+  const [friendsPanelOpen, setFriendsPanelOpen] = useState(false)
 
   // Debug logging
   useEffect(() => {
@@ -247,7 +249,10 @@ export default function Home() {
           </div>
 
           {/* Main Content with top padding */}
-          <div className="pt-20">
+          <div className={`pt-20 transition-all duration-300 ${
+            friendsPanelOpen && ['chat', 'marketplace', 'expenses'].includes(currentPage) 
+              ? 'pr-80' : ''
+          }`}>
             {currentPage === "swipe" && <SwipePage user={user as any} />}
             {currentPage === "matches" && (
               <MatchesPage 
@@ -262,6 +267,19 @@ export default function Home() {
             {currentPage === "expenses" && <ExpensesPage user={user as any} />}
             {currentPage === "chat" && <ChatPage user={user as any} onBack={() => setCurrentPage("matches")} />}
           </div>
+
+          {/* Friends Panel - Only show on specific pages */}
+          <FriendsPanelToggle
+            isOpen={friendsPanelOpen}
+            onToggle={() => setFriendsPanelOpen(!friendsPanelOpen)}
+            show={['chat', 'marketplace', 'expenses'].includes(currentPage)}
+          />
+
+          <FriendsPanel
+            isOpen={friendsPanelOpen}
+            onClose={() => setFriendsPanelOpen(false)}
+            user={user as any}
+          />
 
           <AppNavigation />
           <SessionRecoveryOverlay />
