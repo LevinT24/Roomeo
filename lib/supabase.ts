@@ -155,13 +155,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     // More aggressive reconnection
     reconnectAfterMs: (tries: number) => {
       return Math.min(tries * 1000, 10000)
-    },
+    }
     
-    // Maximum reconnection attempts
-    maxReconnectAttempts: 10,
-    
-    // Enable logging in development
-    logger: process.env.NODE_ENV === 'development' ? console : undefined
+    // Removed maxReconnectAttempts as it's not a valid Supabase realtime option
+    // Removed the problematic logger property
+    // The Supabase realtime client will use its default logging and reconnection logic
   }
 })
 
