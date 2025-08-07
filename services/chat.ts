@@ -150,7 +150,7 @@ export const sendMessage = async (chatId: string, senderId: string, content: str
 export const createOrGetChat = async (user1Id: string, user2Id: string): Promise<{ success: boolean; chat?: Chat; error?: string }> => {
   try {
     // Check if chat already exists between these users (either direction)
-    const { data: existingChat, error: chatError } = await supabase
+    const { data: existingChats, error: chatError } = await supabase
       .from('chats')
       .select(`
         *,
@@ -158,9 +158,11 @@ export const createOrGetChat = async (user1Id: string, user2Id: string): Promise
         user2:users!chats_user2_id_fkey(id, name, profilepicture)
       `)
       .or(`and(user1_id.eq.${user1Id},user2_id.eq.${user2Id}),and(user1_id.eq.${user2Id},user2_id.eq.${user1Id})`)
-      .single()
 
-    if (existingChat && !chatError) {
+    // If we found existing chats, return the first one
+    if (!chatError && existingChats && existingChats.length > 0) {
+      console.log(`✅ Found existing chat between users ${user1Id} and ${user2Id}:`, existingChats[0].id)
+      const existingChat = existingChats[0]
       // Format existing chat
       const isUser1 = existingChat.user1_id === user1Id
       const otherUser = isUser1 ? existingChat.user2 : existingChat.user1
@@ -175,6 +177,7 @@ export const createOrGetChat = async (user1Id: string, user2Id: string): Promise
     }
 
     // Create new chat if it doesn't exist
+    console.log(`🔄 No existing chat found between users ${user1Id} and ${user2Id}, creating new chat...`)
     const { data: newChat, error: createError } = await supabase
       .from('chats')
       .insert({

@@ -31,6 +31,7 @@ export default function Home() {
   >("landing")
   const [authMode, setAuthMode] = useState<"signup" | "signin">("signup")
   const [friendsPanelOpen, setFriendsPanelOpen] = useState(false)
+  const [chatTarget, setChatTarget] = useState<{sellerId: string, listingId?: string} | null>(null)
 
   // Debug logging
   useEffect(() => {
@@ -259,13 +260,33 @@ export default function Home() {
                 user={user as any} 
                 onStartChat={(matchUserId, matchUserName) => {
                   console.log(`Starting chat with ${matchUserName} (${matchUserId})`)
+                  setChatTarget({ sellerId: matchUserId })
                   setCurrentPage("chat")
                 }}
               />
             )}
-            {currentPage === "marketplace" && <MarketplacePage user={user as any} />}
+            {currentPage === "marketplace" && (
+              <MarketplacePage 
+                user={user as any}
+                onStartChat={(sellerId, listingId) => {
+                  console.log(`Starting chat with seller ${sellerId} for listing ${listingId}`)
+                  setChatTarget({ sellerId, listingId })
+                  setCurrentPage("chat")
+                }}
+              />
+            )}
             {currentPage === "expenses" && <ExpensesPage user={user as any} />}
-            {currentPage === "chat" && <ChatPage user={user as any} onBack={() => setCurrentPage("matches")} />}
+            {currentPage === "chat" && (
+              <ChatPage 
+                user={user as any} 
+                chatTarget={chatTarget}
+                onBack={() => {
+                  const wasFromMarketplace = chatTarget?.listingId
+                  setChatTarget(null)
+                  setCurrentPage(wasFromMarketplace ? "marketplace" : "matches")
+                }} 
+              />
+            )}
           </div>
 
           {/* Friends Panel - Only show on specific pages */}

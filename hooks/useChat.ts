@@ -23,6 +23,7 @@ export function useChat(currentUser: User | null) {
   const [messages, setMessages] = useState<{ [chatId: string]: ChatMessage[] }>({})
   const [loading, setLoading] = useState(true)
   const [activeSubscriptions, setActiveSubscriptions] = useState<{ [chatId: string]: RealtimeChannel }>({})
+  const [pendingChatCreations, setPendingChatCreations] = useState<Set<string>>(new Set())
   
   // Refs for state management
   const lastUserIdRef = useRef<string | null>(null)
@@ -216,30 +217,94 @@ export function useChat(currentUser: User | null) {
       return null
     }
 
+    // Check if there's already a pending creation for this user
+    if (pendingChatCreations.has(otherUserId)) {
+      console.log('⏳ Chat creation already pending for user:', otherUserId)
+      
+      // Wait for pending creation to complete (max 10 seconds)
+      let attempts = 0
+      while (pendingChatCreations.has(otherUserId) && attempts < 50) {
+        await new Promise(resolve => setTimeout(resolve, 200))
+        attempts++
+      }
+      
+      // Check if chat was created during the wait
+      const chatAfterWait = chats.find(chat => 
+        chat.user1_id === otherUserId || chat.user2_id === otherUserId
+      )
+      if (chatAfterWait) {
+        console.log('✅ Found chat created during wait:', chatAfterWait.id)
+        return chatAfterWait
+      }
+    }
+
+    // First check if we already have a chat with this user in local state
+    const existingChat = chats.find(chat => 
+      chat.user1_id === otherUserId || chat.user2_id === otherUserId
+    )
+    if (existingChat) {
+      console.log('✅ Found existing chat in local state:', existingChat.id)
+      return existingChat
+    }
+
+    // Mark as pending to prevent duplicate requests
+    console.log('🔄 Starting chat creation with user:', otherUserId)
+    setPendingChatCreations(prev => {
+      const newSet = new Set(prev)
+      newSet.add(otherUserId)
+      return newSet
+    })
+
     try {
       console.log(`Creating/getting chat with user: ${otherUserId}`)
       
       const result = await createOrGetChat(currentUser.id, otherUserId)
       
       if (result.success && result.chat) {
-        // Add chat to list if it doesn't exist
+        console.log('✅ Chat API call successful:', result.chat.id)
+        
+        // Add chat to list with comprehensive duplicate checking
         setChats(prev => {
-          const exists = prev.find(chat => chat.id === result.chat!.id)
-          if (exists) return prev
+          // Multiple ways to check for existing chat
+          const existsByID = prev.find(chat => chat.id === result.chat!.id)
+          const existsByUsers1 = prev.find(chat => 
+            (chat.user1_id === currentUser.id && chat.user2_id === otherUserId) ||
+            (chat.user1_id === otherUserId && chat.user2_id === currentUser.id)
+          )
+          const existsByUsers2 = prev.find(chat => 
+            chat.user1_id === otherUserId || chat.user2_id === otherUserId
+          )
+
+          if (existsByID || existsByUsers1 || existsByUsers2) {
+            console.log('✅ Chat already exists in state, not adding duplicate')
+            return prev
+          }
+
+          console.log('✅ Adding new chat to state:', result.chat!.id)
           return [result.chat!, ...prev]
         })
         
         console.log(`Chat created/retrieved: ${result.chat.id}`)
         return result.chat
       } else {
-        console.error('Failed to create/get chat:', result.error)
+        console.error('❌ Failed to create/get chat:', result.error)
+        if (result.error?.includes('406')) {
+          console.error('❌ Supabase 406 error - likely RLS policy issue')
+        }
         return null
       }
     } catch (error) {
-      console.error('Error creating/getting chat:', error)
+      console.error('❌ Exception in createOrGetChatWith:', error)
       return null
+    } finally {
+      // Always remove from pending, even on error
+      setPendingChatCreations(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(otherUserId)
+        return newSet
+      })
     }
-  }, [currentUser?.id, sessionValid])
+  }, [currentUser?.id, sessionValid, chats, pendingChatCreations])
 
   // Reconnect all subscriptions when session recovers
   const reconnectAllSubscriptions = useCallback(async () => {

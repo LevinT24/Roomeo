@@ -1,182 +1,303 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-
-interface User {
-  id: string
-  email: string
-  name: string
-  profilePicture: string
-}
+import { Badge } from "@/components/ui/badge"
+import { Search, SlidersHorizontal, Plus, Loader2, AlertCircle } from "lucide-react"
+import ListingCard from "@/components/ListingCard"
+import AddListingPage from "@/components/AddListingPage"
+import { getListings } from "@/services/marketplace"
+import type { Listing, ListingFilters, ListingSortOptions } from "@/types/listing"
+import type { User } from "@/types/user"
 
 interface MarketplacePageProps {
   user: User
+  onStartChat?: (sellerId: string, listingId: string) => void
 }
 
-export default function MarketplacePage({ user }: MarketplacePageProps) {
-  const [items] = useState([
-    {
-      id: "1",
-      title: "Vintage Desk Lamp",
-      price: 35,
-      location: "New York, NY",
-      image: "/placeholder.svg?height=200&width=200&text=Desk+Lamp",
-    },
-    {
-      id: "2",
-      title: "Cozy Armchair",
-      price: 120,
-      location: "San Francisco, CA",
-      image: "/placeholder.svg?height=200&width=200&text=Armchair",
-    },
-    {
-      id: "3",
-      title: "Kitchen Utensil Set",
-      price: 25,
-      location: "Chicago, IL",
-      image: "/placeholder.svg?height=200&width=200&text=Kitchen+Set",
-    },
-    {
-      id: "4",
-      title: "Wall Art - Abstract",
-      price: 45,
-      location: "Austin, TX",
-      image: "/placeholder.svg?height=200&width=200&text=Wall+Art",
-    },
-    {
-      id: "5",
-      title: "Bookshelf - Modern",
-      price: 80,
-      location: "Seattle, WA",
-      image: "/placeholder.svg?height=200&width=200&text=Bookshelf",
-    },
-    {
-      id: "6",
-      title: "Coffee Table - Glass Top",
-      price: 70,
-      location: "Miami, FL",
-      image: "/placeholder.svg?height=200&width=200&text=Coffee+Table",
-    },
-  ])
+export default function MarketplacePage({ user, onStartChat }: MarketplacePageProps) {
+  const [currentView, setCurrentView] = useState<'marketplace' | 'add-listing'>('marketplace')
+  const [listings, setListings] = useState<Listing[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState<ListingFilters>({})
+  const [sortOption, setSortOption] = useState<ListingSortOptions>({ 
+    field: 'created_at', 
+    direction: 'desc' 
+  })
+
+  // Load listings
+  const loadListings = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const currentFilters = {
+        ...filters,
+        search: searchQuery.trim() || undefined
+      }
+      
+      console.log("🔄 Loading listings with filters:", currentFilters, "sort:", sortOption)
+      const data = await getListings(currentFilters, sortOption)
+      setListings(data)
+      console.log("✅ Loaded listings:", data.length)
+      
+    } catch (err) {
+      console.error("❌ Error loading listings:", err)
+      setError(err instanceof Error ? err.message : "Failed to load listings")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load listings on mount and when filters/sort change
+  useEffect(() => {
+    loadListings()
+  }, [filters, sortOption])
+
+  // Handle search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadListings()
+    }, 500)
+    
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const handleChatWithSeller = (sellerId: string, listingId: string) => {
+    console.log("🔄 Starting chat with seller:", sellerId, "for listing:", listingId)
+    onStartChat?.(sellerId, listingId)
+  }
+
+  const handleListingUpdate = () => {
+    // Refresh listings when a listing is updated
+    loadListings()
+  }
+
+  const handleListingDelete = (listingId: string) => {
+    // Remove deleted listing from state immediately
+    setListings(prev => prev.filter(listing => listing.id !== listingId))
+  }
+
+  const activeListingsCount = listings.filter(l => l.status === 'active').length
+  const soldListingsCount = listings.filter(l => l.status === 'sold').length
+
+  // Show Add Listing page
+  if (currentView === 'add-listing') {
+    return (
+      <AddListingPage
+        user={user}
+        onSuccess={() => {
+          setCurrentView('marketplace')
+          loadListings() // Refresh listings
+        }}
+        onCancel={() => setCurrentView('marketplace')}
+      />
+    )
+  }
 
   return (
-    <div className="bg-white text-black min-h-screen">
-      <div className="flex min-h-screen flex-col">
+    <div className="min-h-screen bg-[#F2F5F1] pt-20 pb-20">
+      <div className="container mx-auto px-4 max-w-7xl">
+        
         {/* Header */}
-        <header className="sticky top-0 z-50 bg-white border-b-4 border-black">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex h-16 items-center justify-between">
-              <div className="flex items-center gap-8">
-                <a className="flex items-center gap-2 text-xl font-black text-black" href="#">
-                  <div className="h-6 w-6 bg-[#F05224] border-2 border-black transform rotate-3 flex items-center justify-center shadow-[2px_2px_0px_0px_#000000]">
-                    <span className="text-white font-black text-xs transform -rotate-3">R</span>
-                  </div>
-                  <span className="transform -skew-x-3">ROOMIO</span>
-                </a>
-                <nav className="hidden md:flex items-center gap-6">
-                  <a
-                    className="text-sm font-black text-black hover:text-[#F05224] transition-colors border-b-2 border-transparent hover:border-[#F05224] pb-1"
-                    href="#"
-                  >
-                    HOME
-                  </a>
-                  <a
-                    className="text-sm font-black text-black hover:text-[#F05224] transition-colors border-b-2 border-transparent hover:border-[#F05224] pb-1"
-                    href="#"
-                  >
-                    EXPENSES
-                  </a>
-                  <a className="text-sm font-black text-[#F05224] border-b-2 border-[#F05224] pb-1" href="#">
-                    MARKETPLACE
-                  </a>
-                  <a
-                    className="text-sm font-black text-black hover:text-[#F05224] transition-colors border-b-2 border-transparent hover:border-[#F05224] pb-1"
-                    href="#"
-                  >
-                    MATCHES
-                  </a>
-                </nav>
-              </div>
-              <div className="flex items-center gap-4">
-                <button className="rounded-full p-2 text-black hover:bg-gray-100 hover:text-[#F05224] border-2 border-black">
-                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-                    <path
-                      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V5a2 2 0 10-4 0v.083A6 6 0 004 11v3.159c0 .538-.214 1.055-.595 1.436L2 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    ></path>
-                  </svg>
-                </button>
-                <div
-                  className="h-10 w-10 rounded-full bg-cover bg-center border-2 border-black"
-                  style={{ backgroundImage: `url("${user?.profilePicture || "/placeholder.svg?height=40&width=40"}")` }}
-                ></div>
-              </div>
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+            <div>
+              <h1 className="text-3xl font-black text-[#004D40] mb-2 transform -skew-x-2">
+                MARKETPLACE
+              </h1>
+              <div className="w-20 h-2 bg-[#44C76F] transform skew-x-12"></div>
+              {(activeListingsCount > 0 || soldListingsCount > 0) && (
+                <div className="flex gap-2 mt-3">
+                  <Badge className="bg-[#44C76F] text-[#004D40] font-black border-2 border-[#004D40]">
+                    {activeListingsCount} ACTIVE
+                  </Badge>
+                  {soldListingsCount > 0 && (
+                    <Badge className="bg-gray-500 text-white font-black border-2 border-gray-700">
+                      {soldListingsCount} SOLD
+                    </Badge>
+                  )}
+                </div>
+              )}
             </div>
+            
+            <Button
+              onClick={() => setCurrentView('add-listing')}
+              className="bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black px-6 py-3 border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all whitespace-nowrap"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              SELL ITEM
+            </Button>
           </div>
-        </header>
 
-        {/* Main Content */}
-        <main className="container mx-auto flex-grow px-4 sm:px-6 lg:px-8 py-6 min-h-[calc(100vh-140px)] overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
-              <div className="text-center md:text-left">
-                <h1 className="text-3xl font-black text-black mb-2 transform -skew-x-2">MARKETPLACE</h1>
-                <div className="w-20 h-2 bg-[#F05224] transform skew-x-12"></div>
-              </div>
-              <div className="w-full md:w-auto flex items-center gap-4">
-                <div className="relative flex-grow">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                    <svg className="h-5 w-5 text-black" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        clipRule="evenodd"
-                        d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
-                        fillRule="evenodd"
-                      ></path>
-                    </svg>
-                  </span>
+          {/* Search and Filters */}
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Search */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#004D40]" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search for items..."
+                className="pl-10 border-2 border-[#004D40] font-bold focus:border-[#44C76F]"
+              />
+            </div>
+
+            {/* Filter Button */}
+            <Button
+              onClick={() => setShowFilters(!showFilters)}
+              variant="outline"
+              className="border-2 border-[#004D40] text-[#004D40] hover:bg-[#44C76F]/20 font-black px-4"
+            >
+              <SlidersHorizontal className="h-4 w-4 mr-2" />
+              FILTERS
+            </Button>
+
+            {/* Sort Dropdown */}
+            <select
+              value={`${sortOption.field}-${sortOption.direction}`}
+              onChange={(e) => {
+                const [field, direction] = e.target.value.split('-') as [string, 'asc' | 'desc']
+                setSortOption({ field: field as any, direction })
+              }}
+              className="border-2 border-[#004D40] rounded-lg px-3 py-2 font-bold bg-[#F2F5F1] focus:border-[#44C76F] focus:outline-none"
+            >
+              <option value="created_at-desc">NEWEST FIRST</option>
+              <option value="created_at-asc">OLDEST FIRST</option>
+              <option value="price-asc">PRICE: LOW TO HIGH</option>
+              <option value="price-desc">PRICE: HIGH TO LOW</option>
+              <option value="title-asc">TITLE: A TO Z</option>
+            </select>
+          </div>
+
+          {/* Filters Panel */}
+          {showFilters && (
+            <div className="mt-4 p-4 border-2 border-[#004D40] rounded-lg bg-white">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-black text-[#004D40] mb-1">MIN PRICE</label>
                   <Input
-                    className="w-full rounded-lg border-4 border-black py-2.5 pl-10 pr-4 text-sm font-bold focus:border-[#F05224] focus:ring-[#F05224]"
-                    placeholder="SEARCH FOR ITEMS..."
-                    type="search"
+                    type="number"
+                    placeholder="$0"
+                    value={filters.minPrice || ''}
+                    onChange={(e) => setFilters(prev => ({ 
+                      ...prev, 
+                      minPrice: e.target.value ? Number(e.target.value) : undefined 
+                    }))}
+                    className="border-2 border-[#004D40] font-bold"
                   />
                 </div>
-
-                <Button className="bg-[#F05224] hover:bg-[#D63E1A] text-white font-black px-6 py-3 text-sm border-4 border-black shadow-[4px_4px_0px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#000000] transition-all whitespace-nowrap">
-                  SELL ITEM
+                <div>
+                  <label className="block text-sm font-black text-[#004D40] mb-1">MAX PRICE</label>
+                  <Input
+                    type="number"
+                    placeholder="$1000"
+                    value={filters.maxPrice || ''}
+                    onChange={(e) => setFilters(prev => ({ 
+                      ...prev, 
+                      maxPrice: e.target.value ? Number(e.target.value) : undefined 
+                    }))}
+                    className="border-2 border-[#004D40] font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-black text-[#004D40] mb-1">LOCATION</label>
+                  <Input
+                    placeholder="City, State"
+                    value={filters.location || ''}
+                    onChange={(e) => setFilters(prev => ({ 
+                      ...prev, 
+                      location: e.target.value || undefined 
+                    }))}
+                    className="border-2 border-[#004D40] font-bold"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 mt-4">
+                <Button
+                  onClick={() => setFilters({})}
+                  variant="outline"
+                  className="border-2 border-[#004D40] text-[#004D40] font-black"
+                >
+                  CLEAR FILTERS
                 </Button>
               </div>
             </div>
+          )}
+        </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className="group cursor-pointer overflow-hidden rounded-lg bg-white border-4 border-black shadow-[4px_4px_0px_0px_#000000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#000000]"
+        {/* Content */}
+        <div className="min-h-[400px]">
+          {/* Loading State */}
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-[#44C76F] mx-auto mb-4" />
+                <p className="font-black text-[#004D40]">LOADING LISTINGS...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center max-w-md">
+                <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
+                <p className="font-black text-red-600 mb-4">{error}</p>
+                <Button
+                  onClick={loadListings}
+                  className="bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black border-2 border-[#004D40]"
                 >
-                  <div className="relative">
-                    <div className="aspect-square w-full overflow-hidden">
-                      <img
-                        alt={item.title}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        src={item.image || "/placeholder.svg"}
-                      />
-                    </div>
-                    <div className="absolute bottom-2 right-2 flex items-center justify-center rounded-full bg-[#F05224] border-2 border-black p-1.5 shadow-[2px_2px_0px_0px_#000000]">
-                      <span className="text-sm font-black text-white">${item.price}</span>
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-black text-black truncate transform -skew-x-1">{item.title}</h3>
-                    <p className="text-sm font-bold text-gray-700">{item.location}</p>
-                  </div>
+                  TRY AGAIN
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* No Results */}
+          {!loading && !error && listings.length === 0 && (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center max-w-md">
+                <div className="w-16 h-16 bg-gray-200 border-4 border-[#004D40] rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search className="h-8 w-8 text-gray-500" />
                 </div>
+                <h3 className="font-black text-[#004D40] text-xl mb-2">NO LISTINGS FOUND</h3>
+                <p className="text-gray-600 font-bold mb-4">
+                  {searchQuery || Object.keys(filters).length > 0
+                    ? "Try adjusting your search or filters"
+                    : "Be the first to add a listing!"}
+                </p>
+                <Button
+                  onClick={() => setCurrentView('add-listing')}
+                  className="bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black border-2 border-[#004D40]"
+                >
+                  ADD FIRST LISTING
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Listings Grid */}
+          {!loading && !error && listings.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+              {listings.map((listing) => (
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  currentUser={user}
+                  onChatWithSeller={handleChatWithSeller}
+                  onUpdate={handleListingUpdate}
+                  onDelete={handleListingDelete}
+                  showOwnerActions={true}
+                />
               ))}
             </div>
-          </div>
-        </main>
+          )}
+        </div>
       </div>
     </div>
   )
