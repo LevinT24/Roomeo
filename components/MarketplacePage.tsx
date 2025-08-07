@@ -8,6 +8,7 @@ import { Search, SlidersHorizontal, Plus, Loader2, AlertCircle } from "lucide-re
 import ListingCard from "@/components/ListingCard"
 import AddListingPage from "@/components/AddListingPage"
 import { getListings } from "@/services/marketplace"
+import { createOrGetChat } from "@/services/chat"
 import type { Listing, ListingFilters, ListingSortOptions } from "@/types/listing"
 import type { User } from "@/types/user"
 
@@ -67,9 +68,32 @@ export default function MarketplacePage({ user, onStartChat }: MarketplacePagePr
     return () => clearTimeout(timer)
   }, [searchQuery])
 
-  const handleChatWithSeller = (sellerId: string, listingId: string) => {
+  const handleChatWithSeller = async (sellerId: string, listingId: string) => {
+    // Safety check: prevent user from chatting with themselves
+    if (user.id === sellerId) {
+      console.log("❌ User cannot chat with themselves")
+      return
+    }
+
     console.log("🔄 Starting chat with seller:", sellerId, "for listing:", listingId)
-    onStartChat?.(sellerId, listingId)
+    
+    try {
+      // Use existing createOrGetChat function to handle chat creation/retrieval
+      const result = await createOrGetChat(user.id, sellerId)
+      
+      if (result.success && result.chat) {
+        console.log("✅ Chat ready, navigating to chat page")
+        // Call the parent callback to navigate to chat
+        onStartChat?.(sellerId, listingId)
+      } else {
+        console.error("❌ Failed to create/get chat:", result.error)
+        // Could add toast notification here in the future
+        alert("Unable to start chat with seller. Please try again.")
+      }
+    } catch (error) {
+      console.error("❌ Unexpected error starting chat:", error)
+      alert("An error occurred while starting the chat. Please try again.")
+    }
   }
 
   const handleListingUpdate = () => {
