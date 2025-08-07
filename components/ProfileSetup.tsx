@@ -12,7 +12,7 @@
   import { ProfileData } from "@/types/user";
 
   export default function ProfileSetup({ onComplete }: { onComplete: () => void }) {
-    const { user } = useAuth()
+    const { user, refreshUser } = useAuth()
     const [step, setStep] = useState(1)
     const [userType, setUserType] = useState<"seeker" | "provider" | null>(null)
     const [profileImage, setProfileImage] = useState<File | null>(null)
@@ -97,6 +97,14 @@
         }
         
         console.log("✅ Profile setup completed successfully");
+        
+        // Refresh user data to ensure the app recognizes profile completion
+        console.log("🔄 Refreshing user data...");
+        const refreshSuccess = await refreshUser();
+        if (!refreshSuccess) {
+          console.warn("⚠️ User data refresh failed, but profile was saved");
+        }
+        
         onComplete();
       } catch (error) {
         console.error("❌ Profile setup failed:", error);

@@ -5,7 +5,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://pzolweuvoyz
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b2x3ZXV2b3l6eXJ6ZW96c3hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM3NTg5MjUsImV4cCI6MjA2OTMzNDkyNX0.rm8C9aqUAhq1wAE3BZuEERZ0Mz3bYRFWNSOEws07s70'
 
 // Enhanced session storage wrapper
-class SessionStorage {
+class SupabaseStorage {
   private storageKey = 'supabase.auth.token'
   private fallbackData: any = null
 
@@ -13,7 +13,7 @@ class SessionStorage {
     try {
       // Try localStorage first (primary storage)
       if (typeof window !== 'undefined' && window.localStorage) {
-        const item = localStorage.getItem(key)
+        const item = window.localStorage.getItem(key)
         if (item) {
           // Validate the stored data
           try {
@@ -23,14 +23,14 @@ class SessionStorage {
             }
           } catch {
             // Invalid JSON, remove it
-            localStorage.removeItem(key)
+            window.localStorage.removeItem(key)
           }
         }
       }
 
       // Fallback to sessionStorage
       if (typeof window !== 'undefined' && window.sessionStorage) {
-        return sessionStorage.getItem(key)
+        return window.sessionStorage.getItem(key)
       }
 
       // Final fallback to in-memory storage
@@ -57,12 +57,12 @@ class SessionStorage {
 
       // Store in localStorage (primary)
       if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem(key, value)
+        window.localStorage.setItem(key, value)
       }
 
       // Also store in sessionStorage (backup)
       if (typeof window !== 'undefined' && window.sessionStorage) {
-        sessionStorage.setItem(key, value)
+        window.sessionStorage.setItem(key, value)
       }
 
       // Update fallback
@@ -85,10 +85,10 @@ class SessionStorage {
   removeItem(key: string): void {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.removeItem(key)
+        window.localStorage.removeItem(key)
       }
       if (typeof window !== 'undefined' && window.sessionStorage) {
-        sessionStorage.removeItem(key)
+        window.sessionStorage.removeItem(key)
       }
       this.fallbackData = null
     } catch (error) {
@@ -98,7 +98,7 @@ class SessionStorage {
   }
 }
 
-const sessionStorage = new SessionStorage()
+const customStorage = new SupabaseStorage()
 
 // Debug: Log config to check if env vars are loaded (only in development)
 if (process.env.NODE_ENV === 'development') {
@@ -124,7 +124,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     
     // Use custom storage wrapper for better reliability
-    storage: sessionStorage,
+    storage: customStorage,
     
     // Enable automatic token refresh to prevent session expiration
     autoRefreshToken: true,
@@ -231,7 +231,7 @@ export const sessionUtils = {
       if (error) throw error
       
       // Also clear storage manually
-      sessionStorage.removeItem('supabase.auth.token')
+      customStorage.removeItem('supabase.auth.token')
       
       return { success: true }
     } catch (error) {

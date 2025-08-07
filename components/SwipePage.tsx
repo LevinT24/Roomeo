@@ -73,7 +73,7 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
       // Determine the opposite type to fetch
       const targetUserType = currentUserProfile.usertype === 'seeker' ? 'provider' : 'seeker'
 
-      // Fetch users with the opposite type
+      // Fetch users with the opposite type (restore original functionality first)
       const { data: oppositeUsers, error: usersError } = await supabase
         .from('users')
         .select(`
@@ -98,7 +98,7 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
       }
 
       // Transform the data to match our interface
-      const formattedProfiles: User[] = (oppositeUsers || []).map(profile => ({
+      let formattedProfiles: User[] = (oppositeUsers || []).map(profile => ({
         id: profile.id,
         email: profile.email || '',
         name: profile.name || 'Unknown User',
@@ -115,6 +115,29 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
         }
       }))
 
+      // Only filter out users you've already LIKED (not passed) - safer approach
+      try {
+        const { data: alreadyLiked } = await supabase
+          .from('matches')
+          .select('matched_user_id')
+          .eq('user_id', currentUser.id)
+          .eq('liked', true) // Only filter out likes, not passes
+
+        if (alreadyLiked && alreadyLiked.length > 0) {
+          const likedUserIds = alreadyLiked.map(record => record.matched_user_id)
+          const beforeCount = formattedProfiles.length
+          formattedProfiles = formattedProfiles.filter(profile => 
+            !likedUserIds.includes(profile.id)
+          )
+          const afterCount = formattedProfiles.length
+          
+          console.log(`🔍 Filtered out ${beforeCount - afterCount} already liked users, ${afterCount} profiles remaining`)
+        }
+      } catch (filterError) {
+        console.warn('Could not filter already liked users, showing all profiles:', filterError)
+        // Continue with all profiles if filtering fails
+      }
+
       setProfiles(formattedProfiles)
     } catch (err) {
       console.error('Unexpected error:', err)
@@ -127,6 +150,11 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
   const handleSwipe = async (liked: boolean) => {
     const currentProfile = profiles[currentIndex]
     
+    // Always move to next profile first (restore original behavior)
+    console.log(liked ? "Liked!" : "Passed!")
+    setCurrentIndex((prev) => prev + 1)
+    
+    // Only save likes to database (restore original functionality)
     if (liked && currentUser?.id) {
       try {
         // Save the like to matches table
@@ -160,20 +188,20 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
             // Create or get existing chat
             await createChatForMatch(currentUser.id, currentProfile.id)
             
-            // Show match animation/notification (TODO: Add visual feedback)
+            // Show match animation/notification
             alert(`🎉 It's a Match with ${currentProfile.name}! You can now chat!`)
-            
-            // Navigate to matches page to see the new match
-            // For now we'll let the user continue swiping
           }
         }
       } catch (err) {
         console.error('Error saving match:', err)
       }
     }
-
-    console.log(liked ? "Liked!" : "Passed!")
-    setCurrentIndex((prev) => prev + 1)
+    
+    // Optionally track passes in memory for this session only (non-breaking)
+    if (!liked && currentUser?.id) {
+      // Could add local storage or session storage here for better UX
+      // without affecting database or existing functionality
+    }
   }
 
   const createChatForMatch = async (user1Id: string, user2Id: string) => {
@@ -185,7 +213,7 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
         .or(`and(user1_id.eq.${user1Id},user2_id.eq.${user2Id}),and(user1_id.eq.${user2Id},user2_id.eq.${user1Id})`)
         .single()
 
-      if (existingChat) {
+      if (!chatCheckError && existingChat) {
         console.log('✅ Chat already exists:', existingChat.id)
         return existingChat
       }
@@ -196,7 +224,8 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
         .insert({
           user1_id: user1Id,
           user2_id: user2Id,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .select()
         .single()
@@ -206,7 +235,7 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
         return null
       }
 
-      console.log('✅ New chat created:', newChat.id)
+      console.log('✅ New chat created:', newChat?.id)
       return newChat
     } catch (error) {
       console.error('Error in createChatForMatch:', error)

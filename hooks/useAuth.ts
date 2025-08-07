@@ -463,6 +463,31 @@ export function useAuth() {
     }
   }, []);
 
+  // User refresh utility
+  const refreshUser = useCallback(async () => {
+    try {
+      console.log("Manually refreshing user data...");
+      const { data: { user: authUser }, error } = await supabase.auth.getUser();
+      
+      if (error) throw error;
+      if (!authUser) {
+        console.log("No authenticated user found");
+        return false;
+      }
+
+      // Force reload the profile from database
+      const loadedUser = await loadUserProfile(authUser);
+      if (loadedUser) {
+        console.log("User data refreshed successfully");
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("User refresh failed:", error);
+      return false;
+    }
+  }, []);
+
   return {
     user: state.user,
     loading: state.loading,
@@ -474,6 +499,7 @@ export function useAuth() {
     googleSignIn,
     updateProfilePicture,
     refreshSession,
+    refreshUser,
     validateSession
   };
 }
