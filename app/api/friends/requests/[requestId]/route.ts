@@ -20,7 +20,7 @@ async function createAuthenticatedSupabaseClient(request: NextRequest) {
 
   const token = authHeader.split(" ")[1]
   
-  // Create Supabase client
+  // Create Supabase client with anon key (for calling functions)
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -32,13 +32,6 @@ async function createAuthenticatedSupabaseClient(request: NextRequest) {
   if (error || !user) {
     return { supabase: null, user: null, error: "Invalid token" }
   }
-
-  // CRITICAL: Set the session on the client for RLS context
-  // This ensures auth.uid() works in RLS policies
-  await supabase.auth.setSession({
-    access_token: token,
-    refresh_token: '', // Not needed for this operation
-  })
 
   return { supabase, user, error: null }
 }
@@ -63,87 +56,24 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: friendRequest, error: requestError } = await supabase
-      .from('friend_requests')
-      .select('id, sender_id, receiver_id, status')
-      .eq('id', requestId)
-      .eq('receiver_id', user.id)
-      .eq('status', 'pending')
-      .single()
-
-    if (requestError || !friendRequest) {
-      return NextResponse.json({ error: 'Friend request not found or already processed' }, { status: 404 })
-    }
-
-    // ✅ UPDATED SELECT: lowercase 'profilepicture' & added location
-    const { data: senderProfile, error: senderError } = await supabase
-      .from('users')
-      .select('id, name, profilepicture, location')
-      .eq('id', friendRequest.sender_id)
-      .single()
-
-    if (senderError) {
-      console.error('Error fetching sender profile:', senderError)
-    }
-
-    const saferSenderProfile: UserProfile = {
-      id: friendRequest.sender_id,
-      name: senderProfile?.name || 'Unknown User',
-      profilepicture: senderProfile?.profilepicture || null,
-      location: senderProfile?.location || null
-    }
-
-    if (action === 'accept') {
-      const { error: acceptError } = await supabase.rpc('accept_friend_request', {
-        request_id: requestId
+    // Use stored function
+    const { data: result, error: functionError } = await supabase
+      .rpc('handle_friend_request', {
+        request_id: requestId,
+        user_id: user.id,
+        action: action
       })
 
-      if (acceptError) {
-        if (acceptError.message?.includes('function') || acceptError.message?.includes('does not exist')) {
-          const { error: updateError } = await supabase
-            .from('friend_requests')
-            .update({ status: 'accepted', updated_at: new Date().toISOString() })
-            .eq('id', requestId)
-
-          if (updateError) {
-            return NextResponse.json({ error: 'Failed to accept friend request' }, { status: 500 })
-          }
-
-          const smallerId = friendRequest.sender_id < user.id ? friendRequest.sender_id : user.id
-          const largerId = friendRequest.sender_id > user.id ? friendRequest.sender_id : user.id
-
-          const { error: friendshipError } = await supabase
-            .from('friendships')
-            .insert({ user1_id: smallerId, user2_id: largerId })
-
-          if (friendshipError && !friendshipError.message?.includes('duplicate')) {
-            return NextResponse.json({ error: 'Failed to create friendship' }, { status: 500 })
-          }
-        } else {
-          return NextResponse.json({ error: 'Failed to accept friend request' }, { status: 500 })
-        }
-      }
-
-      return NextResponse.json({
-        message: 'Friend request accepted successfully',
-        friendship: {
-          friendId: saferSenderProfile.id,
-          name: saferSenderProfile.name,
-          profilePicture: saferSenderProfile.profilepicture
-        }
-      })
-    } else if (action === 'decline') {
-      const { error: declineError } = await supabase
-        .from('friend_requests')
-        .update({ status: 'declined', updated_at: new Date().toISOString() })
-        .eq('id', requestId)
-
-      if (declineError) {
-        return NextResponse.json({ error: 'Failed to decline friend request' }, { status: 500 })
-      }
-
-      return NextResponse.json({ message: 'Friend request declined successfully' })
+    if (functionError) {
+      console.error('Error handling friend request:', functionError)
+      return NextResponse.json({ error: 'Failed to process friend request' }, { status: 500 })
     }
+
+    if (!result?.success) {
+      return NextResponse.json({ error: result?.error || 'Failed to process friend request' }, { status: 404 })
+    }
+
+    return NextResponse.json(result)
 
   } catch (error) {
     console.error('Friend request action API error:', error)

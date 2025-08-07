@@ -15,7 +15,7 @@ async function createAuthenticatedSupabaseClient(request: NextRequest) {
 
   const token = authHeader.split(" ")[1]
   
-  // Create Supabase client
+  // Create Supabase client with anon key (for calling functions)
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -28,129 +28,48 @@ async function createAuthenticatedSupabaseClient(request: NextRequest) {
     return { supabase: null, user: null, error: "Invalid token" }
   }
 
-  // CRITICAL: Set the session on the client for RLS context
-  // This ensures auth.uid() works in RLS policies
-  await supabase.auth.setSession({
-    access_token: token,
-    refresh_token: '', // Not needed for this operation
-  })
-
   return { supabase, user, error: null }
 }
 
 // GET /api/friends/requests - Get pending friend requests
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 GET /api/friends/requests - Starting request')
+    
     // Create authenticated Supabase client with user context
     const { supabase, user, error } = await createAuthenticatedSupabaseClient(request)
     
     if (error || !user || !supabase) {
+      console.error('❌ Authentication failed:', error)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    console.log('✅ Authentication successful for user:', user.id)
     console.log('🔍 Fetching friend requests for user:', user.id)
 
-    // Get friend requests without joins first
-    const { data: requests, error: requestsError } = await supabase
-      .from('friend_requests')
-      .select('id, sender_id, receiver_id, status, created_at')
-      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
+    // Use stored function instead of direct queries
+    const { data: result, error: functionError } = await supabase
+      .rpc('get_friend_requests', { user_id: user.id })
 
-    if (requestsError) {
-      if (requestsError.code === 'PGRST116') {
-        return NextResponse.json({ 
-          sentRequests: [], 
-          receivedRequests: [], 
-          totalPending: 0 
-        })
-      }
-      console.error('Error fetching friend requests:', requestsError)
+    if (functionError) {
+      console.error('❌ Error fetching friend requests:', functionError)
       return NextResponse.json({ error: 'Failed to fetch requests' }, { status: 500 })
     }
 
-    console.log('✅ Found friend requests:', requests?.length || 0)
-
-    if (!requests || requests.length === 0) {
-      return NextResponse.json({ 
-        sentRequests: [], 
-        receivedRequests: [], 
-        totalPending: 0 
-      })
-    }
-
-    // Get unique user IDs from requests
-    const userIds = Array.from(new Set([
-      ...requests.map(req => req.sender_id),
-      ...requests.map(req => req.receiver_id)
-    ]))
-
-    console.log('🔍 Fetching user profiles for requests:', userIds.length)
-
-    // Fetch user profiles separately - USING CORRECT COLUMN NAME
-    const { data: userProfiles, error: profilesError } = await supabase
-      .from('users')
-      .select('id, name, profilepicture, location') // Changed to lowercase 'profilepicture'
-      .in('id', userIds)
-
-    if (profilesError) {
-      console.error('Error fetching user profiles:', profilesError)
-    }
-
-    // Create a map of user profiles
-    const profilesMap = new Map()
-    userProfiles?.forEach(profile => {
-      profilesMap.set(profile.id, {
-        id: profile.id,
-        name: profile.name || 'Unknown User',
-        profilePicture: profile.profilepicture || null // Using lowercase column name
-      })
+    console.log('✅ Successfully fetched friend requests:', {
+      sent: result?.sentRequests?.length || 0,
+      received: result?.receivedRequests?.length || 0,
+      total: result?.totalPending || 0
     })
 
-    // Separate sent and received requests
-    const sentRequests = requests.filter(req => req.sender_id === user.id).map(req => {
-      const receiverProfile = profilesMap.get(req.receiver_id) || {
-        name: 'Unknown User',
-        profilePicture: null
-      }
-      
-      return {
-        id: req.id,
-        type: 'sent' as const,
-        userId: req.receiver_id,
-        name: receiverProfile.name,
-        profilePicture: receiverProfile.profilePicture,
-        createdAt: req.created_at
-      }
-    })
-
-    const receivedRequests = requests.filter(req => req.receiver_id === user.id).map(req => {
-      const senderProfile = profilesMap.get(req.sender_id) || {
-        name: 'Unknown User',
-        profilePicture: null
-      }
-      
-      return {
-        id: req.id,
-        type: 'received' as const,
-        userId: req.sender_id,
-        name: senderProfile.name,
-        profilePicture: senderProfile.profilePicture,
-        createdAt: req.created_at
-      }
-    })
-
-    console.log('✅ Returning requests - sent:', sentRequests.length, 'received:', receivedRequests.length)
-
-    return NextResponse.json({
-      sentRequests,
-      receivedRequests,
-      totalPending: sentRequests.length + receivedRequests.length
+    return NextResponse.json(result || {
+      sentRequests: [],
+      receivedRequests: [],
+      totalPending: 0
     })
 
   } catch (error) {
-    console.error('Friend requests API error:', error)
+    console.error('❌ Friend requests API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -171,84 +90,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (user.id === receiverId) {
-      return NextResponse.json({ error: 'Cannot send friend request to yourself' }, { status: 400 })
-    }
-
     console.log('🔍 Sending friend request from', user.id, 'to', receiverId)
 
-    // Check if receiver exists - USING CORRECT COLUMN NAME
-    const { data: receiver, error: receiverError } = await supabase
-      .from('users')
-      .select('id, name, profilepicture, location') // Changed to lowercase 'profilepicture'
-      .eq('id', receiverId)
-      .single()
-
-    if (receiverError || !receiver) {
-      console.error('Receiver not found:', receiverError)
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    // Check for existing request or friendship
-    const { data: existingRequest } = await supabase
-      .from('friend_requests')
-      .select('id, status')
-      .or(`and(sender_id.eq.${user.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user.id})`)
-      .single()
-
-    if (existingRequest) {
-      return NextResponse.json({ error: 'Friend request already exists' }, { status: 409 })
-    }
-
-    // Check if already friends
-    const smallerId = user.id < receiverId ? user.id : receiverId
-    const largerId = user.id > receiverId ? user.id : receiverId
-    
-    const { data: existingFriendship } = await supabase
-      .from('friendships')
-      .select('id')
-      .eq('user1_id', smallerId)
-      .eq('user2_id', largerId)
-      .single()
-
-    if (existingFriendship) {
-      return NextResponse.json({ error: 'Already friends with this user' }, { status: 409 })
-    }
-
-    // Create friend request
-    const { data: newRequest, error: createError } = await supabase
-      .from('friend_requests')
-      .insert({
-        sender_id: user.id,
-        receiver_id: receiverId
+    // Use stored function instead of direct INSERT
+    const { data: result, error: functionError } = await supabase
+      .rpc('send_friend_request', {
+        sender_user_id: user.id,
+        receiver_user_id: receiverId
       })
-      .select('id, created_at')
-      .single()
 
-    if (createError) {
-      console.error('Error creating friend request:', {
-        message: createError.message,
-        code: createError.code,
-        details: createError.details,
-        hint: createError.hint,
-        user_id: user.id,
-        receiver_id: receiverId
-      })
+    if (functionError) {
+      console.error('Error calling send_friend_request function:', functionError)
       return NextResponse.json({ error: 'Failed to send friend request' }, { status: 500 })
     }
 
-    console.log('✅ Friend request created successfully:', newRequest?.id)
+    if (!result?.success) {
+      return NextResponse.json({ error: result?.error || 'Failed to send friend request' }, { status: 409 })
+    }
+
+    console.log('✅ Friend request sent successfully:', result.request_id)
 
     return NextResponse.json({
       message: 'Friend request sent successfully',
-      request: {
-        id: newRequest?.id,
-        type: 'sent',
-        userId: receiverId,
-        name: receiver.name || 'Unknown User',
-        profilePicture: receiver.profilepicture || null, // Using lowercase column name
-        createdAt: newRequest?.created_at
-      }
+      request: result.request
     })
 
   } catch (error) {

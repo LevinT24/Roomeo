@@ -26,6 +26,6 @@ On the swipe/matching page, users should only see **profiles of the opposite typ
 - Make simple, isolated changes — avoid large refactors unless necessary
 - Later we are going to add the marketplace feature
 - Then we are going to add Splitwise payment feature
-- Chat feature for matches users
-
+- Chat feature for added friends
+- we have working chat feature for matched profiles
 ---

@@ -15,7 +15,7 @@ async function createAuthenticatedSupabaseClient(request: NextRequest) {
 
   const token = authHeader.split(" ")[1]
   
-  // Create Supabase client
+  // Create Supabase client with anon key (for calling functions)
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -27,13 +27,6 @@ async function createAuthenticatedSupabaseClient(request: NextRequest) {
   if (error || !user) {
     return { supabase: null, user: null, error: "Invalid token" }
   }
-
-  // CRITICAL: Set the session on the client for RLS context
-  // This ensures auth.uid() works in RLS policies
-  await supabase.auth.setSession({
-    access_token: token,
-    refresh_token: '', // Not needed for this operation
-  })
 
   return { supabase, user, error: null }
 }
@@ -53,35 +46,24 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get the friendship to verify user is part of it
-    const { data: friendship, error: friendshipError } = await supabase
-      .from('friendships')
-      .select('id, user1_id, user2_id')
-      .eq('id', friendshipId)
-      .single()
+    // Use stored function
+    const { data: result, error: functionError } = await supabase
+      .rpc('remove_friendship', {
+        friendship_id: friendshipId,
+        user_id: user.id
+      })
 
-    if (friendshipError || !friendship) {
-      return NextResponse.json({ error: 'Friendship not found' }, { status: 404 })
-    }
-
-    // Verify user is part of this friendship
-    if (friendship.user1_id !== user.id && friendship.user2_id !== user.id) {
-      return NextResponse.json({ error: 'Unauthorized to remove this friendship' }, { status: 403 })
-    }
-
-    // Delete the friendship
-    const { error: deleteError } = await supabase
-      .from('friendships')
-      .delete()
-      .eq('id', friendshipId)
-
-    if (deleteError) {
-      console.error('Error deleting friendship:', deleteError)
+    if (functionError) {
+      console.error('Error removing friendship:', functionError)
       return NextResponse.json({ error: 'Failed to remove friend' }, { status: 500 })
     }
 
+    if (!result?.success) {
+      return NextResponse.json({ error: result?.error || 'Failed to remove friend' }, { status: 404 })
+    }
+
     return NextResponse.json({
-      message: 'Friend removed successfully'
+      message: result.message
     })
 
   } catch (error) {
