@@ -465,8 +465,8 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
               </p>
             </div>
 
-            <div className="flex justify-center items-center space-x-8">
-              {/* Cross/Pass Button */}
+            <div className="flex justify-between items-center">
+              {/* Cross/Pass Button - Left Side */}
               <button
                 className="size-20 bg-[#F2F5F1] border-4 border-[#004D40] text-red-500 hover:bg-red-50 flex items-center justify-center rounded-full shadow-[6px_6px_0px_0px_#004D40] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[3px_3px_0px_0px_#004D40] transition-all group"
                 onClick={() => handleSwipe(false)}
@@ -480,7 +480,7 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
                 </svg>
               </button>
 
-              {/* Heart/Like Button */}
+              {/* Tick/Like Button - Right Side */}
               <button
                 className="size-24 bg-[#44C76F] text-[#004D40] border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] flex items-center justify-center rounded-full transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#004D40] transition-all group"
                 onClick={() => handleSwipe(true)}
@@ -490,7 +490,7 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
                   fill="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                 </svg>
               </button>
             </div>
