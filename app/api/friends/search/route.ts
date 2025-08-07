@@ -1,6 +1,42 @@
-// app/api/friends/search/route.ts
-import { supabase } from '@/lib/supabase'
+// ==========================================
+// FIXED: app/api/friends/search/route.ts
+// ==========================================
+
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+// Helper function to create authenticated Supabase client
+async function createAuthenticatedSupabaseClient(request: NextRequest) {
+  const authHeader = request.headers.get("Authorization")
+  
+  if (!authHeader?.startsWith("Bearer ")) {
+    return { supabase: null, user: null, error: "Missing authorization header" }
+  }
+
+  const token = authHeader.split(" ")[1]
+  
+  // Create Supabase client
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+  
+  // Verify the token and get user
+  const { data: { user }, error } = await supabase.auth.getUser(token)
+  
+  if (error || !user) {
+    return { supabase: null, user: null, error: "Invalid token" }
+  }
+
+  // CRITICAL: Set the session on the client for RLS context
+  // This ensures auth.uid() works in RLS policies
+  await supabase.auth.setSession({
+    access_token: token,
+    refresh_token: '', // Not needed for this operation
+  })
+
+  return { supabase, user, error: null }
+}
 
 // GET /api/friends/search?q={query} - Search users by name
 export async function GET(request: NextRequest) {
@@ -12,16 +48,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ users: [] })
     }
 
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
+    // Use authenticated client
+    const { supabase, user, error } = await createAuthenticatedSupabaseClient(request)
+    
+    if (error || !user || !supabase) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Search for users by name (excluding current user)
+    console.log('🔍 Searching for users with query:', query.trim())
+
+    // Search for users by name (excluding current user) - using correct column names
     const { data: users, error: searchError } = await supabase
       .from('users')
-      .select('id, name, profilePicture, location')
+      .select('id, name, profilepicture, location') // Note: using lowercase 'profilepicture'
       .ilike('name', `%${query.trim()}%`)
       .neq('id', user.id)
       .limit(20)
@@ -31,11 +70,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to search users' }, { status: 500 })
     }
 
+    console.log('✅ Found users:', users?.length || 0)
+
+    if (!users || users.length === 0) {
+      return NextResponse.json({ users: [] })
+    }
+
+    // Get user IDs for relationship checking
+    const userIds = users.map(u => u.id)
+
+    console.log('🔍 Checking relationships for user IDs:', userIds.length)
+
     // Get current user's friend requests (sent and received) - handle gracefully if table doesn't exist
     const { data: friendRequests, error: requestsError } = await supabase
       .from('friend_requests')
       .select('sender_id, receiver_id, status')
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .eq('status', 'pending')
 
     // Get current user's friendships - handle gracefully if table doesn't exist  
     const { data: friendships, error: friendshipsError } = await supabase
@@ -43,7 +94,7 @@ export async function GET(request: NextRequest) {
       .select('user1_id, user2_id')
       .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
 
-    // Log errors for debugging
+    // Log errors for debugging but continue
     if (requestsError) {
       console.error('Friend requests error:', {
         message: requestsError.message,
@@ -64,6 +115,8 @@ export async function GET(request: NextRequest) {
     const safeFriendRequests = (requestsError?.code === 'PGRST116' || requestsError?.message?.includes('relation') || requestsError?.message?.includes('does not exist')) ? [] : (friendRequests || [])
     const safeFriendships = (friendshipsError?.code === 'PGRST116' || friendshipsError?.message?.includes('relation') || friendshipsError?.message?.includes('does not exist')) ? [] : (friendships || [])
 
+    console.log('✅ Found relationships - requests:', safeFriendRequests.length, 'friendships:', safeFriendships.length)
+
     // Create sets for quick lookup
     const friendIds = new Set()
     const sentRequestIds = new Set()
@@ -83,7 +136,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Add relationship status to each user
-    const usersWithStatus = users?.map(foundUser => {
+    const usersWithStatus = users.map(foundUser => {
       let relationshipStatus = 'stranger'
       
       if (friendIds.has(foundUser.id)) {
@@ -97,11 +150,13 @@ export async function GET(request: NextRequest) {
       return {
         id: foundUser.id,
         name: foundUser.name,
-        profilePicture: foundUser.profilePicture,
+        profilePicture: foundUser.profilepicture || null, // Note: using lowercase column name
         location: foundUser.location,
         relationshipStatus
       }
-    }) || []
+    })
+
+    console.log('✅ Returning users with status:', usersWithStatus.length)
 
     return NextResponse.json({ users: usersWithStatus })
 

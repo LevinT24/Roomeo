@@ -1,10 +1,14 @@
-// components/friends/UserSearch.tsx
+// ==========================================
+// 4. UPDATE: components/friends/UserSearch.tsx
+// ==========================================
+
 "use client"
 
 import { useState, useEffect, useCallback } from 'react'
 import { Search, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import UserCard from './UserCard'
+import { authAPI } from '@/lib/api'
 import type { User } from '@/types/user'
 
 interface UserSearchProps {
@@ -39,17 +43,18 @@ export default function UserSearch({ user, onRequestUpdate }: UserSearchProps) {
       setError('')
 
       try {
-        const response = await fetch(`/api/friends/search?q=${encodeURIComponent(searchQuery.trim())}`)
+        const response = await authAPI.get(`/api/friends/search?q=${encodeURIComponent(searchQuery.trim())}`)
         
         if (!response.ok) {
-          throw new Error('Search failed')
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Search failed')
         }
 
         const data = await response.json()
         setSearchResults(data.users || [])
       } catch (err) {
         console.error('Search error:', err)
-        setError('Failed to search users. Please try again.')
+        setError(err instanceof Error ? err.message : 'Failed to search users. Please try again.')
         setSearchResults([])
       } finally {
         setLoading(false)

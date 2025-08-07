@@ -1,9 +1,13 @@
-// components/friends/FriendsPanelToggle.tsx
+// ==========================================
+// 6. UPDATE: components/friends/FriendsPanelToggle.tsx
+// ==========================================
+
 "use client"
 
 import { useState, useEffect } from 'react'
 import { Users, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { authAPI } from '@/lib/api'
 
 interface FriendsPanelToggleProps {
   isOpen: boolean
@@ -26,7 +30,7 @@ export default function FriendsPanelToggle({ isOpen, onToggle, show }: FriendsPa
 
   const fetchPendingCount = async () => {
     try {
-      const response = await fetch('/api/friends/requests')
+      const response = await authAPI.get('/api/friends/requests')
       if (response.ok) {
         const data = await response.json()
         setPendingCount(data.receivedRequests?.length || 0)

@@ -1,4 +1,7 @@
-// components/friends/PendingRequests.tsx
+// ==========================================
+// 3. UPDATE: components/friends/PendingRequests.tsx
+// ==========================================
+
 "use client"
 
 import { useState, useEffect } from 'react'
@@ -6,6 +9,7 @@ import { Check, X, Clock, Send, Inbox } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import LoadingSpinner from '@/components/LoadingSpinner'
+import { authAPI } from '@/lib/api'
 import type { User } from '@/types/user'
 
 interface PendingRequestsProps {
@@ -38,10 +42,11 @@ export default function PendingRequests({ user, onRequestUpdate }: PendingReques
     setError('')
     
     try {
-      const response = await fetch('/api/friends/requests')
+      const response = await authAPI.get('/api/friends/requests')
       
       if (!response.ok) {
-        throw new Error('Failed to fetch requests')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch requests')
       }
 
       const data = await response.json()
@@ -49,7 +54,7 @@ export default function PendingRequests({ user, onRequestUpdate }: PendingReques
       setReceivedRequests(data.receivedRequests || [])
     } catch (err) {
       console.error('Error fetching friend requests:', err)
-      setError('Failed to load friend requests')
+      setError(err instanceof Error ? err.message : 'Failed to load friend requests')
     } finally {
       setLoading(false)
     }
@@ -58,11 +63,7 @@ export default function PendingRequests({ user, onRequestUpdate }: PendingReques
   const handleAcceptRequest = async (requestId: string) => {
     setActionLoading(requestId)
     try {
-      const response = await fetch(`/api/friends/requests/${requestId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'accept' })
-      })
+      const response = await authAPI.patch(`/api/friends/requests/${requestId}`, { action: 'accept' })
 
       if (response.ok) {
         await fetchRequests()
@@ -81,11 +82,7 @@ export default function PendingRequests({ user, onRequestUpdate }: PendingReques
   const handleDeclineRequest = async (requestId: string) => {
     setActionLoading(requestId)
     try {
-      const response = await fetch(`/api/friends/requests/${requestId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'decline' })
-      })
+      const response = await authAPI.patch(`/api/friends/requests/${requestId}`, { action: 'decline' })
 
       if (response.ok) {
         await fetchRequests()
@@ -104,9 +101,7 @@ export default function PendingRequests({ user, onRequestUpdate }: PendingReques
   const handleCancelRequest = async (requestId: string) => {
     setActionLoading(requestId)
     try {
-      const response = await fetch(`/api/friends/requests/${requestId}`, {
-        method: 'DELETE'
-      })
+      const response = await authAPI.delete(`/api/friends/requests/${requestId}`)
 
       if (response.ok) {
         await fetchRequests()

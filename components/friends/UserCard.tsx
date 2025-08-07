@@ -1,10 +1,14 @@
-// components/friends/UserCard.tsx
+// ==========================================
+// 5. UPDATE: components/friends/UserCard.tsx
+// ==========================================
+
 "use client"
 
 import { useState } from 'react'
 import { UserPlus, Check, X, MessageCircle, Trash2, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { authAPI } from '@/lib/api'
 import type { User } from '@/types/user'
 
 interface UserCardProps {
@@ -37,11 +41,7 @@ export default function UserCard({
   const handleSendRequest = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/friends/requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ receiverId: user.id })
-      })
+      const response = await authAPI.post('/api/friends/requests', { receiverId: user.id })
 
       if (response.ok) {
         setLocalStatus('request_sent')
@@ -60,11 +60,7 @@ export default function UserCard({
   const handleAcceptRequest = async (requestId: string) => {
     setLoading(true)
     try {
-      const response = await fetch(`/api/friends/requests/${requestId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'accept' })
-      })
+      const response = await authAPI.patch(`/api/friends/requests/${requestId}`, { action: 'accept' })
 
       if (response.ok) {
         setLocalStatus('friend')
@@ -83,11 +79,7 @@ export default function UserCard({
   const handleDeclineRequest = async (requestId: string) => {
     setLoading(true)
     try {
-      const response = await fetch(`/api/friends/requests/${requestId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'decline' })
-      })
+      const response = await authAPI.patch(`/api/friends/requests/${requestId}`, { action: 'decline' })
 
       if (response.ok) {
         setLocalStatus('stranger')
@@ -108,9 +100,7 @@ export default function UserCard({
     
     setLoading(true)
     try {
-      const response = await fetch(`/api/friends/${friendshipId}`, {
-        method: 'DELETE'
-      })
+      const response = await authAPI.delete(`/api/friends/${friendshipId}`)
 
       if (response.ok) {
         onActionComplete()

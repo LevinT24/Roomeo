@@ -1,6 +1,42 @@
-// app/api/friends/[friendshipId]/route.ts
-import { supabase } from '@/lib/supabase'
+// ==========================================
+// 5. UPDATE: app/api/friends/[friendshipId]/route.ts
+// ==========================================
+
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+// Helper function to create authenticated Supabase client
+async function createAuthenticatedSupabaseClient(request: NextRequest) {
+  const authHeader = request.headers.get("Authorization")
+  
+  if (!authHeader?.startsWith("Bearer ")) {
+    return { supabase: null, user: null, error: "Missing authorization header" }
+  }
+
+  const token = authHeader.split(" ")[1]
+  
+  // Create Supabase client
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+  
+  // Verify the token and get user
+  const { data: { user }, error } = await supabase.auth.getUser(token)
+  
+  if (error || !user) {
+    return { supabase: null, user: null, error: "Invalid token" }
+  }
+
+  // CRITICAL: Set the session on the client for RLS context
+  // This ensures auth.uid() works in RLS policies
+  await supabase.auth.setSession({
+    access_token: token,
+    refresh_token: '', // Not needed for this operation
+  })
+
+  return { supabase, user, error: null }
+}
 
 // DELETE /api/friends/[friendshipId] - Remove/unfriend a user
 export async function DELETE(
@@ -10,9 +46,10 @@ export async function DELETE(
   try {
     const { friendshipId } = params
 
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
+    // Create authenticated Supabase client with user context
+    const { supabase, user, error } = await createAuthenticatedSupabaseClient(request)
+    
+    if (error || !user || !supabase) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
