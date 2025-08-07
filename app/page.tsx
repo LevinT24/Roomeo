@@ -233,7 +233,7 @@ export default function Home() {
         <div className="min-h-screen bg-[#F2F5F1]">
           {/* Settings Header */}
           <div className="fixed top-0 left-0 right-0 bg-[#F2F5F1] border-b-4 border-[#004D40] px-4 py-3 z-40">
-            <div className="flex justify-between items-center max-w-md mx-auto">
+            <div className="flex justify-between items-center w-full">
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-[#44C76F] border-2 border-[#004D40] transform rotate-3 flex items-center justify-center shadow-[2px_2px_0px_0px_#004D40]">
                   <span className="text-[#004D40] font-black text-sm transform -rotate-3">R</span>

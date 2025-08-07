@@ -50,8 +50,29 @@ export default function PendingRequests({ user, onRequestUpdate }: PendingReques
       }
 
       const data = await response.json()
-      setSentRequests(data.sentRequests || [])
-      setReceivedRequests(data.receivedRequests || [])
+      
+      // Transform sent requests to match component interface
+      const transformedSentRequests = (data.sentRequests || []).map((request: any) => ({
+        id: request.id,
+        type: 'sent' as const,
+        userId: request.receiver_id,
+        name: request.receiver?.name || 'Unknown User',
+        profilePicture: request.receiver?.profilePicture || null,
+        createdAt: request.created_at
+      }))
+      
+      // Transform received requests to match component interface
+      const transformedReceivedRequests = (data.receivedRequests || []).map((request: any) => ({
+        id: request.id,
+        type: 'received' as const,
+        userId: request.sender_id,
+        name: request.sender?.name || 'Unknown User', 
+        profilePicture: request.sender?.profilePicture || null,
+        createdAt: request.created_at
+      }))
+      
+      setSentRequests(transformedSentRequests)
+      setReceivedRequests(transformedReceivedRequests)
     } catch (err) {
       console.error('Error fetching friend requests:', err)
       setError(err instanceof Error ? err.message : 'Failed to load friend requests')

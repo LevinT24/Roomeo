@@ -54,53 +54,8 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
     <div className="bg-white text-black min-h-screen">
       <div className="relative flex size-full min-h-screen flex-col overflow-x-hidden">
         <div className="layout-container flex h-full grow flex-col">
-          {/* Header */}
-          <header className="flex items-center justify-between whitespace-nowrap border-b-4 border-black px-10 py-4 bg-white">
-            <div className="flex items-center gap-3 text-black">
-              <div className="w-6 h-6 bg-[#F05224] border-2 border-black transform rotate-3 flex items-center justify-center shadow-[2px_2px_0px_0px_#000000]">
-                <span className="text-white font-black text-xs transform -rotate-3">R</span>
-              </div>
-              <h2 className="text-xl font-black tracking-tight transform -skew-x-3">ROOMIO</h2>
-            </div>
-            <nav className="flex flex-1 justify-center items-center gap-8">
-              <a
-                className="text-black hover:text-[#F05224] text-sm font-black transition-colors border-b-2 border-transparent hover:border-[#F05224] pb-1"
-                href="#"
-              >
-                DASHBOARD
-              </a>
-              <a className="text-[#F05224] text-sm font-black border-b-2 border-[#F05224] pb-1" href="#">
-                EXPENSES
-              </a>
-              <a
-                className="text-black hover:text-[#F05224] text-sm font-black transition-colors border-b-2 border-transparent hover:border-[#F05224] pb-1"
-                href="#"
-              >
-                MARKETPLACE
-              </a>
-              <a
-                className="text-black hover:text-[#F05224] text-sm font-black transition-colors border-b-2 border-transparent hover:border-[#F05224] pb-1"
-                href="#"
-              >
-                MESSAGES
-              </a>
-            </nav>
-            <div className="flex items-center gap-4">
-              <button className="relative flex cursor-pointer items-center justify-center rounded-full size-10 bg-white border-2 border-black text-black hover:bg-gray-100 transition-colors">
-                <svg fill="currentColor" height="20px" viewBox="0 0 256 256" width="20px">
-                  <path d="M221.8,175.94C216.25,166.38,208,139.33,208,104a80,80,0,1,0-160,0c0,35.34-8.26,62.38-13.81,71.94A16,16,0,0,0,48,200H88.81a40,40,0,0,0,78.38,0H208a16,16,0,0,0,13.8-24.06ZM128,216a24,24,0,0,1-22.62-16h45.24A24,24,0,0,1,128,216ZM48,184c7.7-13.24,16-43.92,16-80a64,64,0,1,1,128,0c0,36.05,8.28,66.73,16,80Z"></path>
-                </svg>
-                <div className="absolute top-1 right-1 size-2 rounded-full bg-[#F05224]"></div>
-              </button>
-              <div
-                className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-black"
-                style={{ backgroundImage: `url("${user?.profilePicture || "/placeholder.svg?height=40&width=40"}")` }}
-              ></div>
-            </div>
-          </header>
-
           {/* Main Content */}
-          <main className="flex-1 px-6 py-6 lg:px-12 xl:px-20 bg-white min-h-[calc(100vh-140px)] overflow-y-auto">
+          <main className="flex-1 px-6 py-6 lg:px-12 xl:px-20 bg-white min-h-screen overflow-y-auto">
             <div className="mx-auto max-w-5xl">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
                 <div>
