@@ -1,7 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { useFriends } from "@/hooks/useFriends"
+import ExpenseCard from "./expenses/ExpenseCard"
+import SettlementCard from "./expenses/SettlementCard"
+import CreateExpenseModal from "./expenses/CreateExpenseModal"
+import SettlementModal from "./expenses/SettlementModal"
+import { 
+  ExpenseDashboardData, 
+  ExpenseSummary, 
+  CreateExpenseGroupRequest,
+  SubmitSettlementRequest 
+} from "@/types/expenses"
+import { 
+  createExpenseGroup, 
+  getExpenseDashboardData, 
+  submitSettlement, 
+  approveSettlement 
+} from "@/services/expenses"
 
 interface User {
   id: string
@@ -15,98 +32,171 @@ interface ExpensesPageProps {
 }
 
 export default function ExpensesPage({ user }: ExpensesPageProps) {
-  const [expenses] = useState([
-    {
-      id: "1",
-      title: "Rent",
-      amount: 1200,
-      paidBy: "Liam",
-      splitType: "Split evenly",
-      icon: "🏠",
-    },
-    {
-      id: "2",
-      title: "Utilities",
-      amount: 200,
-      paidBy: "Sophia",
-      splitType: "Split evenly",
-      icon: "💡",
-    },
-    {
-      id: "3",
-      title: "Groceries",
-      amount: 150,
-      paidBy: "Liam",
-      splitType: "Split unequally",
-      icon: "🛒",
-    },
-    {
-      id: "4",
-      title: "Internet",
-      amount: 50,
-      paidBy: "Sophia",
-      splitType: "Split evenly",
-      icon: "📶",
-    },
-  ])
+  const [dashboardData, setDashboardData] = useState<ExpenseDashboardData>({
+    active_expenses: [],
+    pending_settlements: [],
+    total_owed: 0,
+    total_to_receive: 0
+  })
+  
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false)
+  const [selectedExpense, setSelectedExpense] = useState<ExpenseSummary | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string>('')
+
+  const { friends } = useFriends()
+
+  // Fetch dashboard data
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true)
+      const dashboardData = await getExpenseDashboardData()
+      setDashboardData(dashboardData)
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load expenses')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  // Create expense group
+  const handleCreateExpense = async (data: CreateExpenseGroupRequest) => {
+    try {
+      const result = await createExpenseGroup(data)
+      if (result.success) {
+        // Refresh dashboard data
+        await fetchDashboardData()
+      } else {
+        throw new Error(result.message || 'Failed to create expense group')
+      }
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Failed to create expense group')
+    }
+  }
+
+  // Handle settle up
+  const handleSettleUp = (groupId: string) => {
+    const expense = dashboardData.active_expenses.find(exp => exp.group_id === groupId)
+    if (expense) {
+      setSelectedExpense(expense)
+      setIsSettlementModalOpen(true)
+    }
+  }
+
+  // Submit settlement
+  const handleSubmitSettlement = async (data: SubmitSettlementRequest) => {
+    try {
+      const result = await submitSettlement(data)
+      if (result.success) {
+        // Refresh dashboard data
+        await fetchDashboardData()
+      } else {
+        throw new Error(result.message || 'Failed to submit settlement')
+      }
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Failed to submit settlement')
+    }
+  }
+
+  // Approve/reject settlement
+  const handleApproveSettlement = async (settlementId: string, approved: boolean) => {
+    try {
+      const result = await approveSettlement({
+        settlement_id: settlementId,
+        approved: approved
+      })
+      if (result.success) {
+        // Refresh dashboard data
+        await fetchDashboardData()
+      } else {
+        throw new Error(result.message || `Failed to ${approved ? 'approve' : 'reject'} settlement`)
+      }
+    } catch (err) {
+      console.error('Error processing settlement:', err)
+      setError(err instanceof Error ? err.message : 'Failed to process settlement')
+    }
+  }
+
+  // Mark participant as paid/unpaid (creator only)
+  const handleMarkPaid = async (groupId: string, userId: string, paid: boolean) => {
+    try {
+      // For now, this is a placeholder - you'll need to implement this service function
+      console.log('Mark paid:', { groupId, userId, paid })
+      // TODO: Implement markParticipantPaid service function
+      // await markParticipantPaid({ group_id: groupId, user_id: userId, paid })
+      // await fetchDashboardData()
+    } catch (err) {
+      console.error('Error marking payment status:', err)
+      setError(err instanceof Error ? err.message : 'Failed to update payment status')
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="bg-white text-black min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F05224] mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading expenses...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white text-black min-h-screen">
       <div className="relative flex size-full min-h-screen flex-col overflow-x-hidden">
         <div className="layout-container flex h-full grow flex-col">
-          {/* Main Content */}
           <main className="flex-1 px-6 py-6 lg:px-12 xl:px-20 bg-white min-h-screen overflow-y-auto">
-            <div className="mx-auto max-w-5xl">
+            <div className="mx-auto max-w-6xl">
+              {/* Header */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
                 <div>
-                  <h1 className="text-3xl font-black text-black tracking-tight mb-2 transform -skew-x-2">EXPENSES</h1>
+                  <h1 className="text-3xl font-black text-black tracking-tight mb-2 transform -skew-x-2">SPLITWISE</h1>
                   <div className="w-20 h-2 bg-[#F05224] transform skew-x-12"></div>
                 </div>
 
-                <Button className="flex min-w-[84px] items-center justify-center gap-2 rounded-md bg-[#F05224] px-6 py-3 text-sm font-black text-white border-4 border-black shadow-[4px_4px_0px_0px_#000000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#000000] hover:bg-[#D63E1A]">
-                  <svg
-                    fill="currentColor"
-                    height="16"
-                    viewBox="0 0 256 256"
-                    width="16"
-                    xmlns="http://www.w3.org/2000/svg"
+                <div className="flex gap-3">
+                  <Button 
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex min-w-[84px] items-center justify-center gap-2 rounded-md bg-[#F05224] px-6 py-3 text-sm font-black text-white border-4 border-black shadow-[4px_4px_0px_0px_#000000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#000000] hover:bg-[#D63E1A]"
                   >
-                    <path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path>
-                  </svg>
-                  <span>Add Expense</span>
-                </Button>
+                    <svg
+                      fill="currentColor"
+                      height="16"
+                      viewBox="0 0 256 256"
+                      width="16"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path>
+                    </svg>
+                    <span>Create Room</span>
+                  </Button>
+                </div>
               </div>
 
+              {error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                  {error}
+                  <button 
+                    onClick={() => setError('')}
+                    className="ml-2 text-red-500 hover:text-red-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {/* Balance Overview */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
                 <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                   <h2 className="text-lg font-bold text-gray-900 mb-4">Your Balance</h2>
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div
-                          className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-12"
-                          style={{ backgroundImage: 'url("/placeholder.svg?height=48&width=48")' }}
-                        ></div>
-                        <div>
-                          <p className="font-semibold text-gray-800">Roommate</p>
-                          <p className="text-sm text-emerald-500 font-medium">You are owed $15.00</p>
-                        </div>
-                      </div>
-                      <p className="text-lg font-bold text-emerald-500">+$15.00</p>
-                    </div>
-                    <hr className="my-2 border-gray-200" />
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold text-gray-800">Total Balance</p>
-                      <p className="text-lg font-bold text-emerald-500">+$15.00</p>
-                    </div>
-                    <button className="w-full mt-2 rounded-md bg-gray-800 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-800">
-                      Settle up
-                    </button>
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                  <h2 className="text-lg font-bold text-gray-900 mb-4">Roommates</h2>
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -116,43 +206,142 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                             backgroundImage: `url("${user?.profilePicture || "/placeholder.svg?height=48&width=48"}")`,
                           }}
                         ></div>
-                        <p className="font-semibold text-gray-800">You</p>
+                        <div>
+                          <p className="font-semibold text-gray-800">Total</p>
+                          <p className={`text-sm font-medium ${
+                            dashboardData.total_owed > 0 ? 'text-orange-600' : 'text-emerald-500'
+                          }`}>
+                            {dashboardData.total_owed > 0 
+                              ? `You owe $${dashboardData.total_owed.toFixed(2)}`
+                              : 'All settled up!'
+                            }
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-sm font-medium text-gray-500">Settled up</p>
+                      <p className={`text-lg font-bold ${
+                        dashboardData.total_owed > 0 ? 'text-orange-600' : 'text-emerald-500'
+                      }`}>
+                        {dashboardData.total_owed > 0 ? '-' : ''}$
+                        {dashboardData.total_owed.toFixed(2)}
+                      </p>
+                    </div>
+                    
+                    {dashboardData.total_to_receive > 0 && (
+                      <>
+                        <hr className="my-2 border-gray-200" />
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-gray-800">Pending Approvals</p>
+                            <p className="text-sm text-blue-600 font-medium">
+                              ${dashboardData.total_to_receive.toFixed(2)} awaiting review
+                            </p>
+                          </div>
+                          <p className="text-lg font-bold text-blue-600">
+                            +${dashboardData.total_to_receive.toFixed(2)}
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+                  <h2 className="text-lg font-bold text-gray-900 mb-4">Summary</h2>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Active Expenses</span>
+                      <span className="font-medium">{dashboardData.active_expenses.length}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Pending Settlements</span>
+                      <span className="font-medium">{dashboardData.pending_settlements.length}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Friends Available</span>
+                      <span className="font-medium">{friends.length}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <h2 className="text-2xl font-bold text-gray-900 tracking-tight mb-4">Recent Expenses</h2>
-              <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
-                <ul className="divide-y divide-gray-200">
-                  {expenses.map((expense) => (
-                    <li key={expense.id} className="p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center justify-center rounded-md bg-gray-100 shrink-0 size-12 text-gray-600">
-                            <svg fill="currentColor" height="24px" viewBox="0 0 256 256" width="24px">
-                              <path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path>
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-800">{expense.title}</p>
-                            <p className="text-sm text-gray-500">
-                              Paid by {expense.paidBy === user?.id ? "You" : "Roommate"} • Split evenly
-                            </p>
-                          </div>
-                        </div>
-                        <p className="text-base font-semibold text-gray-800">${expense.amount.toFixed(2)}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {/* Active Expenses */}
+              {dashboardData.active_expenses.length > 0 ? (
+                <section className="mb-10">
+                  <h2 className="text-2xl font-bold text-gray-900 tracking-tight mb-6">Active Expenses</h2>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {dashboardData.active_expenses.map((expense) => (
+                      <ExpenseCard
+                        key={expense.group_id}
+                        expense={expense}
+                        onSettleUp={handleSettleUp}
+                        currentUserId={user.id}
+                        onMarkPaid={handleMarkPaid}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ) : (
+                <div className="text-center py-12 mb-10">
+                  <div className="text-gray-400 mb-4">
+                    <svg className="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No active expenses</h3>
+                  <p className="text-gray-600 mb-6">Start splitting expenses with your friends!</p>
+                  <Button 
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="bg-[#F05224] hover:bg-[#D63E1A] text-white font-semibold px-6 py-2 rounded-md border-2 border-black shadow-[2px_2px_0px_0px_#000000] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#000000]"
+                  >
+                    Create Your First Room
+                  </Button>
+                </div>
+              )}
+
+              {/* Pending Settlements */}
+              {dashboardData.pending_settlements.length > 0 && (
+                <section>
+                  <h2 className="text-2xl font-bold text-gray-900 tracking-tight mb-6">Pending Settlements</h2>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {dashboardData.pending_settlements.map((settlement) => (
+                      <SettlementCard
+                        key={settlement.settlement_id}
+                        settlement={settlement}
+                        onApprove={handleApproveSettlement}
+                        currentUserId={user.id}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
           </main>
         </div>
       </div>
+
+      {/* Modals */}
+      <CreateExpenseModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        friends={friends.map(f => ({ 
+          id: f.friendId, 
+          name: f.name, 
+          profilePicture: f.profilePicture || undefined 
+        }))}
+        onCreateExpense={handleCreateExpense}
+      />
+
+      {selectedExpense && (
+        <SettlementModal
+          isOpen={isSettlementModalOpen}
+          onClose={() => {
+            setIsSettlementModalOpen(false)
+            setSelectedExpense(null)
+          }}
+          expense={selectedExpense}
+          onSubmitSettlement={handleSubmitSettlement}
+        />
+      )}
     </div>
   )
 }

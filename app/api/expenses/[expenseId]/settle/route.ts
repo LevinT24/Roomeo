@@ -1,20 +1,10 @@
-import { type NextRequest, NextResponse } from "next/server"
+// This API route is deprecated - expense operations are now handled client-side
+// for better authentication and session management
+import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest, { params }: { params: { expenseId: string } }) {
-  try {
-    const { expenseId } = params
-
-    // TODO: Settle expense
-    // - Verify user has permission to settle
-    // - Update expense status
-    // - Update user balances
-    // - Send settlement notification
-
-    return NextResponse.json({
-      success: true,
-      message: "Expense settled successfully",
-    })
-  } catch (error) {
-    return NextResponse.json({ success: false, message: "Failed to settle expense" }, { status: 500 })
-  }
+  return NextResponse.json(
+    { success: false, message: 'Use client-side expense operations' },
+    { status: 410 }
+  )
 }
