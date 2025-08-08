@@ -16,6 +16,7 @@ import MarketplacePage from "@/components/MarketplacePage"
 import ExpensesPage from "@/components/ExpensesPage"  
 import ChatPage from "@/components/ChatPage"
 import SettingsMenu from "@/components/SettingsMenu"
+import ProfilePreview from "@/components/ProfilePreview"
 import SessionRecovery from "@/components/SessionRecovery"
 import { useState, useEffect } from "react"
 import LoadingSpinner from "@/components/LoadingSpinner"
@@ -27,7 +28,7 @@ export default function Home() {
   const { user, loading, logout, error: authError, sessionValid } = useAuth()
   const [currentPage, setCurrentPage] = useState<
     "landing" | "auth" | "swipe" | "matches" | "marketplace" | 
-    "expenses" | "chat" | "profile-setup" | "user-type"
+    "expenses" | "chat" | "profile-setup" | "user-type" | "profile-preview"
   >("landing")
   const [authMode, setAuthMode] = useState<"signup" | "signin">("signup")
   const [friendsPanelOpen, setFriendsPanelOpen] = useState(false)
@@ -197,6 +198,19 @@ export default function Home() {
     );
   }
 
+  // Show profile preview page
+  if (currentPage === "profile-preview") {
+    return (
+      <>
+        <ProfilePreview 
+          user={user as any}
+          onBack={() => setCurrentPage("swipe")}
+        />
+        <SessionRecoveryOverlay />
+      </>
+    );
+  }
+
   // Show app pages for authenticated users
   if (user && currentPage !== "landing") {
     console.log("📱 Showing app page:", currentPage);
@@ -244,7 +258,10 @@ export default function Home() {
                 {/* Session status indicator */}
                 <div className={`w-3 h-3 rounded-full ${sessionValid ? 'bg-green-500' : 'bg-orange-500'}`} 
                      title={sessionValid ? 'Session active' : 'Session recovering'} />
-                <SettingsMenu user={user} />
+                <SettingsMenu 
+                  user={user} 
+                  onProfilePreview={() => setCurrentPage("profile-preview")}
+                />
               </div>
             </div>
           </div>

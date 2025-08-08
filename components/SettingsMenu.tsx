@@ -4,16 +4,17 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { User, Settings, LogOut, Trash2, X } from "lucide-react"
+import { User, Settings, LogOut, Trash2, X, Eye } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { supabase } from "@/lib/supabase"
 import { updateUserProfile } from "@/services/supabase"
 
 interface SettingsMenuProps {
   user: any
+  onProfilePreview?: () => void
 }
 
-export default function SettingsMenu({ user }: SettingsMenuProps) {
+export default function SettingsMenu({ user, onProfilePreview }: SettingsMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [showUpdateAccount, setShowUpdateAccount] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -292,6 +293,17 @@ export default function SettingsMenu({ user }: SettingsMenuProps) {
                     {user?.name || user?.email}
                   </p>
                 </div>
+                
+                <Button
+                  onClick={() => {
+                    onProfilePreview?.()
+                    setIsOpen(false)
+                  }}
+                  className="w-full justify-start bg-transparent hover:bg-[#44C76F]/20 text-[#004D40] font-black border-2 border-[#004D40] shadow-[2px_2px_0px_0px_#004D40] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#004D40] transition-all"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  PROFILE PREVIEW
+                </Button>
                 
                 <Button
                   onClick={() => {
