@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
+import { getRoomPhotos, getPrimaryRoomPhoto } from "@/services/roomPhotos"
+import { RoomPhoto } from "@/types/roomPhotos"
+import PhotoGalleryModal from "@/components/roomPhotos/PhotoGalleryModal"
 
 interface User {
   id: string
@@ -11,6 +14,7 @@ interface User {
   age?: number
   bio?: string
   location?: string
+  budget?: number
   preferences?: {
     smoking: boolean
     drinking: boolean
@@ -18,6 +22,9 @@ interface User {
     pets: boolean
   }
   userType?: "seeker" | "provider"
+  roomPhotos?: RoomPhoto[]
+  primaryRoomPhoto?: RoomPhoto
+  roomPhotoCount?: number
 }
 
 interface Match {
@@ -28,7 +35,11 @@ interface Match {
   userType: "seeker" | "provider"
   bio?: string
   location?: string
+  budget?: number
   chatId?: string
+  roomPhotos?: RoomPhoto[]
+  primaryRoomPhoto?: RoomPhoto
+  roomPhotoCount?: number
 }
 
 interface MatchesPageProps {
@@ -40,6 +51,8 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
   const [matches, setMatches] = useState<Match[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false)
 
   useEffect(() => {
     if (user?.id) {
@@ -94,7 +107,7 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
       // Get user data for the matched users
       const { data: matchedUsers, error: usersError } = await supabase
         .from('users')
-        .select('id, name, profilepicture, age, bio, location, usertype')
+        .select('id, name, profilepicture, age, bio, location, budget, usertype')
         .in('id', matchUserIds)
 
       if (usersError) {
@@ -110,24 +123,48 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
         console.error('Error fetching chats:', chatsError)
       }
 
-      // Format the matches with chat info
-      const formattedMatches: Match[] = (matchedUsers || []).map(userData => {
-        const chatId = existingChats?.find(chat => 
-          (chat.user1_id === user.id && chat.user2_id === userData.id) ||
-          (chat.user2_id === user.id && chat.user1_id === userData.id)
-        )?.id
+      // Format the matches with chat info and fetch room photos for providers
+      const formattedMatches: Match[] = await Promise.all(
+        (matchedUsers || []).map(async (userData) => {
+          const chatId = existingChats?.find(chat => 
+            (chat.user1_id === user.id && chat.user2_id === userData.id) ||
+            (chat.user2_id === user.id && chat.user1_id === userData.id)
+          )?.id
 
-        return {
-          id: userData.id,
-          name: userData.name || 'Unknown User',
-          age: userData.age,
-          profilePicture: userData.profilepicture || '/placeholder.svg',
-          userType: userData.usertype || 'seeker',
-          bio: userData.bio || '',
-          location: userData.location || '',
-          chatId
-        }
-      })
+          let roomPhotos: RoomPhoto[] = [];
+          let primaryRoomPhoto: RoomPhoto | null = null;
+          let roomPhotoCount = 0;
+
+          // Fetch room photos for providers
+          if (userData.usertype === 'provider') {
+            try {
+              roomPhotos = await getRoomPhotos(userData.id);
+              roomPhotoCount = roomPhotos.length;
+              
+              if (roomPhotos.length > 0) {
+                primaryRoomPhoto = roomPhotos.find(photo => photo.is_primary) || roomPhotos[0];
+              }
+            } catch (photoError) {
+              console.warn(`Failed to fetch room photos for matched user ${userData.id}:`, photoError);
+            }
+          }
+
+          return {
+            id: userData.id,
+            name: userData.name || 'Unknown User',
+            age: userData.age,
+            profilePicture: userData.profilepicture || '/placeholder.svg',
+            userType: userData.usertype || 'seeker',
+            bio: userData.bio || '',
+            location: userData.location || '',
+            budget: userData.budget || undefined,
+            chatId,
+            roomPhotos,
+            primaryRoomPhoto: primaryRoomPhoto || undefined,
+            roomPhotoCount
+          }
+        })
+      )
 
       setMatches(formattedMatches)
     } catch (error) {
@@ -137,6 +174,26 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
       setLoading(false)
     }
   }
+
+  const handleViewPhotos = (match: Match) => {
+    console.log("🔍 Attempting to view photos for:", match.name, {
+      userType: match.userType,
+      roomPhotosLength: match.roomPhotos?.length,
+      roomPhotoCount: match.roomPhotoCount
+    });
+    
+    if (match.userType === "provider" && match.roomPhotos && match.roomPhotos.length > 0) {
+      console.log("✅ Opening photo gallery for:", match.name);
+      setSelectedMatch(match);
+      setIsGalleryOpen(true);
+    } else {
+      console.log("❌ Cannot open gallery - missing requirements:", {
+        isProvider: match.userType === "provider",
+        hasRoomPhotos: !!match.roomPhotos,
+        photoCount: match.roomPhotos?.length || 0
+      });
+    }
+  };
 
   const handleStartChat = async (matchUser: Match) => {
     if (!matchUser.chatId) {
@@ -200,10 +257,52 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
                       className="bg-white rounded-lg border-4 border-black shadow-[6px_6px_0px_0px_#000000] overflow-hidden transition-transform duration-300 hover:translate-x-1 hover:translate-y-1 hover:shadow-[3px_3px_0px_0px_#000000] cursor-pointer group"
                     >
                       <div className="relative">
+                        {/* Display primary room photo for providers, profile picture for seekers */}
                         <div
-                          className="w-full h-48 bg-center bg-no-repeat bg-cover"
-                          style={{ backgroundImage: `url("${match.profilePicture}")` }}
-                        ></div>
+                          className="w-full h-48 bg-center bg-no-repeat bg-cover cursor-pointer"
+                          style={{
+                            backgroundImage: `url("${
+                              match.userType === "provider" && match.primaryRoomPhoto
+                                ? match.primaryRoomPhoto.photo_url
+                                : match.profilePicture
+                            }")`
+                          }}
+                          onClick={() => handleViewPhotos(match)}
+                        />
+                        
+                        {/* Photo count badge for providers with room photos */}
+                        {match.userType === "provider" && match.roomPhotoCount && match.roomPhotoCount > 0 && (
+                          <div 
+                            className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-bold cursor-pointer hover:bg-black/90 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewPhotos(match);
+                            }}
+                          >
+                            📷 {match.roomPhotoCount} photo{match.roomPhotoCount === 1 ? '' : 's'}
+                          </div>
+                        )}
+                        
+                        {/* No photos indicator for providers */}
+                        {match.userType === "provider" && (!match.roomPhotoCount || match.roomPhotoCount === 0) && (
+                          <div className="absolute top-2 right-2 bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                            No room photos
+                          </div>
+                        )}
+                        
+                        {/* View Photos hint for providers with photos */}
+                        {match.userType === "provider" && match.roomPhotoCount && match.roomPhotoCount > 1 && (
+                          <div 
+                            className="absolute bottom-12 left-2 right-2 bg-black/50 text-white p-2 rounded text-center cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewPhotos(match);
+                            }}
+                          >
+                            <p className="text-xs font-bold">Tap to view all photos</p>
+                          </div>
+                        )}
+                        
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                         <h3 className="absolute bottom-4 left-4 text-white text-lg font-black transform -skew-x-1">
                           {match.name}
@@ -213,6 +312,7 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
                         <p className="text-black font-bold text-sm line-clamp-3 border-l-4 border-[#F05224] pl-3">
                           {match.age}, {match.userType === "provider" ? "HAS A PLACE" : "LOOKING FOR A PLACE"}
                           {match.location && ` • 📍 ${match.location}`}
+                          {match.userType === "provider" && match.budget && ` • 💰 $${match.budget}/month`}
                           {match.bio && `. ${match.bio}`}
                         </p>
                         <div className="mt-4 flex justify-end">
@@ -232,6 +332,42 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
           </main>
         </div>
       </div>
+
+      {/* Photo Gallery Modal */}
+      {selectedMatch && selectedMatch.roomPhotos && (
+        <>
+          {console.log("🎬 Rendering PhotoGalleryModal:", {
+            selectedMatch: selectedMatch.name,
+            isGalleryOpen,
+            photosLength: selectedMatch.roomPhotos.length,
+            photos: selectedMatch.roomPhotos
+          })}
+          <PhotoGalleryModal
+            photos={selectedMatch.roomPhotos}
+            isOpen={isGalleryOpen}
+            onClose={() => {
+              console.log("🔴 Closing gallery modal");
+              setIsGalleryOpen(false);
+              setSelectedMatch(null);
+            }}
+            userName={selectedMatch.name}
+            userAge={selectedMatch.age}
+            userLocation={selectedMatch.location}
+            userBudget={selectedMatch.budget}
+            userBio={selectedMatch.bio}
+            onLike={() => {
+              console.log("👍 Like button clicked in gallery");
+              setIsGalleryOpen(false);
+              setSelectedMatch(null);
+            }}
+            onPass={() => {
+              console.log("👎 Pass button clicked in gallery");
+              setIsGalleryOpen(false);
+              setSelectedMatch(null);
+            }}
+          />
+        </>
+      )}
     </div>
   )
 }

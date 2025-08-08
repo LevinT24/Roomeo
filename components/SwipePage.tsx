@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import { supabase } from "@/lib/supabase"
+import { getRoomPhotos, getPrimaryRoomPhoto } from "@/services/roomPhotos"
+import { RoomPhoto } from "@/types/roomPhotos"
+import PhotoGalleryModal from "@/components/roomPhotos/PhotoGalleryModal"
 
 interface User {
   id: string
@@ -12,6 +15,7 @@ interface User {
   age?: number
   bio?: string
   location?: string
+  budget?: number
   preferences?: {
     smoking: boolean
     drinking: boolean
@@ -19,6 +23,9 @@ interface User {
     pets: boolean
   }
   userType?: "seeker" | "provider" | null
+  roomPhotos?: RoomPhoto[]
+  primaryRoomPhoto?: RoomPhoto
+  roomPhotoCount?: number
 }
 
 interface SwipePageProps {
@@ -31,6 +38,7 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false)
 
   // Use the user from props or auth
   const currentUser = propUser || authUser
@@ -83,6 +91,7 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
           age,
           bio,
           location,
+          budget,
           profilepicture,
           usertype,
           preferences
@@ -97,23 +106,49 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
         return
       }
 
-      // Transform the data to match our interface
-      let formattedProfiles: User[] = (oppositeUsers || []).map(profile => ({
-        id: profile.id,
-        email: profile.email || '',
-        name: profile.name || 'Unknown User',
-        age: profile.age,
-        bio: profile.bio || '',
-        location: profile.location || '',
-        profilePicture: profile.profilepicture || '/placeholder.svg',
-        userType: profile.usertype,
-        preferences: profile.preferences || {
-          smoking: false,
-          drinking: false,
-          vegetarian: false,
-          pets: false
-        }
-      }))
+      // Transform the data to match our interface and fetch room photos for providers
+      let formattedProfiles: User[] = await Promise.all(
+        (oppositeUsers || []).map(async (profile) => {
+          let roomPhotos: RoomPhoto[] = [];
+          let primaryRoomPhoto: RoomPhoto | null = null;
+          let roomPhotoCount = 0;
+
+          // Fetch room photos for providers
+          if (profile.usertype === 'provider') {
+            try {
+              roomPhotos = await getRoomPhotos(profile.id);
+              roomPhotoCount = roomPhotos.length;
+              
+              if (roomPhotos.length > 0) {
+                primaryRoomPhoto = roomPhotos.find(photo => photo.is_primary) || roomPhotos[0];
+              }
+            } catch (photoError) {
+              console.warn(`Failed to fetch room photos for user ${profile.id}:`, photoError);
+            }
+          }
+
+          return {
+            id: profile.id,
+            email: profile.email || '',
+            name: profile.name || 'Unknown User',
+            age: profile.age,
+            bio: profile.bio || '',
+            location: profile.location || '',
+            budget: profile.budget || undefined,
+            profilePicture: profile.profilepicture || '/placeholder.svg',
+            userType: profile.usertype,
+            preferences: profile.preferences || {
+              smoking: false,
+              drinking: false,
+              vegetarian: false,
+              pets: false
+            },
+            roomPhotos,
+            primaryRoomPhoto: primaryRoomPhoto || undefined,
+            roomPhotoCount
+          };
+        })
+      )
 
       // Only filter out users you've already LIKED (not passed) - safer approach
       try {
@@ -385,11 +420,43 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
             <div className="relative mb-8">
               <div className="bg-[#B7C8B5] rounded-2xl border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] overflow-hidden transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#004D40] transition-all">
                 <div className="relative">
+                  {/* Display primary room photo for providers, profile picture for seekers */}
                   <img
                     alt={currentProfile.name}
-                    className="w-full h-80 object-cover"
-                    src={currentProfile.profilePicture || "/placeholder.svg"}
+                    className="w-full h-80 object-cover cursor-pointer"
+                    src={
+                      currentProfile.userType === "provider" && currentProfile.primaryRoomPhoto
+                        ? currentProfile.primaryRoomPhoto.photo_url
+                        : currentProfile.profilePicture || "/placeholder.svg"
+                    }
+                    onClick={() => {
+                      if (currentProfile.userType === "provider" && currentProfile.roomPhotos && currentProfile.roomPhotos.length > 0) {
+                        setIsGalleryOpen(true);
+                      }
+                    }}
                   />
+                  
+                  {/* Photo count badge for providers with room photos */}
+                  {currentProfile.userType === "provider" && currentProfile.roomPhotoCount && currentProfile.roomPhotoCount > 0 && (
+                    <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-bold">
+                      📷 {currentProfile.roomPhotoCount} photo{currentProfile.roomPhotoCount === 1 ? '' : 's'}
+                    </div>
+                  )}
+                  
+                  {/* No photos indicator for providers */}
+                  {currentProfile.userType === "provider" && (!currentProfile.roomPhotoCount || currentProfile.roomPhotoCount === 0) && (
+                    <div className="absolute top-4 right-4 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+                      No room photos
+                    </div>
+                  )}
+                  
+                  {/* View Photos hint for providers with photos */}
+                  {currentProfile.userType === "provider" && currentProfile.roomPhotoCount && currentProfile.roomPhotoCount > 1 && (
+                    <div className="absolute bottom-20 left-4 right-4 bg-black/50 text-white p-2 rounded-lg text-center">
+                      <p className="text-sm font-bold">Tap to view all photos</p>
+                    </div>
+                  )}
+
                   <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent text-white">
                     <h2 className="text-2xl font-black transform -skew-x-1">
                       {currentProfile.name}, {currentProfile.age}
@@ -399,6 +466,9 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
                     </p>
                     {currentProfile.location && (
                       <p className="text-sm font-bold opacity-90">📍 {currentProfile.location}</p>
+                    )}
+                    {currentProfile.userType === "provider" && currentProfile.budget && (
+                      <p className="text-sm font-bold opacity-90">💰 ${currentProfile.budget}/month</p>
                     )}
                   </div>
                 </div>
@@ -497,6 +567,22 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
           </div>
         </main>
       </div>
+
+      {/* Photo Gallery Modal */}
+      {currentProfile && currentProfile.roomPhotos && (
+        <PhotoGalleryModal
+          photos={currentProfile.roomPhotos}
+          isOpen={isGalleryOpen}
+          onClose={() => setIsGalleryOpen(false)}
+          userName={currentProfile.name}
+          userAge={currentProfile.age}
+          userLocation={currentProfile.location}
+          userBudget={currentProfile.budget}
+          userBio={currentProfile.bio}
+          onLike={() => handleSwipe(true)}
+          onPass={() => handleSwipe(false)}
+        />
+      )}
     </div>
   )
 }

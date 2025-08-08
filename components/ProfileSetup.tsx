@@ -10,6 +10,8 @@
   import { updateUserProfile } from "@/services/supabase";
   import { uploadImage } from "@/lib/storage";
   import { ProfileData } from "@/types/user";
+  import RoomPhotoUpload from "@/components/roomPhotos/RoomPhotoUpload";
+  import { RoomPhoto } from "@/types/roomPhotos";
 
   export default function ProfileSetup({ onComplete }: { onComplete: () => void }) {
     const { user, refreshUser } = useAuth()
@@ -27,6 +29,8 @@
       vegetarian: false,
       pets: false,
     })
+    const [roomPhotos, setRoomPhotos] = useState<RoomPhoto[]>([])
+    const [roomPhotosSkipped, setRoomPhotosSkipped] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [uploadError, setUploadError] = useState<string | null>(null)
@@ -243,6 +247,89 @@
       )
     }
 
+    // Step 4: Room Photos (Providers only)
+    if (step === 4 && userType === "provider") {
+      return (
+        <div className="min-h-screen bg-[#F2F5F1] flex items-center justify-center p-4">
+          <Card className="w-full max-w-4xl border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] bg-[#B7C8B5]">
+            <CardContent className="p-8">
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-black text-[#004D40] mb-2 transform -skew-x-2">SHOWCASE YOUR SPACE</h2>
+                <div className="w-24 h-3 bg-[#44C76F] mx-auto transform skew-x-12 mb-4"></div>
+                <p className="text-[#004D40] font-bold">Upload photos of your room and common areas</p>
+                <p className="text-[#004D40] text-sm mt-2">At least 1 photo required • Up to 15 photos maximum</p>
+              </div>
+
+              {error && (
+                <div className="mb-6 p-4 border-4 border-red-500 bg-red-100 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-red-600 font-black">⚠️</span>
+                    <span className="font-black text-red-700">ROOM PHOTOS ERROR</span>
+                  </div>
+                  <p className="text-red-700 font-bold text-sm">{error}</p>
+                </div>
+              )}
+
+              {/* Room Photo Upload Component */}
+              <RoomPhotoUpload
+                onPhotosUploaded={(photos) => {
+                  setRoomPhotos(photos);
+                  setError("");
+                }}
+                maxPhotos={15}
+                disabled={loading}
+              />
+
+              {/* Action Buttons */}
+              <div className="flex gap-4 mt-8">
+                <Button
+                  onClick={() => setStep(3)}
+                  disabled={loading}
+                  variant="outline"
+                  className="flex-1 font-black"
+                >
+                  BACK
+                </Button>
+                
+                {/* Skip Button */}
+                <Button
+                  onClick={() => {
+                    setRoomPhotosSkipped(true);
+                    handleSubmit();
+                  }}
+                  disabled={loading}
+                  variant="outline"
+                  className="flex-1 font-black text-orange-600 border-orange-500"
+                >
+                  SKIP FOR NOW
+                </Button>
+
+                <Button
+                  onClick={handleSubmit}
+                  disabled={loading || (roomPhotos.length === 0 && !roomPhotosSkipped)}
+                  className="flex-1 bg-[#004D40] hover:bg-[#004D40]/80 text-[#F2F5F1] font-black py-3 border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+                >
+                  {loading ? "SETTING UP..." : "COMPLETE SETUP"}
+                </Button>
+              </div>
+
+              {/* Help Text */}
+              <div className="mt-6 p-4 bg-blue-50 border-4 border-blue-200 rounded-lg">
+                <h3 className="font-black text-blue-800 mb-2">💡 TIPS FOR GREAT ROOM PHOTOS</h3>
+                <ul className="text-blue-700 text-sm space-y-1 font-bold">
+                  <li>• Take photos during the day for best lighting</li>
+                  <li>• Show the bedroom, common areas, kitchen, and bathroom</li>
+                  <li>• Include any special amenities or features</li>
+                  <li>• Make sure rooms are clean and tidy</li>
+                  <li>• Add captions to describe each space</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+
     // Step 3: Profile Details
     return (
       <div className="min-h-screen bg-[#F2F5F1] flex items-center justify-center p-4">
@@ -362,11 +449,17 @@
               )}
 
               <Button
-                onClick={handleSubmit}
+                onClick={() => {
+                  if (userType === "provider") {
+                    setStep(4); // Go to room photos step for providers
+                  } else {
+                    handleSubmit(); // Complete setup for seekers
+                  }
+                }}
                 disabled={!age || !userType || loading}
                 className="w-full bg-[#004D40] hover:bg-[#004D40]/80 text-[#F2F5F1] font-black py-3 border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
               >
-                {loading ? "SETTING UP..." : "COMPLETE SETUP"}
+                {loading ? "SETTING UP..." : (userType === "provider" ? "CONTINUE TO ROOM PHOTOS" : "COMPLETE SETUP")}
               </Button>
             </div>
           </CardContent>
