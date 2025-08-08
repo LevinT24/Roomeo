@@ -49,12 +49,12 @@ BEGIN
   VALUES (p_name, p_description, auth.uid(), p_total_amount, p_split_type, p_create_group_chat, v_chat_id)
   RETURNING id INTO v_group_id;
   
-  -- Calculate equal split amount (include creator in count)
-  v_equal_amount := p_total_amount / (array_length(p_participants, 1) + 1);
+  -- Calculate equal split amount (creator doesn't pay, only receives)
+  v_equal_amount := p_total_amount / array_length(p_participants, 1);
   
-  -- Add creator as participant (they also owe their share)
+  -- Add creator as participant (they don't owe money, just need to see the room)
   INSERT INTO expense_participants (group_id, user_id, amount_owed)
-  VALUES (v_group_id, auth.uid(), v_equal_amount);
+  VALUES (v_group_id, auth.uid(), 0);
 
   -- Add participants
   FOR i IN 1..array_length(p_participants, 1) LOOP
@@ -126,7 +126,7 @@ BEGIN
         jsonb_build_object(
           'user_id', ep2.user_id,
           'name', u2.name,
-          'profile_picture', u2.profile_picture,
+          'profile_picture', u2.profilepicture,
           'amount_owed', ep2.amount_owed,
           'amount_paid', ep2.amount_paid,
           'is_settled', ep2.is_settled,
@@ -145,3 +145,33 @@ BEGIN
   ORDER BY eg.created_at DESC;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Fix infinite recursion in RLS policies
+-- Drop and recreate problematic policies with simpler logic
+
+-- Drop existing policies that might cause recursion
+DROP POLICY IF EXISTS "Users can view expense groups they participate in" ON expense_groups;
+DROP POLICY IF EXISTS "Users can view participants in their expense groups" ON expense_participants;
+
+-- Create simpler policies
+CREATE POLICY "Users can view expense groups they participate in" ON expense_groups
+  FOR SELECT USING (
+    auth.uid() = created_by OR 
+    id IN (
+      SELECT group_id FROM expense_participants 
+      WHERE user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can view participants in their expense groups" ON expense_participants
+  FOR SELECT USING (
+    user_id = auth.uid() OR
+    group_id IN (
+      SELECT id FROM expense_groups 
+      WHERE created_by = auth.uid()
+    ) OR
+    group_id IN (
+      SELECT group_id FROM expense_participants 
+      WHERE user_id = auth.uid()
+    )
+  );
