@@ -12,8 +12,6 @@ export interface ExpenseGroup {
   created_by: string
   total_amount: number
   split_type: SplitType
-  has_group_chat: boolean
-  chat_id?: string
   status: ExpenseStatus
   created_at: string
   updated_at: string
@@ -58,7 +56,6 @@ export interface CreateExpenseGroupRequest {
   split_type: SplitType
   participants: string[] // user IDs
   custom_amounts?: number[]
-  create_group_chat?: boolean
 }
 
 export interface CreateExpenseGroupResponse {

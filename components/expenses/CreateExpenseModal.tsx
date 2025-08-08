@@ -15,8 +15,7 @@ export default function CreateExpenseModal({
     name: '',
     description: '',
     total_amount: '',
-    split_type: 'equal' as SplitType,
-    create_group_chat: false
+    split_type: 'equal' as SplitType
   })
   const [selectedFriends, setSelectedFriends] = useState<string[]>([])
   const [customAmounts, setCustomAmounts] = useState<{ [friendId: string]: string }>({})
@@ -30,8 +29,7 @@ export default function CreateExpenseModal({
         name: '',
         description: '',
         total_amount: '',
-        split_type: 'equal',
-        create_group_chat: false
+        split_type: 'equal'
       })
       setSelectedFriends([])
       setCustomAmounts({})
@@ -122,8 +120,7 @@ export default function CreateExpenseModal({
         total_amount: parseFloat(formData.total_amount),
         split_type: formData.split_type,
         participants: selectedFriends,
-        custom_amounts: customAmountsList,
-        create_group_chat: formData.create_group_chat
+        custom_amounts: customAmountsList
       })
 
       onClose()
@@ -303,19 +300,6 @@ export default function CreateExpenseModal({
               )}
             </div>
 
-            {/* Group Chat Option */}
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="create_group_chat"
-                checked={formData.create_group_chat}
-                onChange={(e) => setFormData(prev => ({ ...prev, create_group_chat: e.target.checked }))}
-                className="w-4 h-4 text-[#F05224] border-gray-300 rounded focus:ring-[#F05224]"
-              />
-              <label htmlFor="create_group_chat" className="text-sm font-medium text-gray-700">
-                Create group chat for this expense
-              </label>
-            </div>
           </div>
 
           {/* Actions */}

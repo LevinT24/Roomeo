@@ -7,6 +7,7 @@ import ExpenseCard from "./expenses/ExpenseCard"
 import SettlementCard from "./expenses/SettlementCard"
 import CreateExpenseModal from "./expenses/CreateExpenseModal"
 import SettlementModal from "./expenses/SettlementModal"
+import SettlementHistory from "./expenses/SettlementHistory"
 import { 
   ExpenseDashboardData, 
   ExpenseSummary, 
@@ -42,6 +43,7 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false)
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [selectedExpense, setSelectedExpense] = useState<ExpenseSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string>('')
@@ -167,21 +169,39 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                   <div className="w-20 h-2 bg-[#F05224] transform skew-x-12"></div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <Button 
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="flex min-w-[84px] items-center justify-center gap-2 rounded-md bg-[#F05224] px-6 py-3 text-sm font-black text-white border-4 border-black shadow-[4px_4px_0px_0px_#000000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#000000] hover:bg-[#D63E1A]"
+                    className="flex w-full sm:w-auto min-w-[84px] items-center justify-center gap-2 rounded-md bg-[#F05224] px-4 sm:px-6 py-3 text-xs sm:text-sm font-black text-white border-2 sm:border-4 border-black shadow-[2px_2px_0px_0px_#000000] sm:shadow-[4px_4px_0px_0px_#000000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-[1px_1px_0px_0px_#000000] sm:hover:shadow-[2px_2px_0px_0px_#000000] hover:bg-[#D63E1A]"
                   >
                     <svg
                       fill="currentColor"
-                      height="16"
-                      viewBox="0 0 256 256"
-                      width="16"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      width="14"
                       xmlns="http://www.w3.org/2000/svg"
+                      className="sm:w-4 sm:h-4"
                     >
-                      <path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path>
+                      <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                     </svg>
-                    <span>Create Room</span>
+                    CREATE ROOM
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => setIsHistoryModalOpen(true)}
+                    className="flex w-full sm:w-auto min-w-[84px] items-center justify-center gap-2 rounded-md bg-black px-4 sm:px-6 py-3 text-xs sm:text-sm font-black text-white border-2 sm:border-4 border-[#F05224] shadow-[2px_2px_0px_0px_#F05224] sm:shadow-[4px_4px_0px_0px_#F05224] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-[1px_1px_0px_0px_#F05224] sm:hover:shadow-[2px_2px_0px_0px_#F05224] hover:bg-gray-800"
+                  >
+                    <svg
+                      fill="currentColor"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      width="14"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="sm:w-4 sm:h-4"
+                    >
+                      <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+                    </svg>
+                    HISTORY
                   </Button>
                 </div>
               </div>
@@ -347,6 +367,11 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
           onSubmitSettlement={handleSubmitSettlement}
         />
       )}
+
+      <SettlementHistory
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+      />
     </div>
   )
 }
