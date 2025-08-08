@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { UserPlus, Check, X, MessageCircle, Trash2, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { authAPI } from '@/lib/api'
+import { sendFriendRequest, acceptFriendRequest, declineFriendRequest, removeFriend } from '@/services/friends'
 import type { User } from '@/types/user'
 
 interface UserCardProps {
@@ -41,14 +41,13 @@ export default function UserCard({
   const handleSendRequest = async () => {
     setLoading(true)
     try {
-      const response = await authAPI.post('/api/friends/requests', { receiverId: user.id })
+      const result = await sendFriendRequest(user.id)
 
-      if (response.ok) {
+      if (result.success) {
         setLocalStatus('request_sent')
         onActionComplete()
       } else {
-        const error = await response.json()
-        console.error('Failed to send friend request:', error.error)
+        console.error('Failed to send friend request:', result.error)
       }
     } catch (error) {
       console.error('Error sending friend request:', error)
@@ -100,13 +99,12 @@ export default function UserCard({
     
     setLoading(true)
     try {
-      const response = await authAPI.delete(`/api/friends/${friendshipId}`)
+      const result = await removeFriend(friendshipId)
 
-      if (response.ok) {
+      if (result.success) {
         onActionComplete()
       } else {
-        const error = await response.json()
-        console.error('Failed to remove friend:', error.error)
+        console.error('Failed to remove friend:', result.error)
       }
     } catch (error) {
       console.error('Error removing friend:', error)

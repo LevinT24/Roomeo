@@ -357,6 +357,37 @@ export async function declineFriendRequest(requestId: string): Promise<{ success
   }
 }
 
+// Cancel friend request
+export async function cancelFriendRequest(requestId: string): Promise<{ success: boolean, error?: string }> {
+  try {
+    console.log('🔄 Cancelling friend request:', requestId)
+    
+    // Ensure user is authenticated
+    await ensureAuthenticated()
+
+    // Delete the friend request
+    const { error } = await supabase
+      .from('friend_requests')
+      .delete()
+      .eq('id', requestId)
+
+    if (error) {
+      console.error('❌ Error cancelling friend request:', error)
+      return { success: false, error: error.message || 'Failed to cancel friend request' }
+    }
+
+    console.log('✅ Friend request cancelled successfully')
+    return { success: true }
+
+  } catch (error) {
+    console.error('❌ Exception cancelling friend request:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to cancel friend request' 
+    }
+  }
+}
+
 // Remove friend
 export async function removeFriend(friendshipId: string): Promise<{ success: boolean, error?: string }> {
   try {

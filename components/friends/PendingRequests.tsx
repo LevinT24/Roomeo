@@ -9,7 +9,7 @@ import { Check, X, Clock, Send, Inbox } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import LoadingSpinner from '@/components/LoadingSpinner'
-import { authAPI } from '@/lib/api'
+import { getFriendRequests, acceptFriendRequest, declineFriendRequest, cancelFriendRequest } from '@/services/friends'
 import type { User } from '@/types/user'
 
 interface PendingRequestsProps {
@@ -42,37 +42,10 @@ export default function PendingRequests({ user, onRequestUpdate }: PendingReques
     setError('')
     
     try {
-      const response = await authAPI.get('/api/friends/requests')
+      const { sent, received } = await getFriendRequests()
       
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to fetch requests')
-      }
-
-      const data = await response.json()
-      
-      // Transform sent requests to match component interface
-      const transformedSentRequests = (data.sentRequests || []).map((request: any) => ({
-        id: request.id,
-        type: 'sent' as const,
-        userId: request.receiver_id,
-        name: request.receiver?.name || 'Unknown User',
-        profilePicture: request.receiver?.profilePicture || null,
-        createdAt: request.created_at
-      }))
-      
-      // Transform received requests to match component interface
-      const transformedReceivedRequests = (data.receivedRequests || []).map((request: any) => ({
-        id: request.id,
-        type: 'received' as const,
-        userId: request.sender_id,
-        name: request.sender?.name || 'Unknown User', 
-        profilePicture: request.sender?.profilePicture || null,
-        createdAt: request.created_at
-      }))
-      
-      setSentRequests(transformedSentRequests)
-      setReceivedRequests(transformedReceivedRequests)
+      setSentRequests(sent)
+      setReceivedRequests(received)
     } catch (err) {
       console.error('Error fetching friend requests:', err)
       setError(err instanceof Error ? err.message : 'Failed to load friend requests')
@@ -84,17 +57,18 @@ export default function PendingRequests({ user, onRequestUpdate }: PendingReques
   const handleAcceptRequest = async (requestId: string) => {
     setActionLoading(requestId)
     try {
-      const response = await authAPI.patch(`/api/friends/requests/${requestId}`, { action: 'accept' })
+      const result = await acceptFriendRequest(requestId)
 
-      if (response.ok) {
+      if (result.success) {
         await fetchRequests()
         onRequestUpdate()
       } else {
-        const error = await response.json()
-        console.error('Failed to accept request:', error.error)
+        console.error('Failed to accept request:', result.error)
+        setError(result.error || 'Failed to accept request')
       }
     } catch (error) {
       console.error('Error accepting request:', error)
+      setError('Failed to accept request')
     } finally {
       setActionLoading(null)
     }
@@ -103,17 +77,18 @@ export default function PendingRequests({ user, onRequestUpdate }: PendingReques
   const handleDeclineRequest = async (requestId: string) => {
     setActionLoading(requestId)
     try {
-      const response = await authAPI.patch(`/api/friends/requests/${requestId}`, { action: 'decline' })
+      const result = await declineFriendRequest(requestId)
 
-      if (response.ok) {
+      if (result.success) {
         await fetchRequests()
         onRequestUpdate()
       } else {
-        const error = await response.json()
-        console.error('Failed to decline request:', error.error)
+        console.error('Failed to decline request:', result.error)
+        setError(result.error || 'Failed to decline request')
       }
     } catch (error) {
       console.error('Error declining request:', error)
+      setError('Failed to decline request')
     } finally {
       setActionLoading(null)
     }
@@ -122,17 +97,18 @@ export default function PendingRequests({ user, onRequestUpdate }: PendingReques
   const handleCancelRequest = async (requestId: string) => {
     setActionLoading(requestId)
     try {
-      const response = await authAPI.delete(`/api/friends/requests/${requestId}`)
+      const result = await cancelFriendRequest(requestId)
 
-      if (response.ok) {
+      if (result.success) {
         await fetchRequests()
         onRequestUpdate()
       } else {
-        const error = await response.json()
-        console.error('Failed to cancel request:', error.error)
+        console.error('Failed to cancel request:', result.error)
+        setError(result.error || 'Failed to cancel request')
       }
     } catch (error) {
       console.error('Error cancelling request:', error)
+      setError('Failed to cancel request')
     } finally {
       setActionLoading(null)
     }

@@ -9,7 +9,7 @@ import { Users, UserX, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import LoadingSpinner from '@/components/LoadingSpinner'
-import { authAPI } from '@/lib/api'
+import { getFriendsList, removeFriend } from '@/services/friends'
 import type { User } from '@/types/user'
 
 interface FriendsListProps {
@@ -40,15 +40,8 @@ export default function FriendsList({ user, onRequestUpdate }: FriendsListProps)
     setError('')
     
     try {
-      const response = await authAPI.get('/api/friends')
-      
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to fetch friends')
-      }
-
-      const data = await response.json()
-      setFriends(data.friends || [])
+      const friendsList = await getFriendsList()
+      setFriends(friendsList)
     } catch (err) {
       console.error('Error fetching friends:', err)
       setError(err instanceof Error ? err.message : 'Failed to load friends list')
@@ -60,17 +53,18 @@ export default function FriendsList({ user, onRequestUpdate }: FriendsListProps)
   const handleRemoveFriend = async (friendshipId: string) => {
     setActionLoading(friendshipId)
     try {
-      const response = await authAPI.delete(`/api/friends/${friendshipId}`)
+      const result = await removeFriend(friendshipId)
 
-      if (response.ok) {
+      if (result.success) {
         await fetchFriends()
         onRequestUpdate()
       } else {
-        const error = await response.json()
-        console.error('Failed to remove friend:', error.error)
+        console.error('Failed to remove friend:', result.error)
+        setError(result.error || 'Failed to remove friend')
       }
     } catch (error) {
       console.error('Error removing friend:', error)
+      setError('Failed to remove friend')
     } finally {
       setActionLoading(null)
     }
