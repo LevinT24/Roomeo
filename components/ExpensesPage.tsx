@@ -17,7 +17,8 @@ import {
   createExpenseGroup, 
   getExpenseDashboardData, 
   submitSettlement, 
-  approveSettlement 
+  approveSettlement,
+  markParticipantPayment 
 } from "@/services/expenses"
 
 interface User {
@@ -127,11 +128,15 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
   // Mark participant as paid/unpaid (creator only)
   const handleMarkPaid = async (groupId: string, userId: string, paid: boolean) => {
     try {
-      // For now, this is a placeholder - you'll need to implement this service function
       console.log('Mark paid:', { groupId, userId, paid })
-      // TODO: Implement markParticipantPaid service function
-      // await markParticipantPaid({ group_id: groupId, user_id: userId, paid })
-      // await fetchDashboardData()
+      
+      const result = await markParticipantPayment(groupId, userId, paid)
+      if (result.success) {
+        // Refresh dashboard data to show updated payment status
+        await fetchDashboardData()
+      } else {
+        throw new Error(result.message || `Failed to mark participant as ${paid ? 'paid' : 'unpaid'}`)
+      }
     } catch (err) {
       console.error('Error marking payment status:', err)
       setError(err instanceof Error ? err.message : 'Failed to update payment status')

@@ -175,3 +175,71 @@ CREATE POLICY "Users can view participants in their expense groups" ON expense_p
       WHERE user_id = auth.uid()
     )
   );
+
+-- Function to mark participant payment status (creator only)
+CREATE OR REPLACE FUNCTION mark_participant_payment(
+  p_group_id UUID,
+  p_user_id UUID,
+  p_mark_as_paid BOOLEAN
+) RETURNS BOOLEAN AS $$
+DECLARE
+  v_creator_id UUID;
+  v_amount_owed DECIMAL(10,2);
+BEGIN
+  -- Get group creator
+  SELECT created_by INTO v_creator_id
+  FROM expense_groups
+  WHERE id = p_group_id;
+  
+  IF v_creator_id IS NULL THEN
+    RAISE EXCEPTION 'Expense group not found';
+  END IF;
+  
+  -- Verify the caller is the creator
+  IF auth.uid() != v_creator_id THEN
+    RAISE EXCEPTION 'Only the group creator can mark participant payments';
+  END IF;
+  
+  -- Get participant's amount owed
+  SELECT amount_owed INTO v_amount_owed
+  FROM expense_participants
+  WHERE group_id = p_group_id AND user_id = p_user_id;
+  
+  IF v_amount_owed IS NULL THEN
+    RAISE EXCEPTION 'User is not a participant in this group';
+  END IF;
+  
+  -- Update participant's payment status
+  IF p_mark_as_paid THEN
+    -- Mark as fully paid
+    UPDATE expense_participants
+    SET amount_paid = amount_owed,
+        is_settled = true
+    WHERE group_id = p_group_id AND user_id = p_user_id;
+  ELSE
+    -- Mark as unpaid
+    UPDATE expense_participants
+    SET amount_paid = 0,
+        is_settled = false
+    WHERE group_id = p_group_id AND user_id = p_user_id;
+  END IF;
+  
+  -- Check if group is fully settled
+  IF p_mark_as_paid THEN
+    UPDATE expense_groups
+    SET status = 'settled'
+    WHERE id = p_group_id
+    AND NOT EXISTS (
+      SELECT 1 FROM expense_participants
+      WHERE group_id = p_group_id AND NOT is_settled
+    );
+  ELSE
+    -- If marking as unpaid, ensure group is not settled
+    UPDATE expense_groups
+    SET status = 'active'
+    WHERE id = p_group_id;
+  END IF;
+  
+  RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

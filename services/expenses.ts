@@ -475,3 +475,40 @@ export function subscribeToExpenseUpdates(
     }
   };
 }
+
+export async function markParticipantPayment(
+  groupId: string,
+  userId: string,
+  markAsPaid: boolean
+): Promise<{ success: boolean; message?: string }> {
+  try {
+    console.log(`🔄 Marking participant payment: ${markAsPaid ? 'paid' : 'unpaid'}`, { groupId, userId });
+
+    // Ensure user is authenticated
+    await ensureAuthenticated();
+
+    // Call database function to mark payment
+    const { data: result, error } = await supabase.rpc('mark_participant_payment', {
+      p_group_id: groupId,
+      p_user_id: userId,
+      p_mark_as_paid: markAsPaid
+    });
+
+    if (error) {
+      console.error("❌ Error marking participant payment:", error);
+      throw new Error(error.message || "Failed to mark participant payment");
+    }
+
+    console.log(`✅ Participant marked as ${markAsPaid ? 'paid' : 'unpaid'}`);
+
+    return {
+      success: true
+    };
+  } catch (error) {
+    console.error("❌ Exception marking participant payment:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to mark participant payment"
+    };
+  }
+}
