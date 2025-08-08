@@ -98,7 +98,7 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
         </div>
       </div>
 
-      {!isSettled && remainingAmount > 0 && (
+      {!isSettled && remainingAmount > 0 && expense.amount_owed > 0 && (
         <Button 
           onClick={() => onSettleUp(expense.group_id)}
           className="w-full bg-[#F05224] hover:bg-[#D63E1A] text-white font-semibold py-2 px-4 rounded-md border-2 border-black shadow-[2px_2px_0px_0px_#000000] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#000000]"

@@ -107,6 +107,22 @@ export async function submitSettlement(
       throw new Error("Settlement amount must be greater than 0");
     }
 
+    // Prevent creators from submitting settlements to themselves
+    const { data: groupData, error: groupError } = await supabase
+      .from('expense_groups')
+      .select('created_by')
+      .eq('id', data.group_id)
+      .single();
+
+    if (groupError) {
+      throw new Error("Failed to verify expense group");
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && groupData.created_by === user.id) {
+      throw new Error("Creators cannot submit settlements to themselves. Use the checkmark buttons to mark payments as received.");
+    }
+
     // Call database function to submit settlement
     const { data: result, error } = await supabase.rpc('submit_settlement', {
       p_group_id: data.group_id,
