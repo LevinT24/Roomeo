@@ -5,9 +5,9 @@ import { Badge } from "@/components/ui/badge"
 import { SettlementCardProps } from "@/types/expenses"
 
 export default function SettlementCard({ settlement, onApprove, currentUserId }: SettlementCardProps) {
-  const isReceiver = currentUserId === settlement.settlement_id // This needs to be fixed in the data structure
-  const canApprove = onApprove && settlement.status === 'pending'
-
+  // FIX: Correct receiver check using receiver_id instead of settlement_id
+  const isReceiver = currentUserId === settlement.receiver_id
+  const canApprove = onApprove && settlement.status === 'pending' && isReceiver
   const getStatusColor = () => {
     switch (settlement.status) {
       case 'approved':

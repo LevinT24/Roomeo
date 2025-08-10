@@ -13,6 +13,9 @@ import {
   ExpenseGroup,
   ExpenseParticipant,
   Settlement,
+  UserPendingSettlement,
+  UserExpenseSummary,
+  SettlementChangePayload,
 } from "@/types/expenses";
 
 // Helper function to ensure user is authenticated
@@ -102,39 +105,8 @@ export async function submitSettlement(
     // Ensure user is authenticated
     await ensureAuthenticated();
 
-    // Validate inputs
-    if (data.amount <= 0) {
-      throw new Error("Settlement amount must be greater than 0");
-    }
-
-    // Get current user for authentication
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error("Authentication required");
-    }
-
-    // Skip client-side validation due to RLS circular dependency issues
-    // The database function will handle all validation including:
-    // - User is a participant in the group
-    // - User is not the creator trying to pay themselves
-    // - Group exists and is valid
-    console.log("📋 Bypassing client-side validation due to RLS policies, letting database function handle validation");
-
-    // Test if the function exists and user is authenticated
-    console.log("🧪 Testing database connection and auth...");
-    const { data: testData, error: testError } = await supabase.rpc('get_expense_summary', {
-      p_user_id: user.id
-    });
-    console.log("🧪 Test function response:", { data: testData, error: testError });
-
-    // Call database function to submit settlement
-    console.log("🔄 Calling submit_settlement function with params:", {
-      p_group_id: data.group_id,
-      p_amount: data.amount,
-      p_payment_method: data.payment_method,
-      p_proof_image: data.proof_image || null,
-      p_notes: data.notes || null
-    });
+    // Let the database function handle all validation and access control
+    console.log("🔄 Calling submit_settlement function directly");
 
     const { data: result, error } = await supabase.rpc('submit_settlement', {
       p_group_id: data.group_id,
@@ -144,35 +116,36 @@ export async function submitSettlement(
       p_notes: data.notes || null
     });
 
-    console.log("📋 Database function response - data:", result, "error:", error);
-
     if (error) {
       console.error("❌ Error submitting settlement:", error);
       throw new Error(error.message || "Failed to submit settlement");
     }
 
     if (!result) {
-      console.error("❌ No settlement ID returned from database function");
       throw new Error("Settlement submission failed - no ID returned");
     }
 
     console.log("✅ Settlement submitted with ID:", result);
 
-    // Get expense group details for notification
-    const { data: expenseGroup } = await supabase
-      .from('expense_groups')
-      .select('name, created_by')
-      .eq('id', data.group_id)
-      .single();
+    // Get group details for notification after successful settlement
+    try {
+      const { data: expenseGroup } = await supabase
+        .from('expense_groups')
+        .select('created_by, name')
+        .eq('id', data.group_id)
+        .single();
 
-    // Send notification to group creator
-    if (expenseGroup) {
-      await sendExpenseNotifications(result, [expenseGroup.created_by], 'settlement_requested', {
-        expense_group_id: data.group_id,
-        expense_name: expenseGroup.name,
-        amount: data.amount,
-        settlement_id: result
-      });
+      if (expenseGroup) {
+        await sendExpenseNotifications(result, [expenseGroup.created_by], 'settlement_requested', {
+          expense_group_id: data.group_id,
+          expense_name: expenseGroup.name,
+          amount: data.amount,
+          settlement_id: result
+        });
+      }
+    } catch (notificationError) {
+      console.warn("⚠️ Settlement created but notification failed:", notificationError);
+      // Don't fail the entire operation if notification fails
     }
 
     return {
@@ -217,7 +190,7 @@ export async function approveSettlement(
       .select(`
         payer_id,
         amount,
-        expense_groups!inner(name)
+        expense_groups(name)
       `)
       .eq('id', data.settlement_id)
       .single();
@@ -230,7 +203,7 @@ export async function approveSettlement(
         data.approved ? 'settlement_approved' : 'settlement_rejected',
         {
           expense_group_id: '',
-          expense_name: settlement.expense_groups.name,
+          expense_name: settlement.expense_groups?.[0]?.name || 'Unknown Group',
           amount: settlement.amount,
           settlement_id: data.settlement_id
         }
@@ -258,6 +231,7 @@ export async function getExpenseSummary(userId?: string): Promise<ExpenseSummary
     // Ensure user is authenticated  
     const user = await ensureAuthenticated();
 
+    // Use the original function that has the correct structure with participants
     const { data, error } = await supabase.rpc('get_expense_summary', {
       p_user_id: userId || user.id
     });
@@ -279,55 +253,36 @@ export async function getPendingSettlements(userId?: string): Promise<PendingSet
   try {
     console.log("🔄 Fetching pending settlements for user:", userId || "current user");
 
-    // Ensure user is authenticated
     const user = await ensureAuthenticated();
+    const targetUserId = userId || user.id;
 
-    // Use database function to bypass RLS issues
-    const { data, error } = await supabase.rpc('get_pending_settlements', {
-      user_id_param: userId || user.id
+    // Use SECURITY DEFINER function to bypass RLS issues
+    const { data, error } = await supabase.rpc('get_user_pending_settlements', {
+      p_user_id: targetUserId
     });
 
     if (error) {
       console.error("❌ Error fetching pending settlements:", error);
-      // If the function doesn't exist, fall back to a simpler query
-      if (error.message?.includes('function') || error.message?.includes('does not exist')) {
-        console.log("📋 Database function not available, using simplified query");
-        
-        const { data: simpleData, error: simpleError } = await supabase
-          .from('settlements')
-          .select('id, amount, payment_method, status, created_at, proof_image, notes, group_id, payer_id')
-          .eq('status', 'pending')
-          .eq('receiver_id', userId || user.id)
-          .order('created_at', { ascending: false });
-
-        if (simpleError) {
-          console.error("❌ Error with simplified query:", simpleError);
-          throw new Error(simpleError.message || "Failed to fetch pending settlements");
-        }
-
-        // Map simple data without group/user names (we'll show IDs for now)
-        const pendingSettlements: PendingSettlement[] = (simpleData || []).map(settlement => ({
-          settlement_id: settlement.id,
-          group_name: `Group ${settlement.group_id.slice(0, 8)}...`,
-          payer_name: `User ${settlement.payer_id.slice(0, 8)}...`,
-          amount: settlement.amount,
-          payment_method: settlement.payment_method,
-          status: settlement.status,
-          created_at: settlement.created_at,
-          proof_image: settlement.proof_image,
-          notes: settlement.notes
-        }));
-
-        return pendingSettlements;
-      }
       throw new Error(error.message || "Failed to fetch pending settlements");
     }
 
-    // If using the database function, data should already be properly formatted
-    const pendingSettlements: PendingSettlement[] = data || [];
+    // Map the function result to PendingSettlement format
+    const pendingSettlements: PendingSettlement[] = (data || []).map((settlement: UserPendingSettlement) => ({
+      settlement_id: settlement.settlement_id,
+      group_name: settlement.group_name || `Group ${settlement.group_id.toString().slice(0, 8)}...`,
+      payer_name: settlement.payer_name || `User ${settlement.payer_id.toString().slice(0, 8)}...`,
+      receiver_id: settlement.receiver_id,
+      amount: settlement.amount,
+      payment_method: settlement.payment_method,
+      status: settlement.status,
+      created_at: settlement.created_at,
+      proof_image: settlement.proof_image,
+      notes: settlement.notes
+    }));
 
     console.log("✅ Pending settlements retrieved:", pendingSettlements.length);
     return pendingSettlements;
+
   } catch (error) {
     console.error("❌ Exception fetching pending settlements:", error);
     return [];
@@ -456,6 +411,26 @@ export function subscribeToExpenseUpdates(
 ) {
   console.log("🔄 Setting up expense real-time subscriptions");
 
+  // Subscribe to settlements changes (both as payer and receiver)
+  const settlementsSubscription = supabase
+    .channel('settlements')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'settlements'
+      },
+      (payload: any) => {
+        // Only trigger update if this user is involved in the settlement
+        const settlement = payload.new || payload.old;
+        if (settlement?.payer_id === userId || settlement?.receiver_id === userId) {
+          onUpdate(payload);
+        }
+      }
+    )
+    .subscribe();
+
   // Subscribe to expense participants changes
   const participantsSubscription = supabase
     .channel('expense_participants')
@@ -471,27 +446,33 @@ export function subscribeToExpenseUpdates(
     )
     .subscribe();
 
-  // Subscribe to settlements changes
-  const settlementsSubscription = supabase
-    .channel('settlements')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'settlements',
-        filter: `payer_id=eq.${userId}`
-      },
-      onUpdate
-    )
-    .subscribe();
-
   return {
     unsubscribe: () => {
       supabase.removeChannel(participantsSubscription);
       supabase.removeChannel(settlementsSubscription);
     }
   };
+}
+
+// Helper function to refresh dashboard data after settlement actions
+export async function refreshDashboardAfterSettlement(userId?: string): Promise<ExpenseDashboardData> {
+  console.log("🔄 Refreshing dashboard data after settlement action");
+  return await getExpenseDashboardData(userId);
+}
+
+// Debug function to check settlement creation
+export async function debugSettlementCreation(): Promise<void> {
+  try {
+    const { data, error } = await supabase.rpc('test_settlement_creation');
+    
+    if (error) {
+      console.error("❌ Error running debug function:", error);
+    } else {
+      console.log("🔍 Debug info:", data);
+    }
+  } catch (error) {
+    console.error("❌ Exception in debug function:", error);
+  }
 }
 
 export async function markParticipantPayment(
@@ -539,77 +520,82 @@ export async function getSettlementHistory(userId?: string): Promise<{
   try {
     console.log("🔄 Fetching settlement history and analytics");
 
-    // Ensure user is authenticated
     const user = await ensureAuthenticated();
+    const targetUserId = userId || user.id;
 
-    // Use database function to get comprehensive history and analytics
-    const { data, error } = await supabase.rpc('get_settlement_history_analytics', {
-      p_user_id: userId || user.id
-    });
-
-    if (error) {
-      console.error("❌ Error fetching settlement history:", error);
-      // Fallback to simple queries if function doesn't exist
-      if (error.message?.includes('function') || error.message?.includes('does not exist')) {
-        console.log("📋 Database function not available, using fallback queries");
+    // Try simpler query first to avoid naming issues
+    const { data: historyData, error: historyError } = await supabase
+      .from('settlements')
+      .select('*')
+      .or(`payer_id.eq.${targetUserId},receiver_id.eq.${targetUserId}`)
+      .order('created_at', { ascending: false });
+      
+    let enhancedHistoryData = historyData;
+    
+    // If basic query works, try to enhance with names
+    if (!historyError && historyData) {
+      const { data: dataWithJoins, error: joinError } = await supabase
+        .from('settlements')
+        .select(`
+          *,
+          expense_groups(name),
+          payer:users!payer_id(name),
+          receiver:users!receiver_id(name)
+        `)
+        .or(`payer_id.eq.${targetUserId},receiver_id.eq.${targetUserId}`)
+        .order('created_at', { ascending: false });
         
-        // Get basic settlement history
-        const { data: historyData, error: historyError } = await supabase
-          .from('settlements')
-          .select(`
-            id,
-            amount,
-            payment_method,
-            status,
-            created_at,
-            approved_at,
-            group_id,
-            payer_id,
-            receiver_id
-          `)
-          .or(`payer_id.eq.${userId || user.id},receiver_id.eq.${userId || user.id}`)
-          .order('created_at', { ascending: false });
-
-        if (historyError) {
-          throw new Error(historyError.message || 'Failed to fetch settlement history');
-        }
-
-        // Transform and create basic analytics
-        const history = (historyData || []).map(settlement => ({
-          id: settlement.id,
-          group_name: `Group ${settlement.group_id.slice(0, 8)}...`,
-          amount: settlement.amount,
-          payment_method: settlement.payment_method,
-          status: settlement.status,
-          created_at: settlement.created_at,
-          approved_at: settlement.approved_at,
-          type: settlement.payer_id === (userId || user.id) ? 'sent' : 'received',
-          payer_name: `User ${settlement.payer_id.slice(0, 8)}...`,
-          receiver_name: `User ${settlement.receiver_id.slice(0, 8)}...`
-        }));
-
-        // Calculate basic analytics
-        const totalPaid = history.filter(h => h.type === 'sent' && h.status === 'approved').reduce((sum, h) => sum + h.amount, 0);
-        const totalReceived = history.filter(h => h.type === 'received' && h.status === 'approved').reduce((sum, h) => sum + h.amount, 0);
-        const totalTransactions = history.filter(h => h.status === 'approved').length;
-        const averageAmount = totalTransactions > 0 ? (totalPaid + totalReceived) / totalTransactions : 0;
-
-        const analytics = {
-          total_paid: totalPaid,
-          total_received: totalReceived,
-          total_transactions: totalTransactions,
-          average_amount: averageAmount,
-          most_used_method: 'cash', // Default fallback
-          monthly_summary: []
-        };
-
-        return { history, analytics };
+      if (!joinError && dataWithJoins) {
+        enhancedHistoryData = dataWithJoins;
       }
-      throw new Error(error.message || 'Failed to fetch settlement history');
     }
 
-    console.log("✅ Settlement history retrieved:", data?.history?.length || 0, "items");
-    return data || { history: [], analytics: null };
+    if (historyError) {
+      console.error("❌ Error fetching settlement history:", historyError);
+      throw new Error(historyError.message || 'Failed to fetch settlement history');
+    }
+
+    // Transform data with names when available
+    const history = (enhancedHistoryData || []).map(settlement => ({
+      id: settlement.id,
+      group_name: settlement.expense_groups?.[0]?.name || `Group ${settlement.group_id.slice(0, 8)}...`,
+      amount: settlement.amount,
+      payment_method: settlement.payment_method,
+      status: settlement.status,
+      created_at: settlement.created_at,
+      approved_at: settlement.approved_at,
+      type: settlement.payer_id === targetUserId ? 'sent' : 'received',
+      payer_name: settlement.payer?.name || `User ${settlement.payer_id.slice(0, 8)}...`,
+      receiver_name: settlement.receiver?.name || `User ${settlement.receiver_id.slice(0, 8)}...`
+    }));
+
+    // Calculate analytics
+    const approvedSettlements = history.filter(h => h.status === 'approved');
+    const totalPaid = approvedSettlements.filter(h => h.type === 'sent').reduce((sum, h) => sum + h.amount, 0);
+    const totalReceived = approvedSettlements.filter(h => h.type === 'received').reduce((sum, h) => sum + h.amount, 0);
+    const totalTransactions = approvedSettlements.length;
+    const averageAmount = totalTransactions > 0 ? (totalPaid + totalReceived) / totalTransactions : 0;
+
+    // Calculate most used payment method
+    const methodCounts = approvedSettlements.reduce((acc, h) => {
+      acc[h.payment_method] = (acc[h.payment_method] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const mostUsedMethod = Object.entries(methodCounts)
+      .sort(([,a], [,b]) => (b as number) - (a as number))[0]?.[0] || 'cash';
+
+    const analytics = {
+      total_paid: totalPaid,
+      total_received: totalReceived,
+      total_transactions: totalTransactions,
+      average_amount: averageAmount,
+      most_used_method: mostUsedMethod,
+      monthly_summary: [] // Could be enhanced later
+    };
+
+    console.log("✅ Settlement history retrieved:", history.length, "items");
+    return { history, analytics };
 
   } catch (error) {
     console.error("❌ Exception fetching settlement history:", error);

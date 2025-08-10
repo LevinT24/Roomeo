@@ -118,6 +118,7 @@ export interface PendingSettlement {
   settlement_id: string
   group_name: string
   payer_name: string
+  receiver_id: string  // Added missing field
   amount: number
   payment_method: PaymentMethod
   status: SettlementStatus
@@ -125,6 +126,7 @@ export interface PendingSettlement {
   proof_image?: string
   notes?: string
 }
+
 
 export interface ExpenseDashboardData {
   active_expenses: ExpenseSummary[]
@@ -178,4 +180,40 @@ export interface ExpenseNotificationData {
   expense_name: string
   amount?: number
   settlement_id?: string
+}
+
+// Database function return types
+export interface UserPendingSettlement {
+  settlement_id: string
+  group_id: string
+  group_name: string
+  payer_id: string
+  payer_name: string
+  receiver_id: string
+  amount: number
+  payment_method: PaymentMethod
+  status: SettlementStatus
+  created_at: string
+  proof_image?: string
+  notes?: string
+}
+
+export interface UserExpenseSummary {
+  group_id: string
+  group_name: string
+  group_description?: string
+  total_amount: number
+  amount_owed: number
+  amount_paid: number
+  is_settled: boolean
+  created_by_name: string
+  created_at: string
+  group_status: ExpenseStatus
+}
+
+// Real-time subscription payload type
+export interface SettlementChangePayload {
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE'
+  new?: Settlement
+  old?: Settlement
 }
