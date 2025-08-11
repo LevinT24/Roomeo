@@ -1,4 +1,4 @@
-// services/expenses.ts - Client-side expense operations
+// services/expenses.ts - Updated getExpenseDashboardData function
 import { supabase } from "@/lib/supabase";
 import {
   CreateExpenseGroupRequest,
@@ -327,37 +327,61 @@ export async function getPendingSettlements(userId?: string): Promise<PendingSet
 
 export async function getExpenseDashboardData(userId?: string): Promise<ExpenseDashboardData> {
   try {
-    console.log("🔄 Fetching expense dashboard data");
+    console.log("🔄 Fetching enhanced expense dashboard data");
 
     // Ensure user is authenticated
-    await ensureAuthenticated();
+    const user = await ensureAuthenticated();
+    const targetUserId = userId || user.id;
 
-    const [expenseSummary, pendingSettlements] = await Promise.all([
-      getExpenseSummary(userId),
-      getPendingSettlements(userId)
-    ]);
+    // Use the enhanced database function
+    const { data, error } = await supabase.rpc('get_expense_dashboard_data', {
+      p_user_id: targetUserId
+    });
 
-    // Calculate totals
-    const total_owed = expenseSummary.reduce((sum, expense) => 
-      sum + (expense.amount_owed - expense.amount_paid), 0
-    );
+    if (error) {
+      console.error("❌ Error fetching dashboard data:", error);
+      
+      // Fallback to the original method if the enhanced function doesn't exist
+      if (error.message?.includes('function') || error.message?.includes('does not exist')) {
+        console.log("📋 Enhanced function not available, using fallback method");
+        
+        const [expenseSummary, pendingSettlements] = await Promise.all([
+          getExpenseSummaryWithPendingStatus(targetUserId),
+          getPendingSettlements(targetUserId)
+        ]);
 
-    const total_to_receive = pendingSettlements.reduce((sum, settlement) => 
-      sum + settlement.amount, 0
-    );
+        const total_owed = expenseSummary.reduce((sum, expense) => 
+          sum + (expense.amount_owed - expense.amount_paid), 0
+        );
 
+        const total_to_receive = pendingSettlements.reduce((sum, settlement) => 
+          sum + settlement.amount, 0
+        );
+
+        return {
+          active_expenses: expenseSummary,
+          pending_settlements: pendingSettlements,
+          total_owed,
+          total_to_receive
+        };
+      }
+      
+      throw new Error(error.message || "Failed to fetch dashboard data");
+    }
+
+    // Parse the JSONB response
     const dashboardData: ExpenseDashboardData = {
-      active_expenses: expenseSummary,
-      pending_settlements: pendingSettlements,
-      total_owed,
-      total_to_receive
+      active_expenses: data.active_expenses || [],
+      pending_settlements: data.pending_settlements || [],
+      total_owed: parseFloat(data.total_owed || 0),
+      total_to_receive: parseFloat(data.total_to_receive || 0)
     };
 
-    console.log("✅ Dashboard data compiled:", {
-      active_expenses: expenseSummary.length,
-      pending_settlements: pendingSettlements.length,
-      total_owed,
-      total_to_receive
+    console.log("✅ Enhanced dashboard data compiled:", {
+      active_expenses: dashboardData.active_expenses.length,
+      pending_settlements: dashboardData.pending_settlements.length,
+      total_owed: dashboardData.total_owed,
+      total_to_receive: dashboardData.total_to_receive
     });
 
     return dashboardData;
@@ -372,6 +396,142 @@ export async function getExpenseDashboardData(userId?: string): Promise<ExpenseD
   }
 }
 
+// Enhanced function to get expense summary with pending settlement status
+async function getExpenseSummaryWithPendingStatus(userId: string): Promise<ExpenseSummary[]> {
+  try {
+    console.log("🔄 Fetching expense summary with pending status");
+
+    // Get basic expense summary
+    const { data: expenses, error: expenseError } = await supabase
+      .from('expense_groups')
+      .select(`
+        id,
+        name,
+        description,
+        total_amount,
+        created_by,
+        created_at,
+        status,
+        expense_participants!inner(
+          amount_owed,
+          amount_paid,
+          is_settled
+        ),
+        users!expense_groups_created_by_fkey(
+          name
+        )
+      `)
+      .eq('expense_participants.user_id', userId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+
+    if (expenseError) {
+      console.error("Error fetching expenses:", expenseError);
+      throw expenseError;
+    }
+
+    // Get pending settlements for each expense
+    const expensesWithPending = await Promise.all(
+      (expenses || []).map(async (expense) => {
+        // Get current user's pending settlement for this expense
+        const { data: pendingSettlement } = await supabase
+          .from('settlements')
+          .select('id, amount, payment_method, status, created_at')
+          .eq('group_id', expense.id)
+          .eq('payer_id', userId)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        // Get all participants with their statuses
+        const { data: participants } = await supabase
+          .from('expense_participants')
+          .select(`
+            user_id,
+            amount_owed,
+            amount_paid,
+            is_settled,
+            users!inner(
+              name,
+              profilePicture
+            )
+          `)
+          .eq('group_id', expense.id);
+
+        // Get pending settlements for all participants
+        const participantsWithPending = await Promise.all(
+          (participants || []).map(async (participant) => {
+            const { data: participantPending } = await supabase
+              .from('settlements')
+              .select('id, amount, payment_method, status, created_at')
+              .eq('group_id', expense.id)
+              .eq('payer_id', participant.user_id)
+              .eq('status', 'pending')
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+
+            return {
+              user_id: participant.user_id,
+              name: participant.users.name,
+              profile_picture: participant.users.profilePicture,
+              amount_owed: participant.amount_owed,
+              amount_paid: participant.amount_paid,
+              is_settled: participant.is_settled,
+              is_creator: participant.user_id === expense.created_by,
+              pending_settlement: participantPending ? {
+                settlement_id: participantPending.id,
+                amount: participantPending.amount,
+                payment_method: participantPending.payment_method,
+                status: participantPending.status,
+                created_at: participantPending.created_at
+              } : undefined
+            };
+          })
+        );
+
+        // Count all pending settlements for this expense
+        const { count: pendingCount } = await supabase
+          .from('settlements')
+          .select('*', { count: 'exact', head: true })
+          .eq('group_id', expense.id)
+          .eq('status', 'pending');
+
+        const expenseSummary: ExpenseSummary = {
+          group_id: expense.id,
+          group_name: expense.name,
+          group_description: expense.description,
+          total_amount: expense.total_amount,
+          amount_owed: expense.expense_participants[0].amount_owed,
+          amount_paid: expense.expense_participants[0].amount_paid,
+          is_settled: expense.expense_participants[0].is_settled,
+          created_by_name: expense.users.name,
+          created_by_id: expense.created_by,
+          created_at: expense.created_at,
+          group_status: expense.status,
+          participants: participantsWithPending,
+          pending_settlement: pendingSettlement ? {
+            settlement_id: pendingSettlement.id,
+            amount: pendingSettlement.amount,
+            payment_method: pendingSettlement.payment_method,
+            status: pendingSettlement.status,
+            created_at: pendingSettlement.created_at
+          } : undefined,
+          pending_settlements_count: pendingCount || 0
+        };
+
+        return expenseSummary;
+      })
+    );
+
+    console.log("✅ Enhanced expense summary retrieved:", expensesWithPending.length, "groups");
+    return expensesWithPending;
+  } catch (error) {
+    console.error("❌ Exception fetching expense summary with pending status:", error);
+    return [];
+  }
+}
 
 // Helper function to send notifications
 async function sendExpenseNotifications(

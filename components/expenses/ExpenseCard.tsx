@@ -3,27 +3,35 @@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ExpenseCardProps, ExpenseParticipantSummary } from "@/types/expenses"
+import { Clock, CheckCircle, XCircle } from "lucide-react"
 
 export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMarkPaid }: ExpenseCardProps) {
   const remainingAmount = expense.amount_owed - expense.amount_paid
   const isSettled = expense.is_settled || remainingAmount <= 0.01
 
+  // Get current user's participant data
+  const currentUserParticipant = expense.participants?.find(p => p.user_id === currentUserId)
+  const pendingSettlement = expense.pending_settlement // This will come from the updated data structure
+  
+  // Check if current user is the creator
+  // First check created_by_id if available, otherwise check if user is marked as creator in participants
+  const isCreator = expense.created_by_id ? 
+    expense.created_by_id === currentUserId : 
+    expense.participants?.some(p => p.user_id === currentUserId && p.is_creator) || false
+
   const getStatusColor = () => {
     if (isSettled) return "bg-emerald-100 text-emerald-700 border-emerald-200"
+    if (pendingSettlement?.status === 'pending') return "bg-yellow-100 text-yellow-700 border-yellow-200"
     if (remainingAmount > 0) return "bg-orange-100 text-orange-700 border-orange-200"
     return "bg-gray-100 text-gray-700 border-gray-200"
   }
 
   const getStatusText = () => {
     if (isSettled) return "Settled"
+    if (pendingSettlement?.status === 'pending') return "Payment Pending"
     if (remainingAmount > 0) return "Outstanding"
     return "Complete"
   }
-
-  // Check if there's a pending settlement for this expense
-  const hasPendingSettlement = expense.participants?.some(
-    p => p.user_id === currentUserId && p.amount_paid > 0 && !p.is_settled
-  ) || false;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -31,6 +39,121 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
       day: 'numeric',
       year: 'numeric'
     })
+  }
+
+  // Determine what button/status to show for the current user
+  const renderUserActionSection = () => {
+    // If the expense is settled
+    if (isSettled) {
+      return (
+        <div className="w-full text-center py-2 px-4 bg-emerald-50 border border-emerald-200 rounded-md">
+          <span className="text-emerald-700 font-medium flex items-center justify-center gap-2">
+            <CheckCircle className="w-4 h-4" />
+            All settled up!
+          </span>
+        </div>
+      )
+    }
+
+    // If current user is the creator - show management view
+    if (isCreator) {
+      const pendingCount = expense.pending_settlements_count || 0
+      return (
+        <div className="w-full p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-sm text-blue-700 font-medium text-center">
+            You created this expense
+          </p>
+          {pendingCount > 0 && (
+            <p className="text-xs text-blue-600 text-center mt-1">
+              {pendingCount} payment{pendingCount > 1 ? 's' : ''} pending approval
+            </p>
+          )}
+        </div>
+      )
+    }
+
+    // For participants - check if they have a pending settlement
+    if (pendingSettlement) {
+      switch (pendingSettlement.status) {
+        case 'pending':
+          return (
+            <div className="w-full">
+              <div className="text-center py-3 px-4 bg-yellow-50 border border-yellow-200 rounded-md mb-2">
+                <div className="flex items-center justify-center gap-2 text-yellow-700 font-medium">
+                  <Clock className="w-4 h-4 animate-pulse" />
+                  <span>Payment Pending Approval</span>
+                </div>
+                <p className="text-xs text-yellow-600 mt-1">
+                  ${pendingSettlement.amount?.toFixed(2) || '0.00'} submitted via {pendingSettlement.payment_method || 'unknown'}
+                </p>
+                <p className="text-xs text-yellow-500 mt-1">
+                  {formatDate(pendingSettlement.created_at)}
+                </p>
+              </div>
+              
+              {/* Allow user to submit another payment if the pending one doesn't cover full amount */}
+              {pendingSettlement.amount && pendingSettlement.amount < remainingAmount && (
+                <Button 
+                  onClick={() => onSettleUp(expense.group_id)}
+                  variant="outline"
+                  className="w-full text-sm"
+                >
+                  Pay Remaining ${(remainingAmount - pendingSettlement.amount).toFixed(2)}
+                </Button>
+              )}
+            </div>
+          )
+          
+        case 'approved':
+          // This shouldn't happen as approved payments update amount_paid
+          return (
+            <div className="w-full text-center py-2 px-4 bg-emerald-50 border border-emerald-200 rounded-md">
+              <span className="text-emerald-700 font-medium flex items-center justify-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                Payment Approved
+              </span>
+            </div>
+          )
+          
+        case 'rejected':
+          return (
+            <div className="w-full">
+              <div className="text-center py-2 px-4 bg-red-50 border border-red-200 rounded-md mb-2">
+                <span className="text-red-700 font-medium flex items-center justify-center gap-2">
+                  <XCircle className="w-4 h-4" />
+                  Payment Rejected
+                </span>
+                <p className="text-xs text-red-600 mt-1">
+                  Please submit a new payment
+                </p>
+              </div>
+              <Button 
+                onClick={() => onSettleUp(expense.group_id)}
+                className="w-full bg-[#F05224] hover:bg-[#D63E1A] text-white font-semibold py-2 px-4 rounded-md border-2 border-black shadow-[2px_2px_0px_0px_#000000] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#000000]"
+              >
+                Settle Up ${remainingAmount.toFixed(2)}
+              </Button>
+            </div>
+          )
+          
+        default:
+          break
+      }
+    }
+
+    // Default: Show settle up button if there's remaining amount
+    if (remainingAmount > 0 && expense.amount_owed > 0) {
+      return (
+        <Button 
+          onClick={() => onSettleUp(expense.group_id)}
+          className="w-full bg-[#F05224] hover:bg-[#D63E1A] text-white font-semibold py-2 px-4 rounded-md border-2 border-black shadow-[2px_2px_0px_0px_#000000] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#000000]"
+        >
+          Settle Up ${remainingAmount.toFixed(2)}
+        </Button>
+      )
+    }
+
+    return null
   }
 
   return (
@@ -77,7 +200,15 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
               ${expense.amount_paid.toFixed(2)}
             </span>
           </div>
-          {!isSettled && (
+          {!isSettled && pendingSettlement?.status === 'pending' && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Pending:</span>
+              <span className="text-sm font-semibold text-yellow-600">
+                ${pendingSettlement.amount.toFixed(2)}
+              </span>
+            </div>
+          )}
+          {!isSettled && remainingAmount > 0 && !pendingSettlement && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">Remaining:</span>
               <span className="text-sm font-semibold text-orange-600">
@@ -89,110 +220,117 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
 
         {/* Progress bar */}
         <div className="flex-1 mx-4">
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-gray-200 rounded-full h-2 relative">
+            {/* Paid amount (green) */}
             <div 
-              className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+              className="bg-emerald-500 h-2 rounded-full absolute left-0 top-0 transition-all duration-300"
               style={{ 
                 width: `${expense.amount_owed > 0 ? Math.min((expense.amount_paid / expense.amount_owed) * 100, 100) : 0}%` 
               }}
             ></div>
+            
+            {/* Pending amount (yellow) - stacked on top of paid */}
+            {pendingSettlement?.status === 'pending' && pendingSettlement.amount && (
+              <div 
+                className="bg-yellow-400 h-2 rounded-full absolute top-0 transition-all duration-300"
+                style={{ 
+                  left: `${expense.amount_owed > 0 ? Math.min((expense.amount_paid / expense.amount_owed) * 100, 100) : 0}%`,
+                  width: `${expense.amount_owed > 0 ? Math.min((pendingSettlement.amount / expense.amount_owed) * 100, 100 - ((expense.amount_paid / expense.amount_owed) * 100)) : 0}%` 
+                }}
+              ></div>
+            )}
           </div>
-          <p className="text-xs text-gray-500 mt-1 text-center">
-            {expense.amount_owed > 0 ? ((expense.amount_paid / expense.amount_owed) * 100).toFixed(0) : '0'}% paid
-          </p>
+          <div className="flex justify-between text-xs text-gray-500 mt-1">
+            <span>
+              {expense.amount_owed > 0 ? ((expense.amount_paid / expense.amount_owed) * 100).toFixed(0) : '0'}% paid
+            </span>
+            {pendingSettlement?.status === 'pending' && pendingSettlement.amount && (
+              <span className="text-yellow-600">
+                +{expense.amount_owed > 0 ? ((pendingSettlement.amount / expense.amount_owed) * 100).toFixed(0) : '0'}% pending
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      {!isSettled && remainingAmount > 0 && expense.amount_owed > 0 && !hasPendingSettlement && (
-        <Button 
-          onClick={() => onSettleUp(expense.group_id)}
-          className="w-full bg-[#F05224] hover:bg-[#D63E1A] text-white font-semibold py-2 px-4 rounded-md border-2 border-black shadow-[2px_2px_0px_0px_#000000] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#000000]"
-        >
-          Settle Up ${remainingAmount.toFixed(2)}
-        </Button>
-      )}
-
-      {hasPendingSettlement && (
-        <div className="w-full text-center py-2 px-4 bg-yellow-50 border border-yellow-200 rounded-md">
-          <span className="text-yellow-700 font-medium">⏳ Settlement Pending Review</span>
-        </div>
-      )}
+      {/* User Action Section */}
+      {renderUserActionSection()}
 
       {/* Participants Section */}
       {expense.participants && expense.participants.length > 0 && (
         <div className="mt-4 border-t pt-4">
           <h4 className="text-sm font-semibold text-gray-700 mb-3">Participants</h4>
           <div className="space-y-2">
-            {expense.participants.map((participant) => (
-              <div key={participant.user_id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-8 h-8 rounded-full bg-gray-200 bg-cover bg-center"
-                    style={{
-                      backgroundImage: participant.profile_picture
-                        ? `url("${participant.profile_picture}")`
-                        : 'url("/placeholder.svg?height=32&width=32")'
-                    }}
-                  />
-                  <div>
-                    <span className="text-sm font-medium">
-                      {participant.name}
-                      {participant.is_creator && <span className="text-xs text-blue-600 ml-1">(Creator)</span>}
-                    </span>
-                    <div className="text-xs text-gray-500">
-                      Owes: ${participant.amount_owed.toFixed(2)} | Paid: ${participant.amount_paid.toFixed(2)}
+            {expense.participants.map((participant) => {
+              const participantPending = participant.pending_settlement
+              
+              return (
+                <div key={participant.user_id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-8 h-8 rounded-full bg-gray-200 bg-cover bg-center"
+                      style={{
+                        backgroundImage: participant.profile_picture
+                          ? `url("${participant.profile_picture}")`
+                          : 'url("/placeholder.svg?height=32&width=32")'
+                      }}
+                    />
+                    <div>
+                      <span className="text-sm font-medium">
+                        {participant.name}
+                        {participant.is_creator && <span className="text-xs text-blue-600 ml-1">(Creator)</span>}
+                      </span>
+                      <div className="text-xs text-gray-500">
+                        Owes: ${participant.amount_owed.toFixed(2)} | Paid: ${participant.amount_paid.toFixed(2)}
+                        {participantPending && participantPending.amount && (
+                          <span className="text-yellow-600"> | Pending: ${participantPending.amount.toFixed(2)}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-                
-                {/* Payment Status & Controls */}
-                <div className="flex items-center gap-2">
-                  {participant.is_settled ? (
-                    <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
-                      ✓ Settled
-                    </span>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
-                        ${(participant.amount_owed - participant.amount_paid).toFixed(2)} left
+                  
+                  {/* Payment Status & Controls */}
+                  <div className="flex items-center gap-2">
+                    {participant.is_settled ? (
+                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
+                        ✓ Settled
                       </span>
-                      
-                      {/* Creator can mark others as paid */}
-                      {expense.created_by_name && currentUserId && participant.user_id !== currentUserId && onMarkPaid && (
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => onMarkPaid(expense.group_id, participant.user_id, true)}
-                            className="text-xs bg-emerald-500 text-white px-2 py-1 rounded hover:bg-emerald-600"
-                            title="Mark as paid"
-                          >
-                            ✓
-                          </button>
-                          <button
-                            onClick={() => onMarkPaid(expense.group_id, participant.user_id, false)}
-                            className="text-xs bg-gray-400 text-white px-2 py-1 rounded hover:bg-gray-500"
-                            title="Mark as unpaid"
-                          >
-                            ✗
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    ) : participantPending?.status === 'pending' ? (
+                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
+                        ⏳ Pending
+                      </span>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
+                          ${(participant.amount_owed - participant.amount_paid).toFixed(2)} left
+                        </span>
+                        
+                        {/* Creator can mark others as paid */}
+                        {isCreator && participant.user_id !== currentUserId && onMarkPaid && (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => onMarkPaid(expense.group_id, participant.user_id, true)}
+                              className="text-xs bg-emerald-500 text-white px-2 py-1 rounded hover:bg-emerald-600"
+                              title="Mark as paid"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => onMarkPaid(expense.group_id, participant.user_id, false)}
+                              className="text-xs bg-gray-400 text-white px-2 py-1 rounded hover:bg-gray-500"
+                              title="Mark as unpaid"
+                            >
+                              ✗
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
-        </div>
-      )}
-
-      {isSettled && (
-        <div className="w-full text-center py-2 px-4 bg-emerald-50 border border-emerald-200 rounded-md mt-4">
-          <span className="text-emerald-700 font-medium flex items-center justify-center gap-2">
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-            All settled up!
-          </span>
         </div>
       )}
     </div>

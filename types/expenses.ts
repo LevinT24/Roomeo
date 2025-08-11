@@ -1,4 +1,4 @@
-// Expense sharing types for Splitwise feature
+// types/expenses.ts - Updated with pending settlement tracking
 
 export type SplitType = 'equal' | 'custom'
 export type ExpenseStatus = 'active' | 'settled' | 'cancelled'
@@ -46,6 +46,15 @@ export interface ChatParticipant {
   chat_id: string
   user_id: string
   joined_at: string
+}
+
+// Pending settlement info for a participant
+export interface ParticipantPendingSettlement {
+  settlement_id: string
+  amount: number
+  payment_method: PaymentMethod
+  status: SettlementStatus
+  created_at: string
 }
 
 // API Request/Response types
@@ -98,6 +107,7 @@ export interface ExpenseParticipantSummary {
   amount_paid: number
   is_settled: boolean
   is_creator: boolean
+  pending_settlement?: ParticipantPendingSettlement // Added pending settlement info
 }
 
 export interface ExpenseSummary {
@@ -109,9 +119,12 @@ export interface ExpenseSummary {
   amount_paid: number
   is_settled: boolean
   created_by_name: string
+  created_by_id?: string // Added to identify creator
   created_at: string
   group_status: ExpenseStatus
   participants?: ExpenseParticipantSummary[]
+  pending_settlement?: ParticipantPendingSettlement // Current user's pending settlement
+  pending_settlements_count?: number // Total pending settlements for the group (for creator view)
 }
 
 export interface PendingSettlement {
