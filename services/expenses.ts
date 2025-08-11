@@ -103,10 +103,27 @@ export async function submitSettlement(
     console.log("🔄 Submitting settlement:", data);
 
     // Ensure user is authenticated
-    await ensureAuthenticated();
+    const user = await ensureAuthenticated();
 
-    // Let the database function handle all validation and access control
-    console.log("🔄 Calling submit_settlement function directly");
+    // Validate inputs
+    if (!data.group_id) {
+      throw new Error("Group ID is required");
+    }
+    if (data.amount <= 0) {
+      throw new Error("Settlement amount must be greater than 0");
+    }
+    if (!data.payment_method) {
+      throw new Error("Payment method is required");
+    }
+
+    // Call database function to submit settlement
+    console.log("🔄 Calling submit_settlement function with params:", {
+      p_group_id: data.group_id,
+      p_amount: data.amount,
+      p_payment_method: data.payment_method,
+      p_proof_image: data.proof_image || null,
+      p_notes: data.notes || null
+    });
 
     const { data: result, error } = await supabase.rpc('submit_settlement', {
       p_group_id: data.group_id,
@@ -116,26 +133,45 @@ export async function submitSettlement(
       p_notes: data.notes || null
     });
 
+    console.log("📋 Database function response - data:", result, "error:", error);
+
     if (error) {
       console.error("❌ Error submitting settlement:", error);
+      
+      // Provide more specific error messages
+      if (error.message?.includes('not a participant')) {
+        throw new Error("You are not a participant in this expense group");
+      }
+      if (error.message?.includes('yourself')) {
+        throw new Error("You cannot submit a settlement to yourself");
+      }
+      if (error.message?.includes('No outstanding')) {
+        throw new Error("No outstanding amount to settle");
+      }
+      if (error.message?.includes('exceed')) {
+        throw new Error("Settlement amount cannot exceed amount owed");
+      }
+      
       throw new Error(error.message || "Failed to submit settlement");
     }
 
     if (!result) {
+      console.error("❌ No settlement ID returned from database function");
       throw new Error("Settlement submission failed - no ID returned");
     }
 
     console.log("✅ Settlement submitted with ID:", result);
 
-    // Get group details for notification after successful settlement
+    // Attempt to get expense group details for notification (but don't fail if this doesn't work)
     try {
       const { data: expenseGroup } = await supabase
         .from('expense_groups')
-        .select('created_by, name')
+        .select('name, created_by')
         .eq('id', data.group_id)
         .single();
 
-      if (expenseGroup) {
+      // Send notification to group creator
+      if (expenseGroup && expenseGroup.created_by) {
         await sendExpenseNotifications(result, [expenseGroup.created_by], 'settlement_requested', {
           expense_group_id: data.group_id,
           expense_name: expenseGroup.name,
@@ -144,8 +180,8 @@ export async function submitSettlement(
         });
       }
     } catch (notificationError) {
-      console.warn("⚠️ Settlement created but notification failed:", notificationError);
-      // Don't fail the entire operation if notification fails
+      console.warn("⚠️ Failed to send notification:", notificationError);
+      // Don't fail the whole operation if notification fails
     }
 
     return {

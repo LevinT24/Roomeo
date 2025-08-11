@@ -20,6 +20,11 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
     return "Complete"
   }
 
+  // Check if there's a pending settlement for this expense
+  const hasPendingSettlement = expense.participants?.some(
+    p => p.user_id === currentUserId && p.amount_paid > 0 && !p.is_settled
+  ) || false;
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -98,13 +103,19 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
         </div>
       </div>
 
-      {!isSettled && remainingAmount > 0 && expense.amount_owed > 0 && (
+      {!isSettled && remainingAmount > 0 && expense.amount_owed > 0 && !hasPendingSettlement && (
         <Button 
           onClick={() => onSettleUp(expense.group_id)}
           className="w-full bg-[#F05224] hover:bg-[#D63E1A] text-white font-semibold py-2 px-4 rounded-md border-2 border-black shadow-[2px_2px_0px_0px_#000000] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#000000]"
         >
           Settle Up ${remainingAmount.toFixed(2)}
         </Button>
+      )}
+
+      {hasPendingSettlement && (
+        <div className="w-full text-center py-2 px-4 bg-yellow-50 border border-yellow-200 rounded-md">
+          <span className="text-yellow-700 font-medium">⏳ Settlement Pending Review</span>
+        </div>
       )}
 
       {/* Participants Section */}
