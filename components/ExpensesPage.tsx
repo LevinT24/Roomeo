@@ -8,6 +8,7 @@ import SettlementCard from "./expenses/SettlementCard"
 import CreateExpenseModal from "./expenses/CreateExpenseModal"
 import SettlementModal from "./expenses/SettlementModal"
 import SettlementHistory from "./expenses/SettlementHistory"
+import NotificationsDropdown from "./NotificationsDropdown"
 import { 
   ExpenseDashboardData, 
   ExpenseSummary, 
@@ -19,7 +20,8 @@ import {
   getExpenseDashboardData, 
   submitSettlement, 
   approveSettlement,
-  markParticipantPayment 
+  markParticipantPayment,
+  subscribeToExpenseUpdates
 } from "@/services/expenses"
 
 interface User {
@@ -47,6 +49,7 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
   const [selectedExpense, setSelectedExpense] = useState<ExpenseSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string>('')
+  const [successMessage, setSuccessMessage] = useState<string>('')
 
   const { friends } = useFriends()
 
@@ -64,10 +67,34 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
     }
   }
 
-  // Load data on component mount
+  // Load data on component mount and set up real-time subscriptions
   useEffect(() => {
     fetchDashboardData()
-  }, [])
+
+    // Set up real-time subscription for expense updates
+    const subscription = subscribeToExpenseUpdates(user.id, (payload) => {
+      console.log('Real-time expense update received:', payload)
+      // Refresh dashboard data when there's an update
+      fetchDashboardData()
+    })
+
+    // Cleanup subscription on unmount
+    return () => {
+      if (subscription && subscription.unsubscribe) {
+        subscription.unsubscribe()
+      }
+    }
+  }, [user.id])
+
+  // Auto-dismiss success message after 5 seconds
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage('')
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [successMessage])
 
   // Create expense group
   const handleCreateExpense = async (data: CreateExpenseGroupRequest) => {
@@ -76,6 +103,7 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
       if (result.success) {
         // Refresh dashboard data
         await fetchDashboardData()
+        setSuccessMessage('Expense room created successfully!')
       } else {
         throw new Error(result.message || 'Failed to create expense group')
       }
@@ -93,13 +121,16 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
     }
   }
 
-  // Submit settlement
+  // Submit settlement with improved feedback
   const handleSubmitSettlement = async (data: SubmitSettlementRequest) => {
     try {
       const result = await submitSettlement(data)
       if (result.success) {
         // Refresh dashboard data
         await fetchDashboardData()
+        setSuccessMessage('Payment submitted successfully! The expense creator will be notified.')
+        setIsSettlementModalOpen(false)
+        setSelectedExpense(null)
       } else {
         throw new Error(result.message || 'Failed to submit settlement')
       }
@@ -108,7 +139,7 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
     }
   }
 
-  // Approve/reject settlement
+  // Approve/reject settlement with improved feedback
   const handleApproveSettlement = async (settlementId: string, approved: boolean) => {
     try {
       const result = await approveSettlement({
@@ -118,6 +149,7 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
       if (result.success) {
         // Refresh dashboard data
         await fetchDashboardData()
+        setSuccessMessage(`Payment ${approved ? 'approved' : 'rejected'} successfully!`)
       } else {
         throw new Error(result.message || `Failed to ${approved ? 'approve' : 'reject'} settlement`)
       }
@@ -136,6 +168,7 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
       if (result.success) {
         // Refresh dashboard data to show updated payment status
         await fetchDashboardData()
+        setSuccessMessage(`Participant marked as ${paid ? 'paid' : 'unpaid'}`)
       } else {
         throw new Error(result.message || `Failed to mark participant as ${paid ? 'paid' : 'unpaid'}`)
       }
@@ -162,14 +195,16 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
         <div className="layout-container flex h-full grow flex-col">
           <main className="flex-1 px-6 py-6 lg:px-12 xl:px-20 bg-white min-h-screen overflow-y-auto">
             <div className="mx-auto max-w-6xl">
-              {/* Header */}
+              {/* Header with Notifications */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
                 <div>
                   <h1 className="text-3xl font-black text-black tracking-tight mb-2 transform -skew-x-2">SPLITWISE</h1>
                   <div className="w-20 h-2 bg-[#F05224] transform skew-x-12"></div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex items-center gap-3">
+                  {/* Notifications Dropdown */}
+                  <NotificationsDropdown userId={user.id} />
                   <Button 
                     onClick={() => setIsCreateModalOpen(true)}
                     className="flex w-full sm:w-auto min-w-[84px] items-center justify-center gap-2 rounded-md bg-[#F05224] px-4 sm:px-6 py-3 text-xs sm:text-sm font-black text-white border-2 sm:border-4 border-black shadow-[2px_2px_0px_0px_#000000] sm:shadow-[4px_4px_0px_0px_#000000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-[1px_1px_0px_0px_#000000] sm:hover:shadow-[2px_2px_0px_0px_#000000] hover:bg-[#D63E1A]"
@@ -206,15 +241,43 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                 </div>
               </div>
 
+              {/* Success Message */}
+              {successMessage && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <span>{successMessage}</span>
+                    </div>
+                    <button 
+                      onClick={() => setSuccessMessage('')}
+                      className="text-green-500 hover:text-green-700"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Error Message */}
               {error && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-                  {error}
-                  <button 
-                    onClick={() => setError('')}
-                    className="ml-2 text-red-500 hover:text-red-700"
-                  >
-                    ✕
-                  </button>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                      <span>{error}</span>
+                    </div>
+                    <button 
+                      onClick={() => setError('')}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
               )}
 
