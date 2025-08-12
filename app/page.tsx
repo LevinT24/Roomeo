@@ -4,9 +4,11 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Zap, Users, Rocket, CheckCircle, Mail, Clock, Target, Flame, Instagram } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Zap, Users, Rocket, CheckCircle, Mail, Clock, Target, Flame, Instagram, X } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/useAuth"
+import { updateUserProfile } from "@/services/supabase"
 import AuthPage from "@/components/AuthPage"
 import ProfileSetup from "@/components/ProfileSetup"
 import UserTypeSelection from "@/components/UserTypeSelection"
@@ -33,6 +35,16 @@ export default function Home() {
   const [authMode, setAuthMode] = useState<"signup" | "signin">("signup")
   const [friendsPanelOpen, setFriendsPanelOpen] = useState(false)
   const [chatTarget, setChatTarget] = useState<{sellerId: string, listingId?: string} | null>(null)
+  const [showUserSettings, setShowUserSettings] = useState(false)
+  const [showUpdateAccount, setShowUpdateAccount] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [updateData, setUpdateData] = useState({
+    name: "",
+    age: "",
+    bio: "",
+    location: "",
+    budget: ""
+  })
 
   // Debug logging
   useEffect(() => {
@@ -91,6 +103,86 @@ export default function Home() {
       }
     }
   }, [user, loading, currentPage, authError, sessionValid]);
+
+  // Initialize update data when user changes
+  useEffect(() => {
+    if (user) {
+      setUpdateData({
+        name: user.name || "",
+        age: user.age || "",
+        bio: user.bio || "",
+        location: user.location || "",
+        budget: user.budget || ""
+      })
+    }
+  }, [user])
+
+  const handleUpdateAccount = async () => {
+    if (!user?.id) {
+      console.error("No user ID available for update")
+      alert("Error: No user information available. Please sign in again.")
+      return
+    }
+    
+    setIsUpdating(true)
+    try {
+      console.log("🔄 Starting account update for user:", user.id)
+      console.log("🔄 Update data:", updateData)
+      
+      // Validate required fields
+      if (!updateData.name?.trim()) {
+        alert("Name is required")
+        setIsUpdating(false)
+        return
+      }
+      
+      // Parse numbers safely
+      const ageValue = updateData.age ? parseInt(updateData.age.toString()) : null
+      const budgetValue = updateData.budget ? parseInt(updateData.budget.toString()) : null
+      
+      // Check if parsed numbers are valid
+      if (updateData.age && (ageValue === null || isNaN(ageValue))) {
+        alert("Please enter a valid age")
+        setIsUpdating(false)
+        return
+      }
+      
+      if (updateData.budget && (budgetValue === null || isNaN(budgetValue))) {
+        alert("Please enter a valid budget")
+        setIsUpdating(false)
+        return
+      }
+      
+      const updatePayload = {
+        name: updateData.name.trim(),
+        age: ageValue,
+        bio: updateData.bio?.trim() || "",
+        location: updateData.location?.trim() || "",
+        budget: budgetValue
+      }
+      
+      console.log("🔄 Final update payload:", updatePayload)
+      
+      const success = await updateUserProfile(user.id, updatePayload)
+      
+      if (success) {
+        console.log("✅ Account update successful")
+        alert("Account updated successfully!")
+        setShowUpdateAccount(false)
+        setShowUserSettings(false)
+        // Refresh the page to reflect changes
+        window.location.reload()
+      } else {
+        console.error("❌ Account update failed - updateUserProfile returned false")
+        alert("Failed to update account. Please check the console for details and try again.")
+      }
+    } catch (error) {
+      console.error("❌ Exception during account update:", error)
+      alert(`Failed to update account: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
 
   // Show loading screen with timeout
   const [loadingTimeout, setLoadingTimeout] = useState(false);
@@ -254,14 +346,137 @@ export default function Home() {
                 </div>
                 <span className="font-black text-lg tracking-tight transform -skew-x-6 text-[#004D40]">ROOMIO</span>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-3">
                 {/* Session status indicator */}
                 <div className={`w-3 h-3 rounded-full ${sessionValid ? 'bg-green-500' : 'bg-orange-500'}`} 
                      title={sessionValid ? 'Session active' : 'Session recovering'} />
-                <SettingsMenu 
-                  user={user} 
-                  onProfilePreview={() => setCurrentPage("profile-preview")}
-                />
+                
+                {/* Filter Button - Only show on swipe page */}
+                {currentPage === "swipe" && (
+                  <button 
+                    className="text-[#004D40] hover:text-[#44C76F] focus:outline-none" 
+                    title="Filter matches"
+                    onClick={() => {
+                      const filterButton = document.querySelector('[data-filter-trigger]') as HTMLButtonElement;
+                      if (filterButton) filterButton.click();
+                    }}
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"
+                      />
+                    </svg>
+                  </button>
+                )}
+                
+                {/* Profile Picture with Settings Dropdown */}
+                <div className="relative">
+                  <img
+                    alt="User Profile"
+                    className="w-10 h-10 rounded-full object-cover border-2 border-[#44C76F] cursor-pointer hover:border-[#004D40] transition-colors"
+                    src={user?.profilePicture || "/placeholder.svg?height=40&width=40"}
+                    title="Profile Menu"
+                    onClick={() => setShowUserSettings(!showUserSettings)}
+                  />
+                  
+                  {/* Settings Dropdown */}
+                  {showUserSettings && (
+                    <>
+                      {/* Backdrop to close dropdown */}
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setShowUserSettings(false)}
+                      />
+                      
+                      {/* Settings Menu */}
+                      <div className="absolute right-0 top-12 bg-[#F2F5F1] border-4 border-[#004D40] rounded-lg shadow-[6px_6px_0px_0px_#004D40] z-50 min-w-56">
+                        <div className="py-2">
+                          {/* User Info Header */}
+                          <div className="px-4 py-2 border-b-2 border-[#004D40]">
+                            <p className="font-black text-[#004D40] text-sm whitespace-nowrap">{user?.name || "User"}</p>
+                            <p className="font-bold text-[#44C76F] text-xs truncate">{user?.email}</p>
+                          </div>
+                          
+                          {/* Menu Items */}
+                          <button
+                            onClick={() => {
+                              setCurrentPage("profile-preview")
+                              setShowUserSettings(false)
+                            }}
+                            className="w-full px-4 py-2 text-left font-black text-[#004D40] hover:bg-[#44C76F] hover:text-[#004D40] transition-colors flex items-center gap-3 whitespace-nowrap"
+                          >
+                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span className="text-sm">VIEW PROFILE</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              setShowUpdateAccount(true)
+                              setShowUserSettings(false)
+                            }}
+                            className="w-full px-4 py-2 text-left font-black text-[#004D40] hover:bg-[#44C76F] hover:text-[#004D40] transition-colors flex items-center gap-3 whitespace-nowrap"
+                          >
+                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            <span className="text-sm">EDIT PROFILE</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              // Add account settings functionality here
+                              setShowUserSettings(false)
+                            }}
+                            className="w-full px-4 py-2 text-left font-black text-[#004D40] hover:bg-[#44C76F] hover:text-[#004D40] transition-colors flex items-center gap-3 whitespace-nowrap"
+                          >
+                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="text-sm">SETTINGS</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              // Add help/support functionality here
+                              setShowUserSettings(false)
+                            }}
+                            className="w-full px-4 py-2 text-left font-black text-[#004D40] hover:bg-[#44C76F] hover:text-[#004D40] transition-colors flex items-center gap-3 whitespace-nowrap"
+                          >
+                            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-sm">HELP</span>
+                          </button>
+                          
+                          <div className="border-t-2 border-[#004D40] mt-1 pt-1">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await logout()
+                                  setCurrentPage("landing")
+                                  setShowUserSettings(false)
+                                } catch (error) {
+                                  console.error("Logout error:", error)
+                                }
+                              }}
+                              className="w-full px-4 py-2 text-left font-black text-red-600 hover:bg-red-50 transition-colors flex items-center gap-3 whitespace-nowrap"
+                            >
+                              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                              </svg>
+                              <span className="text-sm">LOGOUT</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -322,6 +537,93 @@ export default function Home() {
           <AppNavigation />
           <SessionRecoveryOverlay />
           <DebugInfo />
+          
+          {/* Update Account Modal */}
+          {showUpdateAccount && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <Card className="w-full max-w-md border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] bg-[#F2F5F1]">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-black text-[#004D40]">UPDATE ACCOUNT</h2>
+                    <Button
+                      onClick={() => setShowUpdateAccount(false)}
+                      variant="outline"
+                      size="sm"
+                      className="border-2 border-[#004D40] text-[#004D40] hover:bg-[#004D40] hover:text-[#F2F5F1]"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-black text-[#004D40] mb-2">NAME</label>
+                      <Input
+                        value={updateData.name}
+                        onChange={(e) => setUpdateData({ ...updateData, name: e.target.value })}
+                        className="border-2 border-[#004D40] font-bold"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-black text-[#004D40] mb-2">AGE</label>
+                      <Input
+                        type="number"
+                        value={updateData.age}
+                        onChange={(e) => setUpdateData({ ...updateData, age: e.target.value })}
+                        className="border-2 border-[#004D40] font-bold"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-black text-[#004D40] mb-2">BIO</label>
+                      <Input
+                        value={updateData.bio}
+                        onChange={(e) => setUpdateData({ ...updateData, bio: e.target.value })}
+                        className="border-2 border-[#004D40] font-bold"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-black text-[#004D40] mb-2">LOCATION</label>
+                      <Input
+                        value={updateData.location}
+                        onChange={(e) => setUpdateData({ ...updateData, location: e.target.value })}
+                        className="border-2 border-[#004D40] font-bold"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-black text-[#004D40] mb-2">BUDGET ($)</label>
+                      <Input
+                        type="number"
+                        value={updateData.budget}
+                        onChange={(e) => setUpdateData({ ...updateData, budget: e.target.value })}
+                        className="border-2 border-[#004D40] font-bold"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3 mt-6">
+                    <Button
+                      onClick={handleUpdateAccount}
+                      disabled={isUpdating}
+                      className="flex-1 bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black border-2 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+                    >
+                      {isUpdating ? "UPDATING..." : "UPDATE"}
+                    </Button>
+                    <Button
+                      onClick={() => setShowUpdateAccount(false)}
+                      variant="outline"
+                      className="flex-1 border-2 border-[#004D40] text-[#004D40] hover:bg-[#004D40] hover:text-[#F2F5F1] font-black"
+                    >
+                      CANCEL
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
       </ErrorBoundary>
     );

@@ -438,107 +438,60 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
   if (currentIndex >= profiles.length) {
     return (
       <div className="bg-[#F2F5F1] text-[#004D40] min-h-screen">
-        <div className="flex flex-col min-h-screen">
-          {/* Header - Same as main component */}
-          <header className="bg-[#004D40] border-b-4 border-[#44C76F] sticky top-0 z-10">
-            <nav className="container mx-auto px-6 py-3 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-[#44C76F] border-2 border-[#F2F5F1] transform rotate-3 flex items-center justify-center shadow-[2px_2px_0px_0px_#F2F5F1]">
-                  <span className="text-[#004D40] font-black text-sm transform -rotate-3">R</span>
+        {/* Hidden filter button for white header to trigger */}
+        <button 
+          data-filter-trigger
+          onClick={() => setShowFilters(!showFilters)}
+          className="hidden"
+        >
+          Filter Toggle
+        </button>
+        
+        {/* Filter Dropdown */}
+        {showFilters && (
+          <div className="fixed top-20 left-0 right-0 bg-[#F2F5F1] border-b-4 border-[#004D40] z-30">
+            <div className="container mx-auto px-6 py-4">
+              <div className="bg-[#B7C8B5] rounded-lg border-4 border-[#004D40] p-4 shadow-[4px_4px_0px_0px_#004D40]">
+                <div className="mb-4">
+                  <h3 className="text-xl font-black text-[#004D40] transform -skew-x-2 text-center">FILTER MATCHES</h3>
                 </div>
-                <h1 className="text-2xl font-black text-[#F2F5F1] transform -skew-x-3">ROOMIO</h1>
-              </div>
-              <div className="flex items-center gap-4">
-                <button 
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="relative text-[#F2F5F1] hover:text-[#44C76F] focus:outline-none"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"
-                    />
-                  </svg>
-                  {activeFiltersCount > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-[#44C76F] text-[#004D40] text-xs font-black rounded-full w-5 h-5 flex items-center justify-center border-2 border-[#F2F5F1]">
-                      {activeFiltersCount}
-                    </span>
-                  )}
-                </button>
-                <button 
-                  onClick={handleLogout}
-                  className="text-[#F2F5F1] hover:text-[#44C76F] focus:outline-none"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                    />
-                  </svg>
-                </button>
-                <img
-                  alt="User Profile"
-                  className="w-10 h-10 rounded-full object-cover border-2 border-[#44C76F]"
-                  src={currentUser?.profilePicture || "/placeholder.svg?height=40&width=40"}
-                />
-              </div>
-            </nav>
-          </header>
-          
-          {/* Filter Dropdown - Same as main component */}
-          {showFilters && (
-            <div className="bg-[#004D40] border-b-4 border-[#44C76F] sticky top-20 z-10">
-              <div className="container mx-auto px-6 py-4">
-                <div className="bg-[#B7C8B5] rounded-lg border-4 border-[#004D40] p-4 shadow-[4px_4px_0px_0px_#004D40]">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-black text-[#004D40] transform -skew-x-2">FILTER MATCHES</h3>
-                    <button
-                      onClick={resetFilters}
-                      className="text-[#004D40] hover:text-[#44C76F] font-black text-sm underline"
-                    >
-                      RESET ALL
-                    </button>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[#004D40] font-black text-sm">
-                      {activeFiltersCount > 0 ? `NO MATCHES FOR CURRENT FILTERS (${activeFiltersCount} ACTIVE)` : `NO PROFILES AVAILABLE`}
-                    </p>
-                  </div>
+                <div className="text-center">
+                  <p className="text-[#004D40] font-black text-sm">
+                    {activeFiltersCount > 0 ? `NO MATCHES FOR CURRENT FILTERS (${activeFiltersCount} ACTIVE)` : `NO PROFILES AVAILABLE`}
+                  </p>
                 </div>
               </div>
             </div>
-          )}
-          
-          {/* No profiles message */}
-          <div className="flex-grow flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-8xl mb-6">🏠</div>
-              <h2 className="text-4xl font-black text-[#004D40] mb-4 transform -skew-x-2">NO MORE PROFILES</h2>
-              <p className="text-xl font-bold text-[#004D40] mb-6">
-                {activeFiltersCount > 0 ? "TRY ADJUSTING YOUR FILTERS" : "CHECK BACK LATER FOR NEW MATCHES!"}
-              </p>
-              <div className="w-24 h-3 bg-[#44C76F] mx-auto transform skew-x-12 mb-6"></div>
-              <div className="space-y-4">
-                {activeFiltersCount > 0 && (
-                  <button
-                    onClick={resetFilters}
-                    className="bg-[#44C76F] text-[#004D40] font-black px-6 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all mr-4"
-                  >
-                    CLEAR FILTERS
-                  </button>
-                )}
+          </div>
+        )}
+        
+        {/* No profiles message */}
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="text-8xl mb-6">🏠</div>
+            <h2 className="text-4xl font-black text-[#004D40] mb-4 transform -skew-x-2">NO MORE PROFILES</h2>
+            <p className="text-xl font-bold text-[#004D40] mb-6">
+              {activeFiltersCount > 0 ? "TRY ADJUSTING YOUR FILTERS" : "CHECK BACK LATER FOR NEW MATCHES!"}
+            </p>
+            <div className="w-24 h-3 bg-[#44C76F] mx-auto transform skew-x-12 mb-6"></div>
+            <div className="space-y-4">
+              {activeFiltersCount > 0 && (
                 <button
-                  onClick={() => {
-                    setCurrentIndex(0)
-                    fetchOppositeTypeUsers()
-                  }}
-                  className="bg-[#44C76F] text-[#004D40] font-black px-6 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+                  onClick={resetFilters}
+                  className="bg-[#44C76F] text-[#004D40] font-black px-6 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all mr-4"
                 >
-                  REFRESH
+                  CLEAR FILTERS
                 </button>
-              </div>
+              )}
+              <button
+                onClick={() => {
+                  setCurrentIndex(0)
+                  fetchOppositeTypeUsers()
+                }}
+                className="bg-[#44C76F] text-[#004D40] font-black px-6 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+              >
+                REFRESH
+              </button>
             </div>
           </div>
         </div>
@@ -550,102 +503,23 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
 
   return (
     <div className="bg-[#F2F5F1] text-[#004D40] min-h-screen">
-      <div className="flex flex-col min-h-screen">
-        {/* Header */}
-        <header className="bg-[#004D40] border-b-4 border-[#44C76F] sticky top-0 z-10">
-          <nav className="container mx-auto px-6 py-3 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-[#44C76F] border-2 border-[#F2F5F1] transform rotate-3 flex items-center justify-center shadow-[2px_2px_0px_0px_#F2F5F1]">
-                <span className="text-[#004D40] font-black text-sm transform -rotate-3">R</span>
-              </div>
-              <h1 className="text-2xl font-black text-[#F2F5F1] transform -skew-x-3">ROOMIO</h1>
-            </div>
-            <div className="hidden md:flex items-center space-x-8">
-              <a
-                className="text-[#F2F5F1] hover:text-[#44C76F] font-black border-b-2 border-transparent hover:border-[#44C76F] pb-1"
-                href="#"
-              >
-                FIND ROOMMATES
-              </a>
-              <a
-                className="text-[#F2F5F1] hover:text-[#44C76F] font-black border-b-2 border-transparent hover:border-[#44C76F] pb-1"
-                href="#"
-              >
-                MY MATCHES
-              </a>
-              <a
-                className="text-[#F2F5F1] hover:text-[#44C76F] font-black border-b-2 border-transparent hover:border-[#44C76F] pb-1"
-                href="#"
-              >
-                EXPENSES
-              </a>
-              <a
-                className="text-[#F2F5F1] hover:text-[#44C76F] font-black border-b-2 border-transparent hover:border-[#44C76F] pb-1"
-                href="#"
-              >
-                MARKETPLACE
-              </a>
-            </div>
-            <div className="flex items-center gap-4">
-              {/* Filter Button */}
-              <button 
-                onClick={() => setShowFilters(!showFilters)}
-                className="relative text-[#F2F5F1] hover:text-[#44C76F] focus:outline-none"
-                title="Filter matches"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"
-                  />
-                </svg>
-                {/* Active filters badge */}
-                {activeFiltersCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-[#44C76F] text-[#004D40] text-xs font-black rounded-full w-5 h-5 flex items-center justify-center border-2 border-[#F2F5F1]">
-                    {activeFiltersCount}
-                  </span>
-                )}
-              </button>
-              <button className="text-[#F2F5F1] hover:text-[#44C76F] focus:outline-none">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V5a2 2 0 10-4 0v.083A6 6 0 004 11v3.159c0 .538-.214 1.055-.595 1.436L2 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                  />
-                </svg>
-              </button>
-              <button 
-                onClick={handleLogout}
-                className="text-[#F2F5F1] hover:text-[#44C76F] focus:outline-none"
-                title="Logout"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                  />
-                </svg>
-              </button>
-              <img
-                alt="User Profile"
-                className="w-10 h-10 rounded-full object-cover border-2 border-[#44C76F]"
-                src={currentUser?.profilePicture || "/placeholder.svg?height=40&width=40"}
-              />
-            </div>
-          </nav>
-        </header>
+      {/* Hidden filter button for white header to trigger */}
+      <button 
+        data-filter-trigger
+        onClick={() => setShowFilters(!showFilters)}
+        className="hidden"
+      >
+        Filter Toggle
+      </button>
 
-        {/* Filter Dropdown */}
-        {showFilters && (
-          <div className="bg-[#004D40] border-b-4 border-[#44C76F] sticky top-20 z-10">
-            <div className="container mx-auto px-6 py-4">
-              <div className="bg-[#B7C8B5] rounded-lg border-4 border-[#004D40] p-4 shadow-[4px_4px_0px_0px_#004D40]">
-                <div className="mb-4">
-                  <h3 className="text-xl font-black text-[#004D40] transform -skew-x-2 text-center">FILTER MATCHES</h3>
-                </div>
+      {/* Filter Dropdown */}
+      {showFilters && (
+        <div className="fixed top-20 left-0 right-0 bg-[#F2F5F1] border-b-4 border-[#004D40] z-30">
+          <div className="container mx-auto px-6 py-4">
+            <div className="bg-[#B7C8B5] rounded-lg border-4 border-[#004D40] p-4 shadow-[4px_4px_0px_0px_#004D40]">
+              <div className="mb-4">
+                <h3 className="text-xl font-black text-[#004D40] transform -skew-x-2 text-center">FILTER MATCHES</h3>
+              </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* Age Range */}
@@ -763,9 +637,9 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
           </div>
         )}
 
-        {/* Main Content */}
-        <main className="flex-grow flex items-center justify-center p-4 bg-[#F2F5F1] min-h-[calc(100vh-80px)]">
-          <div className="w-full max-w-sm mx-auto flex flex-col justify-center min-h-[calc(100vh-160px)]">
+      {/* Main Content */}
+      <main className="flex items-center justify-center p-4 bg-[#F2F5F1] min-h-screen">
+        <div className="w-full max-w-sm mx-auto flex flex-col justify-center min-h-screen">
             <div className="relative mb-8">
               <div className="bg-[#B7C8B5] rounded-2xl border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] overflow-hidden transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#004D40] transition-all">
                 <div className="relative">
@@ -918,9 +792,8 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
                 </svg>
               </button>
             </div>
-          </div>
-        </main>
-      </div>
+        </div>
+      </main>
 
       {/* Photo Gallery Modal */}
       {currentProfile && currentProfile.roomPhotos && (
