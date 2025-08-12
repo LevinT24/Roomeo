@@ -457,11 +457,23 @@ export default function Home() {
                             <button
                               onClick={async () => {
                                 try {
-                                  await logout()
-                                  setCurrentPage("landing")
+                                  console.log("🔄 Starting logout process...")
                                   setShowUserSettings(false)
+                                  
+                                  // Call logout function which will handle auth cleanup
+                                  await logout()
+                                  
+                                  console.log("✅ Logout successful, redirecting to landing...")
+                                  setCurrentPage("landing")
+                                  
+                                  // Force a page reload to ensure clean state
+                                  setTimeout(() => {
+                                    window.location.href = "/"
+                                  }, 100)
+                                  
                                 } catch (error) {
-                                  console.error("Logout error:", error)
+                                  console.error("❌ Logout error:", error)
+                                  alert(`Failed to sign out: ${error instanceof Error ? error.message : 'Unknown error'}`)
                                 }
                               }}
                               className="w-full px-4 py-2 text-left font-black text-red-600 hover:bg-red-50 transition-colors flex items-center gap-3 whitespace-nowrap"
@@ -646,10 +658,18 @@ export default function Home() {
 
   const handleLogout = async () => {
     try {
+      console.log("🔄 Starting logout process from landing page...")
       await logout();
       setCurrentPage("landing");
+      
+      // Force a page reload to ensure clean state
+      setTimeout(() => {
+        window.location.href = "/"
+      }, 100)
+      
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("❌ Logout error:", error);
+      alert(`Failed to sign out: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   };
 
