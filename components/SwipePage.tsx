@@ -15,7 +15,10 @@ interface User {
   age?: number
   bio?: string
   location?: string
+  area?: string
   budget?: number
+  universityAffiliation?: string
+  professionalStatus?: "student" | "employed" | "unemployed"
   preferences?: {
     smoking: boolean
     drinking: boolean
@@ -32,13 +35,78 @@ interface SwipePageProps {
   user?: User // Make it optional since we'll fetch from useAuth
 }
 
+// Filter functions
+const applyFilters = (allProfiles: User[], filters: any) => {
+  let filteredProfiles = [...allProfiles]
+
+  // Age filter
+  if (filters.ageMin) {
+    filteredProfiles = filteredProfiles.filter(p => p.age && p.age >= parseInt(filters.ageMin))
+  }
+  if (filters.ageMax) {
+    filteredProfiles = filteredProfiles.filter(p => p.age && p.age <= parseInt(filters.ageMax))
+  }
+
+  // University affiliation filter
+  if (filters.universityAffiliation) {
+    filteredProfiles = filteredProfiles.filter(p => 
+      p.universityAffiliation && 
+      p.universityAffiliation.toLowerCase().includes(filters.universityAffiliation.toLowerCase())
+    )
+  }
+
+  // Professional status filter
+  if (filters.professionalStatus) {
+    filteredProfiles = filteredProfiles.filter(p => p.professionalStatus === filters.professionalStatus)
+  }
+
+  // Budget filter (pricing)
+  if (filters.budgetMin) {
+    filteredProfiles = filteredProfiles.filter(p => p.budget && p.budget >= parseInt(filters.budgetMin))
+  }
+  if (filters.budgetMax) {
+    filteredProfiles = filteredProfiles.filter(p => p.budget && p.budget <= parseInt(filters.budgetMax))
+  }
+
+  // Area filter
+  if (filters.area) {
+    filteredProfiles = filteredProfiles.filter(p => 
+      (p.area && p.area.toLowerCase().includes(filters.area.toLowerCase())) ||
+      (p.location && p.location.toLowerCase().includes(filters.area.toLowerCase()))
+    )
+  }
+
+  return filteredProfiles
+}
+
 export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
   const { user: authUser, logout } = useAuth()
   const [profiles, setProfiles] = useState<User[]>([])
+  const [allProfiles, setAllProfiles] = useState<User[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isGalleryOpen, setIsGalleryOpen] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState({
+    ageMin: "",
+    ageMax: "",
+    universityAffiliation: "",
+    professionalStatus: "",
+    budgetMin: "",
+    budgetMax: "",
+    area: ""
+  })
+  const [activeFiltersCount, setActiveFiltersCount] = useState(0)
+  const [tempFilters, setTempFilters] = useState({
+    ageMin: "",
+    ageMax: "",
+    universityAffiliation: "",
+    professionalStatus: "",
+    budgetMin: "",
+    budgetMax: "",
+    area: ""
+  })
 
   // Use the user from props or auth
   const currentUser = propUser || authUser
@@ -48,6 +116,46 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
       fetchOppositeTypeUsers()
     }
   }, [currentUser])
+
+  // Apply filters only when filters state changes (not tempFilters)
+  useEffect(() => {
+    const filteredProfiles = applyFilters(allProfiles, filters)
+    setProfiles(filteredProfiles)
+    
+    // Count active filters
+    const filterCount = Object.values(filters).filter(value => value !== "").length
+    setActiveFiltersCount(filterCount)
+  }, [allProfiles, filters])
+
+  // Initialize tempFilters when filters change
+  useEffect(() => {
+    setTempFilters(filters)
+  }, [filters])
+
+  const handleTempFilterChange = (filterKey: string, value: string) => {
+    setTempFilters(prev => ({
+      ...prev,
+      [filterKey]: value
+    }))
+  }
+
+  const applyFiltersFromTemp = () => {
+    setFilters(tempFilters)
+  }
+
+  const resetFilters = () => {
+    const resetState = {
+      ageMin: "",
+      ageMax: "",
+      universityAffiliation: "",
+      professionalStatus: "",
+      budgetMin: "",
+      budgetMax: "",
+      area: ""
+    }
+    setFilters(resetState)
+    setTempFilters(resetState)
+  }
 
   const fetchOppositeTypeUsers = async () => {
     if (!currentUser?.id) {
@@ -91,9 +199,12 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
           age,
           bio,
           location,
+          area,
           budget,
           profilepicture,
           usertype,
+          universityaffiliation,
+          professionalstatus,
           preferences
         `)
         .eq('usertype', targetUserType)
@@ -134,7 +245,10 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
             age: profile.age,
             bio: profile.bio || '',
             location: profile.location || '',
+            area: profile.area || '',
             budget: profile.budget || undefined,
+            universityAffiliation: profile.universityaffiliation || '',
+            professionalStatus: profile.professionalstatus as "student" | "employed" | "unemployed" | undefined,
             profilePicture: profile.profilepicture || '/placeholder.svg',
             userType: profile.usertype,
             preferences: profile.preferences || {
@@ -173,6 +287,7 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
         // Continue with all profiles if filtering fails
       }
 
+      setAllProfiles(formattedProfiles)
       setProfiles(formattedProfiles)
     } catch (err) {
       console.error('Unexpected error:', err)
@@ -322,21 +437,110 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
   // No more profiles state
   if (currentIndex >= profiles.length) {
     return (
-      <div className="min-h-screen bg-[#F2F5F1] flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-8xl mb-6">🏠</div>
-          <h2 className="text-4xl font-black text-[#004D40] mb-4 transform -skew-x-2">NO MORE PROFILES</h2>
-          <p className="text-xl font-bold text-[#004D40] mb-6">CHECK BACK LATER FOR NEW MATCHES!</p>
-          <div className="w-24 h-3 bg-[#44C76F] mx-auto transform skew-x-12 mb-6"></div>
-          <button
-            onClick={() => {
-              setCurrentIndex(0)
-              fetchOppositeTypeUsers()
-            }}
-            className="bg-[#44C76F] text-[#004D40] font-black px-6 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
-          >
-            REFRESH
-          </button>
+      <div className="bg-[#F2F5F1] text-[#004D40] min-h-screen">
+        <div className="flex flex-col min-h-screen">
+          {/* Header - Same as main component */}
+          <header className="bg-[#004D40] border-b-4 border-[#44C76F] sticky top-0 z-10">
+            <nav className="container mx-auto px-6 py-3 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-[#44C76F] border-2 border-[#F2F5F1] transform rotate-3 flex items-center justify-center shadow-[2px_2px_0px_0px_#F2F5F1]">
+                  <span className="text-[#004D40] font-black text-sm transform -rotate-3">R</span>
+                </div>
+                <h1 className="text-2xl font-black text-[#F2F5F1] transform -skew-x-3">ROOMIO</h1>
+              </div>
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="relative text-[#F2F5F1] hover:text-[#44C76F] focus:outline-none"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"
+                    />
+                  </svg>
+                  {activeFiltersCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-[#44C76F] text-[#004D40] text-xs font-black rounded-full w-5 h-5 flex items-center justify-center border-2 border-[#F2F5F1]">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </button>
+                <button 
+                  onClick={handleLogout}
+                  className="text-[#F2F5F1] hover:text-[#44C76F] focus:outline-none"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
+                  </svg>
+                </button>
+                <img
+                  alt="User Profile"
+                  className="w-10 h-10 rounded-full object-cover border-2 border-[#44C76F]"
+                  src={currentUser?.profilePicture || "/placeholder.svg?height=40&width=40"}
+                />
+              </div>
+            </nav>
+          </header>
+          
+          {/* Filter Dropdown - Same as main component */}
+          {showFilters && (
+            <div className="bg-[#004D40] border-b-4 border-[#44C76F] sticky top-20 z-10">
+              <div className="container mx-auto px-6 py-4">
+                <div className="bg-[#B7C8B5] rounded-lg border-4 border-[#004D40] p-4 shadow-[4px_4px_0px_0px_#004D40]">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-black text-[#004D40] transform -skew-x-2">FILTER MATCHES</h3>
+                    <button
+                      onClick={resetFilters}
+                      className="text-[#004D40] hover:text-[#44C76F] font-black text-sm underline"
+                    >
+                      RESET ALL
+                    </button>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[#004D40] font-black text-sm">
+                      {activeFiltersCount > 0 ? `NO MATCHES FOR CURRENT FILTERS (${activeFiltersCount} ACTIVE)` : `NO PROFILES AVAILABLE`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* No profiles message */}
+          <div className="flex-grow flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-8xl mb-6">🏠</div>
+              <h2 className="text-4xl font-black text-[#004D40] mb-4 transform -skew-x-2">NO MORE PROFILES</h2>
+              <p className="text-xl font-bold text-[#004D40] mb-6">
+                {activeFiltersCount > 0 ? "TRY ADJUSTING YOUR FILTERS" : "CHECK BACK LATER FOR NEW MATCHES!"}
+              </p>
+              <div className="w-24 h-3 bg-[#44C76F] mx-auto transform skew-x-12 mb-6"></div>
+              <div className="space-y-4">
+                {activeFiltersCount > 0 && (
+                  <button
+                    onClick={resetFilters}
+                    className="bg-[#44C76F] text-[#004D40] font-black px-6 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all mr-4"
+                  >
+                    CLEAR FILTERS
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setCurrentIndex(0)
+                    fetchOppositeTypeUsers()
+                  }}
+                  className="bg-[#44C76F] text-[#004D40] font-black px-6 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+                >
+                  REFRESH
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -383,6 +587,26 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
               </a>
             </div>
             <div className="flex items-center gap-4">
+              {/* Filter Button */}
+              <button 
+                onClick={() => setShowFilters(!showFilters)}
+                className="relative text-[#F2F5F1] hover:text-[#44C76F] focus:outline-none"
+                title="Filter matches"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"
+                  />
+                </svg>
+                {/* Active filters badge */}
+                {activeFiltersCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-[#44C76F] text-[#004D40] text-xs font-black rounded-full w-5 h-5 flex items-center justify-center border-2 border-[#F2F5F1]">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </button>
               <button className="text-[#F2F5F1] hover:text-[#44C76F] focus:outline-none">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
                   <path
@@ -413,6 +637,131 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
             </div>
           </nav>
         </header>
+
+        {/* Filter Dropdown */}
+        {showFilters && (
+          <div className="bg-[#004D40] border-b-4 border-[#44C76F] sticky top-20 z-10">
+            <div className="container mx-auto px-6 py-4">
+              <div className="bg-[#B7C8B5] rounded-lg border-4 border-[#004D40] p-4 shadow-[4px_4px_0px_0px_#004D40]">
+                <div className="mb-4">
+                  <h3 className="text-xl font-black text-[#004D40] transform -skew-x-2 text-center">FILTER MATCHES</h3>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Age Range */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-black text-[#004D40]">AGE RANGE</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        placeholder="Min"
+                        value={tempFilters.ageMin}
+                        onChange={(e) => handleTempFilterChange('ageMin', e.target.value)}
+                        className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-sm"
+                        min="18"
+                        max="100"
+                      />
+                      <input
+                        type="number"
+                        placeholder="Max"
+                        value={tempFilters.ageMax}
+                        onChange={(e) => handleTempFilterChange('ageMax', e.target.value)}
+                        className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-sm"
+                        min="18"
+                        max="100"
+                      />
+                    </div>
+                  </div>
+
+                  {/* University Affiliation */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-black text-[#004D40]">UNIVERSITY</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. UW, Harvard, etc."
+                      value={tempFilters.universityAffiliation}
+                      onChange={(e) => handleTempFilterChange('universityAffiliation', e.target.value)}
+                      className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-sm"
+                    />
+                  </div>
+
+                  {/* Professional Status */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-black text-[#004D40]">WORK STATUS</label>
+                    <select
+                      value={tempFilters.professionalStatus}
+                      onChange={(e) => handleTempFilterChange('professionalStatus', e.target.value)}
+                      className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-sm"
+                    >
+                      <option value="">Any</option>
+                      <option value="student">Student</option>
+                      <option value="employed">Employed</option>
+                      <option value="unemployed">Unemployed</option>
+                    </select>
+                  </div>
+
+                  {/* Budget Range */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-black text-[#004D40]">BUDGET RANGE ($)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        placeholder="Min"
+                        value={tempFilters.budgetMin}
+                        onChange={(e) => handleTempFilterChange('budgetMin', e.target.value)}
+                        className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-sm"
+                        min="0"
+                      />
+                      <input
+                        type="number"
+                        placeholder="Max"
+                        value={tempFilters.budgetMax}
+                        onChange={(e) => handleTempFilterChange('budgetMax', e.target.value)}
+                        className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-sm"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Area */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-black text-[#004D40]">AREA</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Downtown, University District"
+                      value={tempFilters.area}
+                      onChange={(e) => handleTempFilterChange('area', e.target.value)}
+                      className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-sm"
+                    />
+                  </div>
+                </div>
+                
+                {/* Apply and Reset Buttons */}
+                <div className="mt-6 flex gap-4 justify-center">
+                  <button
+                    onClick={resetFilters}
+                    className="bg-[#F2F5F1] text-[#004D40] font-black px-6 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+                  >
+                    RESET ALL
+                  </button>
+                  <button
+                    onClick={applyFiltersFromTemp}
+                    className="bg-[#44C76F] text-[#004D40] font-black px-8 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+                  >
+                    APPLY FILTERS
+                  </button>
+                </div>
+                
+                {/* Results count */}
+                <div className="mt-4 text-center">
+                  <p className="text-[#004D40] font-black text-sm">
+                    SHOWING {profiles.length} OF {allProfiles.length} PROFILES
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Main Content */}
         <main className="flex-grow flex items-center justify-center p-4 bg-[#F2F5F1] min-h-[calc(100vh-80px)]">
@@ -532,6 +881,11 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
             <div className="text-center mb-4">
               <p className="text-[#004D40] font-black text-sm">
                 {currentIndex + 1} OF {profiles.length}
+                {activeFiltersCount > 0 && (
+                  <span className="block text-xs text-[#44C76F] mt-1">
+                    {activeFiltersCount} FILTER{activeFiltersCount > 1 ? 'S' : ''} ACTIVE
+                  </span>
+                )}
               </p>
             </div>
 

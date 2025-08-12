@@ -22,7 +22,10 @@
     const [age, setAge] = useState("")
     const [bio, setBio] = useState("")
     const [location, setLocation] = useState("")
+    const [area, setArea] = useState("")
     const [budget, setBudget] = useState("")
+    const [universityAffiliation, setUniversityAffiliation] = useState("")
+    const [professionalStatus, setProfessionalStatus] = useState<"student" | "employed" | "unemployed" | "">("")
     const [preferences, setPreferences] = useState({
       smoking: false,
       drinking: false,
@@ -84,7 +87,10 @@
           age: Number(age),
           bio,
           location,
+          area,
           budget: budget ? Number(budget) : 0,
+          universityaffiliation: universityAffiliation,
+          professionalstatus: professionalStatus,
           preferences,
           profilepicture: photoUrl, // Fixed: use lowercase to match database
           updatedat: new Date().toISOString(), // Fixed: use lowercase and ISO string
@@ -373,6 +379,42 @@
                   className="w-full border-4 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1]"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-black text-[#004D40] mb-2">AREA/NEIGHBORHOOD</label>
+                <Input
+                  value={area}
+                  onChange={(e) => setArea(e.target.value)}
+                  placeholder="Downtown, University District, etc."
+                  className="w-full border-4 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-black text-[#004D40] mb-2">PROFESSIONAL STATUS</label>
+                <select
+                  value={professionalStatus}
+                  onChange={(e) => setProfessionalStatus(e.target.value as "student" | "employed" | "unemployed")}
+                  className="w-full border-4 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-3 rounded-lg"
+                >
+                  <option value="">Select your status</option>
+                  <option value="student">Student</option>
+                  <option value="employed">Employed</option>
+                  <option value="unemployed">Unemployed</option>
+                </select>
+              </div>
+
+              {professionalStatus === "student" && (
+                <div>
+                  <label className="block text-sm font-black text-[#004D40] mb-2">UNIVERSITY/COLLEGE</label>
+                  <Input
+                    value={universityAffiliation}
+                    onChange={(e) => setUniversityAffiliation(e.target.value)}
+                    placeholder="University of Washington, UW, etc."
+                    className="w-full border-4 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1]"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-black text-[#004D40] mb-2">BUDGET (OPTIONAL)</label>
