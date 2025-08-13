@@ -172,11 +172,19 @@ export async function submitSettlement(
 
       // Send notification to group creator
       if (expenseGroup && expenseGroup.created_by) {
+        // Get payer name for notification
+        const { data: payerData } = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', user.id)
+          .single();
+
         await sendExpenseNotifications(result, [expenseGroup.created_by], 'settlement_requested', {
           expense_group_id: data.group_id,
           expense_name: expenseGroup.name,
           amount: data.amount,
-          settlement_id: result
+          settlement_id: result,
+          payer_name: payerData?.name || 'Someone'
         });
       }
     } catch (notificationError) {
@@ -226,7 +234,8 @@ export async function approveSettlement(
       .select(`
         payer_id,
         amount,
-        expense_groups(name)
+        expense_groups!group_id(name),
+        users!payer_id(name)
       `)
       .eq('id', data.settlement_id)
       .single();
@@ -239,9 +248,10 @@ export async function approveSettlement(
         data.approved ? 'settlement_approved' : 'settlement_rejected',
         {
           expense_group_id: '',
-          expense_name: settlement.expense_groups?.[0]?.name || 'Unknown Group',
+          expense_name: settlement.expense_groups?.name || 'Unknown Group',
           amount: settlement.amount,
-          settlement_id: data.settlement_id
+          settlement_id: data.settlement_id,
+          payer_name: settlement.users?.name || 'Someone'
         }
       );
     }
@@ -588,7 +598,7 @@ function getNotificationMessage(type: string, data: any): string {
     case 'expense_created':
       return `You've been added to "${data.expense_name}" expense room`;
     case 'settlement_requested':
-      return `Someone submitted a $${data.amount} payment for "${data.expense_name}"`;
+      return `${data.payer_name || 'Someone'} submitted a $${data.amount} payment for "${data.expense_name}"`;
     case 'settlement_approved':
       return `Your $${data.amount} payment for "${data.expense_name}" was approved`;
     case 'settlement_rejected':
