@@ -43,8 +43,8 @@ export async function createExpenseGroup(
     if (data.total_amount <= 0) {
       throw new Error("Total amount must be greater than 0");
     }
-    if (data.participants.length < 1) {
-      throw new Error("At least 1 participant is required");
+    if (data.participants.length < 1 && !data.invites) {
+      throw new Error("At least 1 participant or invite is required");
     }
 
     // Validate custom amounts if provided
@@ -76,6 +76,36 @@ export async function createExpenseGroup(
 
     console.log("✅ Expense group created with ID:", result);
 
+    // Send invites if provided
+    if (data.invites && data.invites.length > 0) {
+      console.log("📧 Sending invites for group:", result);
+      
+      for (const invite of data.invites) {
+        try {
+          const invitePayload = {
+            groupId: result,
+            inviteMethod: invite.method,
+            [invite.method === 'email' ? 'recipientEmail' : 'recipientPhone']: invite.contact,
+            ...(invite.message ? { customMessage: invite.message } : {})
+          };
+
+          const response = await fetch('/api/invites', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(invitePayload),
+          });
+
+          if (!response.ok) {
+            console.error(`Failed to send invite to ${invite.contact}:`, await response.text());
+          } else {
+            console.log(`✅ Invite sent to ${invite.contact}`);
+          }
+        } catch (inviteError) {
+          console.error(`Error sending invite to ${invite.contact}:`, inviteError);
+        }
+      }
+    }
+
     // Send notifications to all participants
     await sendExpenseNotifications(result, data.participants, 'expense_created', {
       expense_group_id: result,
@@ -84,7 +114,8 @@ export async function createExpenseGroup(
 
     return {
       group_id: result,
-      success: true
+      success: true,
+      invitesSent: data.invites?.length || 0
     };
   } catch (error) {
     console.error("❌ Exception creating expense group:", error);

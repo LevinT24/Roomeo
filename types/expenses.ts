@@ -65,6 +65,11 @@ export interface CreateExpenseGroupRequest {
   split_type: SplitType
   participants: string[] // user IDs
   custom_amounts?: number[]
+  invites?: Array<{
+    method: 'email' | 'whatsapp'
+    contact: string
+    message?: string
+  }>
 }
 
 export interface CreateExpenseGroupResponse {

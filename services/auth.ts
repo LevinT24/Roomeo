@@ -1,5 +1,6 @@
 // services/auth.ts - Authentication service
 import { supabase } from '@/lib/supabase';
+import { cookies } from 'next/headers';
 
 export interface CreateUserData {
   email: string;
@@ -138,5 +139,67 @@ export const signOut = async () => {
   } catch (error: any) {
     console.error('❌ Sign out error:', error);
     throw error;
+  }
+};
+
+// Handle post-auth invite processing
+export const handlePostAuthInvite = async (userId: string) => {
+  try {
+    const cookieStore = cookies();
+    const inviteToken = cookieStore.get('invite_token')?.value;
+    
+    if (!inviteToken) {
+      return { hasInvite: false };
+    }
+    
+    console.log('🔄 Processing post-auth invite for user:', userId);
+    
+    // Check if user profile is complete
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('display_name, user_type')
+      .eq('id', userId)
+      .single();
+    
+    if (profileError || !profile) {
+      console.error('❌ Error fetching user profile:', profileError);
+      return { hasInvite: true, needsOnboarding: true, inviteToken };
+    }
+    
+    const isProfileComplete = !!(profile.display_name && profile.user_type);
+    
+    if (!isProfileComplete) {
+      return { hasInvite: true, needsOnboarding: true, inviteToken };
+    }
+    
+    // Profile is complete, accept the invite
+    const acceptResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('/supabase', '')}/api/invites/${inviteToken}/accept`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    const acceptData = await acceptResponse.json();
+    
+    // Clear the cookie
+    cookieStore.delete('invite_token');
+    
+    if (acceptData.success) {
+      console.log('✅ Invite accepted successfully');
+      return { 
+        hasInvite: true, 
+        needsOnboarding: false, 
+        groupId: acceptData.groupId,
+        alreadyMember: acceptData.alreadyMember 
+      };
+    } else {
+      console.error('❌ Failed to accept invite:', acceptData.error);
+      return { hasInvite: true, needsOnboarding: false, error: acceptData.error };
+    }
+    
+  } catch (error: any) {
+    console.error('❌ Error handling post-auth invite:', error);
+    return { hasInvite: false, error: error.message };
   }
 };

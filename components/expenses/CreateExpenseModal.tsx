@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CreateExpenseModalProps, SplitType } from "@/types/expenses"
+import { Mail, MessageCircle, UserPlus, X, Users } from "lucide-react"
 
 export default function CreateExpenseModal({ 
   isOpen, 
@@ -22,6 +23,17 @@ export default function CreateExpenseModal({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string>('')
 
+  // Invite state
+  const [invites, setInvites] = useState<Array<{
+    id: string;
+    method: 'email' | 'whatsapp';
+    contact: string;
+    message?: string;
+  }>>([])
+  const [newInviteMethod, setNewInviteMethod] = useState<'email' | 'whatsapp'>('email')
+  const [newInviteContact, setNewInviteContact] = useState('')
+  const [newInviteMessage, setNewInviteMessage] = useState('')
+
   // Reset form when modal opens/closes
   useEffect(() => {
     if (isOpen) {
@@ -34,6 +46,11 @@ export default function CreateExpenseModal({
       setSelectedFriends([])
       setCustomAmounts({})
       setError('')
+      // Reset invite state
+      setInvites([])
+      setNewInviteMethod('email')
+      setNewInviteContact('')
+      setNewInviteMessage('')
     }
   }, [isOpen])
 
@@ -74,6 +91,51 @@ export default function CreateExpenseModal({
     }))
   }
 
+  // Invite handling functions
+  const addInvite = () => {
+    if (!newInviteContact.trim()) return
+
+    // Validate contact based on method
+    if (newInviteMethod === 'email' && !newInviteContact.includes('@')) {
+      setError('Please enter a valid email address')
+      return
+    }
+    if (newInviteMethod === 'whatsapp' && newInviteContact.length < 8) {
+      setError('Please enter a valid phone number')
+      return
+    }
+
+    // Check for duplicates
+    if (invites.some(inv => inv.contact === newInviteContact.trim())) {
+      setError('This contact is already in the invite list')
+      return
+    }
+
+    const newInvite = {
+      id: Date.now().toString(),
+      method: newInviteMethod,
+      contact: newInviteContact.trim(),
+      message: newInviteMessage.trim() || undefined
+    }
+
+    setInvites(prev => [...prev, newInvite])
+    setNewInviteContact('')
+    setNewInviteMessage('')
+    setError('')
+  }
+
+  const removeInvite = (inviteId: string) => {
+    setInvites(prev => prev.filter(inv => inv.id !== inviteId))
+  }
+
+  const formatPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length > 0 && !phone.startsWith('+')) {
+      return '+' + cleaned;
+    }
+    return phone;
+  }
+
   const validateForm = () => {
     if (!formData.name.trim()) {
       setError('Expense name is required')
@@ -85,8 +147,8 @@ export default function CreateExpenseModal({
       return false
     }
     
-    if (selectedFriends.length === 0) {
-      setError('At least one friend must be selected')
+    if (selectedFriends.length === 0 && invites.length === 0) {
+      setError('Select friends or add invites to create a room')
       return false
     }
 
@@ -130,7 +192,8 @@ export default function CreateExpenseModal({
         total_amount: parseFloat(formData.total_amount),
         split_type: formData.split_type,
         participants: adjustedParticipants,
-        custom_amounts: customAmountsList
+        custom_amounts: customAmountsList,
+        invites: invites.length > 0 ? invites : undefined
       })
 
       onClose()
@@ -310,6 +373,133 @@ export default function CreateExpenseModal({
               )}
             </div>
 
+            {/* Invite Section */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Invite People
+                </label>
+                <span className="text-xs text-gray-500">
+                  {invites.length > 0 && `${invites.length} pending invite${invites.length > 1 ? 's' : ''}`}
+                </span>
+              </div>
+
+              {/* Add Invite Form */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-3">
+                <div className="space-y-3">
+                  {/* Method Selection */}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setNewInviteMethod('email')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        newInviteMethod === 'email'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Mail className="w-4 h-4" />
+                      Email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewInviteMethod('whatsapp')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        newInviteMethod === 'whatsapp'
+                          ? 'bg-green-500 text-white'
+                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      WhatsApp
+                    </button>
+                  </div>
+
+                  {/* Contact Input */}
+                  <div className="flex gap-2">
+                    <Input
+                      type={newInviteMethod === 'email' ? 'email' : 'tel'}
+                      placeholder={
+                        newInviteMethod === 'email' 
+                          ? 'friend@example.com' 
+                          : '+1 (555) 123-4567'
+                      }
+                      value={newInviteContact}
+                      onChange={(e) => setNewInviteContact(
+                        newInviteMethod === 'whatsapp' 
+                          ? formatPhoneNumber(e.target.value)
+                          : e.target.value
+                      )}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      onClick={addInvite}
+                      disabled={!newInviteContact.trim()}
+                      size="sm"
+                      className="bg-blue-500 hover:bg-blue-600 text-white"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  {/* Custom Message */}
+                  <Input
+                    placeholder="Custom message (optional)"
+                    value={newInviteMessage}
+                    onChange={(e) => setNewInviteMessage(e.target.value)}
+                    maxLength={200}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Invite List */}
+              {invites.length > 0 && (
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {invites.map((invite) => (
+                    <div
+                      key={invite.id}
+                      className="flex items-center justify-between p-2 bg-amber-50 border border-amber-200 rounded-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        {invite.method === 'email' ? (
+                          <Mail className="w-4 h-4 text-blue-500" />
+                        ) : (
+                          <MessageCircle className="w-4 h-4 text-green-500" />
+                        )}
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">
+                            {invite.contact}
+                          </span>
+                          {invite.message && (
+                            <p className="text-xs text-gray-600 truncate max-w-48">
+                              "{invite.message}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeInvite(invite.id)}
+                        className="text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {invites.length === 0 && (
+                <div className="text-center py-4 text-gray-500 border border-dashed border-gray-300 rounded-lg">
+                  <Users className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm">No invites added yet</p>
+                  <p className="text-xs text-gray-400">Invite people to join this expense room</p>
+                </div>
+              )}
+            </div>
+
           </div>
 
           {/* Actions */}
@@ -326,7 +516,7 @@ export default function CreateExpenseModal({
             <Button
               type="button"
               onClick={handleSubmit}
-              disabled={isLoading || selectedFriends.length === 0}
+              disabled={isLoading || (selectedFriends.length === 0 && invites.length === 0)}
               className="flex-1 bg-[#F05224] hover:bg-[#D63E1A] text-white font-semibold border-2 border-black shadow-[4px_4px_0px_0px_#000000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#000000]"
             >
               {isLoading ? 'Creating...' : 'Create Room'}

@@ -3,9 +3,24 @@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ExpenseCardProps, ExpenseParticipantSummary } from "@/types/expenses"
-import { Clock, CheckCircle, XCircle } from "lucide-react"
+import { Clock, CheckCircle, XCircle, UserPlus, Mail, MessageCircle, Users } from "lucide-react"
+import { useState, useEffect } from "react"
+import InviteModal from "@/components/InviteModal"
+
+interface PendingInvite {
+  id: string;
+  invited_email?: string;
+  invited_phone?: string;
+  status: string;
+  expires_at: string;
+  created_at: string;
+}
 
 export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMarkPaid }: ExpenseCardProps) {
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [loadingInvites, setLoadingInvites] = useState(true);
+
   const remainingAmount = expense.amount_owed - expense.amount_paid
   const isSettled = expense.is_settled || remainingAmount <= 0.01
 
@@ -18,6 +33,58 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
   const isCreator = expense.created_by_id ? 
     expense.created_by_id === currentUserId : 
     expense.participants?.some(p => p.user_id === currentUserId && p.is_creator) || false
+
+  // Fetch pending invites for this group
+  const fetchPendingInvites = async () => {
+    try {
+      setLoadingInvites(true);
+      const response = await fetch(`/api/groups/${expense.group_id}/invites`);
+      const data = await response.json();
+      
+      if (data.success) {
+        const pending = data.invites.filter((invite: PendingInvite) => 
+          invite.status === 'pending' && new Date(invite.expires_at) > new Date()
+        );
+        setPendingInvites(pending);
+      }
+    } catch (error) {
+      console.error('Error fetching invites:', error);
+    } finally {
+      setLoadingInvites(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isCreator) {
+      fetchPendingInvites();
+    } else {
+      setLoadingInvites(false);
+    }
+  }, [expense.group_id, isCreator]);
+
+  const formatDisplayName = (invite: PendingInvite) => {
+    if (invite.invited_email && invite.invited_phone) {
+      return `${invite.invited_email} (${invite.invited_phone})`;
+    }
+    return invite.invited_email || invite.invited_phone || 'Unknown contact';
+  };
+
+  const getTimeRemaining = (expiresAt: string) => {
+    const now = new Date();
+    const expires = new Date(expiresAt);
+    const diffMs = expires.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return '1 day';
+    if (diffDays > 1) return `${diffDays} days`;
+    return 'Soon';
+  };
+
+  const getInviteIcon = (invite: PendingInvite) => {
+    if (invite.invited_email) return <Mail className="w-3 h-3" />;
+    if (invite.invited_phone) return <MessageCircle className="w-3 h-3" />;
+    return null;
+  };
 
   const getStatusColor = () => {
     if (isSettled) return "bg-emerald-100 text-emerald-700 border-emerald-200"
@@ -259,7 +326,27 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
       {/* Participants Section */}
       {expense.participants && expense.participants.length > 0 && (
         <div className="mt-4 border-t pt-4">
-          <h4 className="text-sm font-semibold text-gray-700 mb-3">Participants</h4>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <h4 className="text-sm font-semibold text-gray-700">Participants</h4>
+              <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded-full">
+                {expense.participants.length}
+                {!loadingInvites && pendingInvites.length > 0 && (
+                  <span className="text-amber-600"> + {pendingInvites.length} invited</span>
+                )}
+              </span>
+            </div>
+            {isCreator && (
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 flex items-center gap-1"
+                title="Invite more people"
+              >
+                <UserPlus className="w-3 h-3" />
+                Invite
+              </button>
+            )}
+          </div>
           <div className="space-y-2">
             {expense.participants.map((participant) => {
               const participantPending = participant.pending_settlement
@@ -330,8 +417,60 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
                 </div>
               )
             })}
+
+            {/* Pending Invites */}
+            {!loadingInvites && pendingInvites.length > 0 && (
+              <>
+                <div className="border-t border-gray-200 my-3"></div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="w-4 h-4 text-amber-600" />
+                    <span className="text-sm font-medium text-amber-700">
+                      Waiting for {pendingInvites.length} invited user{pendingInvites.length > 1 ? 's' : ''} to join
+                    </span>
+                  </div>
+                  {pendingInvites.map((invite) => (
+                    <div key={invite.id} className="flex items-center justify-between p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                          <Clock className="w-4 h-4 text-amber-600" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-amber-900">
+                              {formatDisplayName(invite)}
+                            </span>
+                            {getInviteIcon(invite)}
+                          </div>
+                          <div className="text-xs text-amber-700">
+                            Expires in {getTimeRemaining(invite.expires_at)} • 
+                            Invited {new Date(invite.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-xs bg-amber-200 text-amber-800 px-2 py-1 rounded-full">
+                        ⏳ Pending
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
+      )}
+
+      {/* Invite Modal */}
+      {showInviteModal && (
+        <InviteModal
+          isOpen={showInviteModal}
+          onClose={() => {
+            setShowInviteModal(false);
+            fetchPendingInvites(); // Refresh invites after modal closes
+          }}
+          groupId={expense.group_id}
+          groupName={expense.name}
+        />
       )}
     </div>
   )
