@@ -81,12 +81,12 @@ export default function SettlementCard({ settlement, onApprove, currentUserId }:
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
           <div className="flex items-center justify-center rounded-full bg-blue-100 shrink-0 size-12 text-blue-600">
             <span className="text-xl">{getPaymentMethodIcon()}</span>
           </div>
-          <div>
-            <h3 className="font-bold text-gray-900">{settlement.group_name}</h3>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-gray-900 truncate">{settlement.group_name}</h3>
             <p className="text-sm text-gray-600">
               Payment from <span className="font-medium">{settlement.payer_name}</span>
             </p>

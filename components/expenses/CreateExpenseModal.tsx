@@ -110,16 +110,26 @@ export default function CreateExpenseModal({
     setError('')
 
     try {
-      const customAmountsList = formData.split_type === 'custom' 
-        ? selectedFriends.map(friendId => parseFloat(customAmounts[friendId] || '0'))
-        : undefined
+      // For equal split, adjust the custom amounts
+      let adjustedParticipants = selectedFriends;
+      let customAmountsList = undefined;
+
+      if (formData.split_type === 'equal') {
+        // Don't include creator in the participants for equal split
+        // The backend will handle adding them with 0 owed
+        customAmountsList = undefined;
+      } else if (formData.split_type === 'custom') {
+        customAmountsList = selectedFriends.map(friendId => 
+          parseFloat(customAmounts[friendId] || '0')
+        );
+      }
 
       await onCreateExpense({
         name: formData.name,
         description: formData.description || undefined,
         total_amount: parseFloat(formData.total_amount),
         split_type: formData.split_type,
-        participants: selectedFriends,
+        participants: adjustedParticipants,
         custom_amounts: customAmountsList
       })
 

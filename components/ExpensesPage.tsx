@@ -191,9 +191,9 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
 
   return (
     <div className="bg-white text-black min-h-screen">
-      <div className="relative flex size-full min-h-screen flex-col overflow-x-hidden">
-        <div className="layout-container flex h-full grow flex-col">
-          <main className="flex-1 px-6 py-6 lg:px-12 xl:px-20 bg-white min-h-screen overflow-y-auto">
+      <div className="relative flex w-full min-h-screen flex-col overflow-x-hidden">
+        <div className="layout-container flex w-full grow flex-col">
+          <main className="flex-1 px-6 py-6 lg:px-12 xl:px-20 bg-white pb-20">
             <div className="mx-auto max-w-6xl">
               {/* Header with Notifications */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
@@ -390,7 +390,9 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
               {dashboardData.pending_settlements.length > 0 && (
                 <section>
                   <h2 className="text-2xl font-bold text-gray-900 tracking-tight mb-6">Pending Settlements</h2>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="flex justify-center">
+                    <div className="w-full max-w-2xl">
+                      <div className="grid grid-cols-1 gap-6">
                     {dashboardData.pending_settlements.map((settlement) => (
                       <SettlementCard
                         key={settlement.settlement_id}
@@ -399,6 +401,8 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                         currentUserId={user.id}
                       />
                     ))}
+                      </div>
+                    </div>
                   </div>
                 </section>
               )}
