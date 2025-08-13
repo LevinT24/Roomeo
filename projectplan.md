@@ -1,111 +1,88 @@
-# Room Photo Upload and Display - Project Plan
+# Splitwise Fix - Project Plan
 
-## Overview
-Implement comprehensive room photo upload and display functionality for Provider users in the Roomio app. This feature allows providers to showcase their living spaces and enables seekers to view detailed room photos during matching.
+## Problem Analysis
+After running the rollback script, Splitwise rooms are not showing up because:
 
-## Current Understanding
-- **App Structure**: Next.js 14 with TypeScript, Supabase backend
-- **User Types**: 'seeker' (looking for place) vs 'provider' (has place, needs roommates)
-- **Existing Profile System**: ProfileSetup.tsx handles user type selection and basic profile creation
-- **Swipe System**: SwipePage.tsx shows opposite user types, currently displays profile pictures
-- **Database**: PostgreSQL with existing users table containing userType field
+1. **Missing `participants` field** - The rollback script created a `get_expense_summary` function that doesn't return the `participants` JSONB field that the frontend expects
+2. **Missing `get_user_pending_settlements` function** - This function was dropped but the code still calls it
+3. **Incorrect validation logic** - The rollback script had inconsistent validation rules compared to the original schema
+4. **Function signature mismatches** - Some functions were recreated with slightly different logic
 
-## Todo List
+## Solution
 
-### ✅ Phase 1: Database and Storage Setup
-- [ ] Create room_photos table with proper schema
-- [ ] Set up RLS policies for photo security  
-- [ ] Configure Supabase Storage bucket for room photos
-- [ ] Test storage permissions and upload functionality
+### ✅ Step 1: Created Fixed Database Functions
+- Created `FIXED-SPLITWISE-FUNCTIONS.sql` with corrected functions
+- Fixed `get_expense_summary` to include the missing `participants` JSONB field
+- Added the missing `get_user_pending_settlements` function
+- Ensured all function signatures match what the code expects
 
-### ✅ Phase 2: Core Services  
-- [ ] Create room photo service functions (upload, get, delete, reorder)
-- [ ] Implement photo validation and compression utilities
-- [ ] Add image optimization helpers (resize, format conversion)
-- [ ] Test all CRUD operations
+### 🔄 Step 2: Apply the Fixed Script
+- Run the fixed SQL script in Supabase to restore proper functionality
+- This will fix the room creation and display issues
 
-### ✅ Phase 3: Photo Upload Components
-- [ ] Build drag-and-drop photo upload component
-- [ ] Create photo preview grid with management controls
-- [ ] Add caption editing and primary photo selection
-- [ ] Implement photo reordering via drag-and-drop
+### ⏳ Step 3: Test the Fix
+- Test creating a new expense room
+- Verify existing rooms show up properly
+- Confirm all Splitwise features work
 
-### ✅ Phase 4: Profile Integration
-- [ ] Modify ProfileSetup.tsx to show room photo section for providers
-- [ ] Add conditional rendering based on userType
-- [ ] Integrate photo requirements validation
-- [ ] Test profile setup flow end-to-end
+## Todo Items
 
-### ✅ Phase 5: Swipe Page Enhancement  
-- [ ] Update SwipePage.tsx to display room photos for provider cards
-- [ ] Add photo count badge and indicators
-- [ ] Create photo gallery modal with navigation
-- [ ] Implement swipe gestures and keyboard controls
+✅ Examine current database structure and Splitwise code  
+✅ Identify why rooms aren't showing up after rollback  
+✅ Check for any missing tables or data  
+🔄 Fix the room creation issue  
+⏳ Test that existing rooms are visible  
 
-### ✅ Phase 6: Photo Management Interface
-- [ ] Create dedicated photo management page for providers
-- [ ] Add bulk operations (delete multiple, reorder)
-- [ ] Implement photo analytics (if needed)
-- [ ] Add photo verification status
+## Changes Made
 
-### ✅ Phase 7: Mobile Optimization and Testing
-- [ ] Ensure responsive design across all components
-- [ ] Test touch gestures and mobile navigation
-- [ ] Optimize image loading and caching
-- [ ] Validate accessibility features
+1. **Fixed `create_expense_group` function**:
+   - Proper validation (at least 1 participant for flexibility)
+   - Correct custom amount validation
+   - Proper participant addition logic
 
-## Technical Specifications
+2. **Fixed `get_expense_summary` function**:
+   - **CRITICAL**: Added back the missing `participants` JSONB field
+   - This field contains all participants with their payment status
+   - Frontend depends on this field to display room information
 
-### Database Schema
-```sql
-CREATE TABLE room_photos (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  photo_url TEXT NOT NULL,
-  caption TEXT,
-  is_primary BOOLEAN DEFAULT FALSE,
-  display_order INTEGER DEFAULT 1,
-  uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
+3. **Added `get_user_pending_settlements` function**:
+   - Returns pending settlements for approval
+   - Required for the dashboard to show pending settlements
 
-### Key Components to Create/Modify
-- `RoomPhotoUpload.tsx` - Drag-and-drop upload interface
-- `PhotoGalleryModal.tsx` - Full-screen photo viewer with navigation  
-- `RoomPhotoManager.tsx` - Photo management interface for providers
-- `SwipePage.tsx` - Modify to show room photos for providers
-- `ProfileSetup.tsx` - Add conditional photo upload section
+4. **Restored all other functions**:
+   - `submit_settlement`
+   - `approve_settlement` 
+   - `mark_participant_payment`
 
-### Service Functions
-- `uploadRoomPhotos()` - Handle multiple file uploads
-- `getRoomPhotos()` - Fetch user's room photos
-- `setPrimaryPhoto()` - Set main display photo
-- `deleteRoomPhoto()` - Remove photo and update database
-- `reorderPhotos()` - Update display order
-- `updatePhotoCaption()` - Edit photo descriptions
+## Next Steps
 
-## Success Criteria
-1. Providers can upload multiple room photos during profile setup
-2. Photos display properly in swipe interface with navigation
-3. Photo management interface allows full CRUD operations
-4. Mobile experience is smooth and responsive
-5. Performance is optimized with proper image loading
-6. Security is maintained with proper RLS policies
+1. **Run the Fixed SQL Script**:
+   - Copy the contents of `FIXED-SPLITWISE-FUNCTIONS.sql`
+   - Paste into your Supabase SQL Editor
+   - Execute the script to restore proper functionality
 
-## Risk Mitigation
-- **File Size**: Implement compression and validation (max 5MB per photo)
-- **Storage Costs**: Limit to 15 photos per provider maximum  
-- **Performance**: Use lazy loading and progressive image loading
-- **Security**: Ensure proper RLS policies prevent unauthorized access
-- **Mobile UX**: Test thoroughly on various device sizes
+2. **Test the Fix**:
+   - Try creating a new expense room
+   - Check if existing rooms now show up
+   - Verify all Splitwise features work properly
 
-## Estimated Timeline
-- **Phase 1-2**: Database and Services (Day 1)
-- **Phase 3-4**: Upload Components and Profile Integration (Day 2) 
-- **Phase 5-6**: Swipe Enhancement and Management (Day 3)
-- **Phase 7**: Testing and Optimization (Day 4)
+## Files Created/Modified
 
-This plan prioritizes simple, modular changes that integrate smoothly with the existing codebase while providing a comprehensive room photo feature set.
+### ✅ Created Files
+- `schema/FIXED-SPLITWISE-FUNCTIONS.sql` - Fixed database functions
+
+### 📝 Modified Files  
+- `projectplan.md` - Updated with Splitwise fix documentation
+
+## What The Fix Does
+
+The key issue was that your rollback script removed the `participants` JSONB field from the `get_expense_summary` function return. This field is critical because:
+
+1. **Frontend Dependency**: The ExpensesPage.tsx component expects each expense summary to have a `participants` field containing participant details
+2. **Room Display**: Without this field, rooms cannot be properly displayed because participant information is missing
+3. **Payment Status**: The participants field contains payment status for each user in the room
+
+The fixed script restores this field and all missing functions your code depends on.
 
 ---
 
