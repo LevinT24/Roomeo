@@ -78,6 +78,16 @@
   --gold-accent: #d4af37;
 }
 
+/* Hide scrollbars for chat areas */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Safari and Chrome */
+}
+
 .text-stroke {
   color: transparent;
   -webkit-text-stroke: 3px var(--emerald-green);

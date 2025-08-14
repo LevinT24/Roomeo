@@ -305,7 +305,7 @@ export default function EnhancedChatPage({
             <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
           </div>
           
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto scrollbar-hide">
             {isLoading ? (
               <div className="p-4 text-center text-gray-500">
                 <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-2" />
@@ -382,7 +382,7 @@ export default function EnhancedChatPage({
               {/* Messages Area */}
               <div 
                 ref={messagesContainerRef}
-                className="flex-1 px-4 py-4 space-y-4 overflow-y-auto"
+                className="flex-1 px-4 py-4 space-y-4 overflow-y-auto scrollbar-hide"
                 style={{ 
                   paddingBottom: '120px', // Space for input area
                   paddingRight: '20px', // Extra right padding to prevent cutoff
