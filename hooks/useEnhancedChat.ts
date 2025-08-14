@@ -20,10 +20,8 @@ import {
   createOrGetChat,
   markMessagesAsRead,
 } from "@/services/chat"
-import { 
-  realtimeChatService,
-  type RealtimeChatEvents 
-} from "@/services/realtimeChat"
+import { realtimeChatService } from "@/services/realtimeChat"
+import type { RealtimeChatEvents } from "@/services/realtimeChat"
 import { useAuth } from "@/hooks/useAuth"
 
 interface UseEnhancedChatReturn {

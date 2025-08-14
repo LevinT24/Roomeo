@@ -24,7 +24,7 @@ import { useState, useEffect } from "react"
 import LoadingSpinner from "@/components/LoadingSpinner"
 import ErrorBoundary from "@/components/ErrorBoundary"
 import DebugInfo from "@/components/DebugInfo"
-import { FriendsPanel, FriendsPanelToggle } from "@/components/friends"
+import { FriendsPanel, FriendsPanelToggle } from "@/components/friends" 
 
 export default function Home() {
   const { user, loading, logout, error: authError, sessionValid } = useAuth()

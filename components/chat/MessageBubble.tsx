@@ -163,7 +163,7 @@ export function MessageBubble({
   return (
     <div
       className={cn(
-        "flex items-end gap-2 max-w-[85%] group animate-in slide-in-from-bottom-2 duration-300",
+        "flex items-end gap-2 max-w-[95%] group animate-in slide-in-from-bottom-2 duration-300",
         isOwn ? "ml-auto flex-row-reverse" : "mr-auto"
       )}
     >
@@ -181,8 +181,8 @@ export function MessageBubble({
       {/* Message bubble */}
       <div
         className={cn(
-          "relative px-3 py-2 rounded-2xl shadow-sm max-w-xs md:max-w-md lg:max-w-lg",
-          "transition-all duration-200 hover:shadow-md",
+          "relative px-3 py-2 rounded-2xl shadow-sm max-w-sm md:max-w-lg lg:max-w-2xl",
+          "transition-all duration-200 hover:shadow-md word-break break-words",
           isOwn
             ? cn(
                 "bg-blue-500 text-white",

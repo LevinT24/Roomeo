@@ -6,15 +6,12 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
-import { useChat } from "@/hooks/useChat"
+import { useEnhancedChat } from "@/hooks/useEnhancedChat"
 import { uploadChatImage } from "@/services/chatMedia"
 import type { User } from "@/types/user"
 import type { ChatMessage, Chat } from "@/types/chat"
-
-// Import new components
-import MessageBubble from "@/components/chat/MessageBubble"
-import TypingIndicator from "@/components/chat/TypingIndicator"
-import ChatInput from "@/components/chat/ChatInput"
+import { ChatInput } from "@/components/chat/ChatInput"
+import { MessageBubble } from "@/components/chat/MessageBubble"
 
 interface EnhancedChatPageProps {
   user: User
@@ -244,9 +241,16 @@ export default function EnhancedChatPage({
     })
 
   return (
-    <div className="bg-white text-black min-h-screen flex flex-col max-h-screen">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-4 shadow-sm">
+    <div className="bg-white text-black h-screen flex flex-col overflow-hidden">
+      {/* Header - Fixed at top */}
+      <header 
+        className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-4 shadow-sm flex-shrink-0"
+        style={{
+          position: 'relative',
+          zIndex: 30,
+          backgroundColor: 'white'
+        }}
+      >
         <button 
           onClick={onBack} 
           className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -358,7 +362,7 @@ export default function EnhancedChatPage({
                             {isTyping ? (
                               <span className="text-blue-500 italic">typing...</span>
                             ) : (
-                              chat.last_message_preview || "No messages yet"
+                              chat.last_message_preview || chat.last_message || "No messages yet"
                             )}
                           </p>
                         </div>
@@ -372,13 +376,18 @@ export default function EnhancedChatPage({
         </div>
 
         {/* Chat Messages */}
-        <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 flex flex-col min-h-0 relative">
           {selectedChatId ? (
             <>
               {/* Messages Area */}
               <div 
                 ref={messagesContainerRef}
-                className="flex-1 overflow-y-auto p-4 space-y-4"
+                className="flex-1 px-4 py-4 space-y-4 overflow-y-auto"
+                style={{ 
+                  paddingBottom: '120px', // Space for input area
+                  paddingRight: '20px', // Extra right padding to prevent cutoff
+                  height: 'calc(100vh - 180px)' // Full height minus header and input
+                }}
               >
                 {messageGroups.map((group, groupIndex) => (
                   <div key={groupIndex} className="space-y-1">
@@ -387,7 +396,7 @@ export default function EnhancedChatPage({
                         key={message.id}
                         message={message}
                         isOwn={message.sender_id === user.id}
-                        showAvatar={messageIndex === group.length - 1}
+                        showAvatar={message.sender_id !== user.id}
                         isFirst={messageIndex === 0}
                         isLast={messageIndex === group.length - 1}
                         onRetry={() => handleRetryMessage(message.id)}
@@ -397,24 +406,75 @@ export default function EnhancedChatPage({
                   </div>
                 ))}
                 
-                {/* Typing Indicator */}
-                <TypingIndicator
-                  isVisible={typingUserNames.length > 0}
-                  typingUsers={typingUserNames}
-                />
+                {/* Simple Typing Indicator */}
+                {typingUserNames.length > 0 && (
+                  <div className="flex justify-start">
+                    <div className="bg-gray-200 px-4 py-2 rounded-lg">
+                      <p className="text-sm text-gray-600 italic">
+                        {typingUserNames[0]} is typing...
+                      </p>
+                    </div>
+                  </div>
+                )}
                 
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input Area */}
-              <ChatInput
-                onSendMessage={handleSendMessage}
-                onTyping={handleTypingEvent}
-                onImageUpload={handleImageUpload}
-                placeholder="Type a message..."
-                disabled={!isConnected}
-                className="border-t border-gray-200"
-              />
+              {/* Chat Input Area */}
+              <div 
+                className="border-t-2 border-[#004D40] bg-[#F2F5F1] p-3 flex-shrink-0" 
+                style={{ 
+                  position: 'absolute', 
+                  bottom: '80px', // Above the bottom nav
+                  left: 0,
+                  right: 0,
+                  zIndex: 40,
+                  backgroundColor: '#F2F5F1'
+                }}
+              >
+                <div className="flex gap-2 items-center">
+                  {/* Message Input */}
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      placeholder="Type your message..."
+                      className="w-full px-3 py-2 border-2 border-[#004D40] rounded-lg bg-white text-[#004D40] font-bold placeholder:text-[#004D40]/60 focus:outline-none focus:border-[#44C76F] shadow-[2px_2px_0px_0px_#004D40] focus:shadow-[1px_1px_0px_0px_#004D40] transition-all"
+                      disabled={!isConnected}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          const input = e.target as HTMLInputElement
+                          if (input.value.trim()) {
+                            handleSendMessage(input.value)
+                            input.value = ''
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Send Button */}
+                  <button
+                    onClick={() => {
+                      const input = document.querySelector('input[placeholder*="Type your message"]') as HTMLInputElement
+                      if (input?.value.trim()) {
+                        handleSendMessage(input.value)
+                        input.value = ''
+                      }
+                    }}
+                    disabled={!isConnected}
+                    className="bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black px-4 py-2 border-2 border-[#004D40] rounded-lg shadow-[2px_2px_0px_0px_#004D40] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#004D40] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    SEND
+                  </button>
+                </div>
+                
+                {/* Connection Status */}
+                {!isConnected && (
+                  <div className="mt-2 p-2 bg-red-100 border border-red-500 rounded text-red-700 font-bold text-xs">
+                    ⚠️ DISCONNECTED
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center bg-gray-50">
@@ -429,6 +489,7 @@ export default function EnhancedChatPage({
               </div>
             </div>
           )}
+
         </div>
       </div>
 
