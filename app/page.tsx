@@ -16,7 +16,7 @@ import SwipePage from "@/components/SwipePage"
 import MatchesPage from "@/components/MatchesPage"
 import MarketplacePage from "@/components/MarketplacePage"
 import ExpensesPage from "@/components/ExpensesPage"  
-import ChatPage from "@/components/ChatPage"
+import EnhancedChatPage from "@/components/EnhancedChatPage"
 import SettingsMenu from "@/components/SettingsMenu"
 import ProfilePreview from "@/components/ProfilePreview"
 import SessionRecovery from "@/components/SessionRecovery"
@@ -521,7 +521,7 @@ export default function Home() {
             )}
             {currentPage === "expenses" && <ExpensesPage user={user as any} />}
             {currentPage === "chat" && (
-              <ChatPage 
+              <EnhancedChatPage 
                 user={user as any} 
                 chatTarget={chatTarget}
                 onBack={() => {

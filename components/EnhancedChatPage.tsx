@@ -6,7 +6,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
-import { useEnhancedChat } from "@/hooks/useEnhancedChat"
+import { useChat } from "@/hooks/useChat"
 import { uploadChatImage } from "@/services/chatMedia"
 import type { User } from "@/types/user"
 import type { ChatMessage, Chat } from "@/types/chat"
