@@ -301,25 +301,6 @@ export default function ChatPage({ user, onBack, chatTarget }: ChatPageProps) {
                   <div ref={messagesEndRef} />
                 </div>
               </div>
-
-              {/* Message Input */}
-              <form onSubmit={handleSendMessage} className="p-4 border-t-4 border-black bg-gray-50">
-                <div className="flex gap-2">
-                  <Input
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="TYPE YOUR MESSAGE..."
-                    className="flex-1 border-4 border-black font-bold focus:border-[#F05224]"
-                  />
-                  <Button
-                    type="submit"
-                    disabled={!newMessage.trim()}
-                    className="bg-[#F05224] hover:bg-[#D63E1A] text-white font-black px-6 border-4 border-black shadow-[4px_4px_0px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#000000] transition-all"
-                  >
-                    SEND
-                  </Button>
-                </div>
-              </form>
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center bg-white">
@@ -328,6 +309,28 @@ export default function ChatPage({ user, onBack, chatTarget }: ChatPageProps) {
                 <p className="text-gray-600 font-bold">Choose a conversation to start messaging</p>
               </div>
             </div>
+          )}
+          
+          {/* Message Input - Always show when there are chats available */}
+          {(selectedChatId || chats.length > 0) && (
+            <form onSubmit={handleSendMessage} className="p-4 border-t-4 border-black bg-gray-50">
+              <div className="flex gap-2">
+                <Input
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder={selectedChatId ? "TYPE YOUR MESSAGE..." : "Select a chat to start messaging..."}
+                  className="flex-1 border-4 border-black font-bold focus:border-[#F05224]"
+                  disabled={!selectedChatId}
+                />
+                <Button
+                  type="submit"
+                  disabled={!newMessage.trim() || !selectedChatId}
+                  className="bg-[#F05224] hover:bg-[#D63E1A] text-white font-black px-6 border-4 border-black shadow-[4px_4px_0px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#000000] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  SEND
+                </Button>
+              </div>
+            </form>
           )}
         </div>
       </div>
