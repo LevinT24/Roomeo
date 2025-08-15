@@ -224,38 +224,38 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center justify-center rounded-md bg-[#F05224] shrink-0 size-12 text-white">
-            <svg fill="currentColor" height="24px" viewBox="0 0 256 256" width="24px">
+    <div className="rounded-lg border border-gray-200 bg-white p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+          <div className="flex items-center justify-center rounded-md bg-[#F05224] shrink-0 w-10 h-10 sm:w-12 sm:h-12 text-white">
+            <svg fill="currentColor" height="20px" viewBox="0 0 256 256" width="20px" className="sm:w-6 sm:h-6">
               <path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path>
             </svg>
           </div>
-          <div>
-            <h3 className="font-bold text-gray-900 text-lg">{expense.group_name}</h3>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-bold text-gray-900 text-base sm:text-lg truncate">{expense.group_name}</h3>
             {expense.group_description && (
-              <p className="text-sm text-gray-600 mt-1">{expense.group_description}</p>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1 line-clamp-2">{expense.group_description}</p>
             )}
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-xs sm:text-sm text-gray-500 mt-1 truncate">
               Created by {expense.created_by_name} • {formatDate(expense.created_at)}
             </p>
           </div>
         </div>
         
-        <Badge className={`${getStatusColor()} font-medium px-3 py-1`}>
+        <Badge className={`${getStatusColor()} font-medium px-2 sm:px-3 py-1 text-xs sm:text-sm shrink-0`}>
           {getStatusText()}
         </Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
         <div className="text-center">
-          <p className="text-sm text-gray-600">Total Amount</p>
-          <p className="text-lg font-bold text-gray-900">${expense.total_amount.toFixed(2)}</p>
+          <p className="text-xs sm:text-sm text-gray-600">Total Amount</p>
+          <p className="text-base sm:text-lg font-bold text-gray-900">${expense.total_amount.toFixed(2)}</p>
         </div>
         <div className="text-center">
-          <p className="text-sm text-gray-600">Your Share</p>
-          <p className="text-lg font-bold text-gray-900">${expense.amount_owed.toFixed(2)}</p>
+          <p className="text-xs sm:text-sm text-gray-600">Your Share</p>
+          <p className="text-base sm:text-lg font-bold text-gray-900">${expense.amount_owed.toFixed(2)}</p>
         </div>
       </div>
 
@@ -286,7 +286,7 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
         </div>
 
         {/* Progress bar */}
-        <div className="flex-1 mx-4">
+        <div className="flex-1 mx-3 sm:mx-4">
           <div className="w-full bg-gray-200 rounded-full h-2 relative">
             {/* Paid amount (green) */}
             <div 
@@ -352,32 +352,39 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
               const participantPending = participant.pending_settlement
               
               return (
-                <div key={participant.user_id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
+                <div key={participant.user_id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-3 sm:p-2 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div
-                      className="w-8 h-8 rounded-full bg-gray-200 bg-cover bg-center"
+                      className="w-8 h-8 rounded-full bg-gray-200 bg-cover bg-center flex-shrink-0"
                       style={{
                         backgroundImage: participant.profile_picture
                           ? `url("${participant.profile_picture}")`
                           : 'url("/placeholder.svg?height=32&width=32")'
                       }}
                     />
-                    <div>
-                      <span className="text-sm font-medium">
-                        {participant.name}
-                        {participant.is_creator && <span className="text-xs text-blue-600 ml-1">(Creator)</span>}
-                      </span>
-                      <div className="text-xs text-gray-500">
-                        Owes: ${participant.amount_owed.toFixed(2)} | Paid: ${participant.amount_paid.toFixed(2)}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                        <span className="text-sm font-medium truncate">
+                          {participant.name}
+                          {participant.is_creator && <span className="text-xs text-blue-600 ml-1">(Creator)</span>}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 flex flex-col sm:flex-row sm:gap-1">
+                        <span>Owes: ${participant.amount_owed.toFixed(2)}</span>
+                        <span className="hidden sm:inline">|</span>
+                        <span>Paid: ${participant.amount_paid.toFixed(2)}</span>
                         {participantPending && participantPending.amount && (
-                          <span className="text-yellow-600"> | Pending: ${participantPending.amount.toFixed(2)}</span>
+                          <>
+                            <span className="hidden sm:inline">|</span>
+                            <span className="text-yellow-600">Pending: ${participantPending.amount.toFixed(2)}</span>
+                          </>
                         )}
                       </div>
                     </div>
                   </div>
                   
                   {/* Payment Status & Controls */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-2">
                     {participant.is_settled ? (
                       <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
                         ✓ Settled
@@ -387,8 +394,8 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
                         ⏳ Pending
                       </span>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full whitespace-nowrap">
                           ${(participant.amount_owed - participant.amount_paid).toFixed(2)} left
                         </span>
                         
@@ -397,14 +404,14 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
                           <div className="flex gap-1">
                             <button
                               onClick={() => onMarkPaid(expense.group_id, participant.user_id, true)}
-                              className="text-xs bg-emerald-500 text-white px-2 py-1 rounded hover:bg-emerald-600"
+                              className="text-xs bg-emerald-500 text-white px-2 py-1 rounded hover:bg-emerald-600 min-w-[24px] h-[24px] flex items-center justify-center"
                               title="Mark as paid"
                             >
                               ✓
                             </button>
                             <button
                               onClick={() => onMarkPaid(expense.group_id, participant.user_id, false)}
-                              className="text-xs bg-gray-400 text-white px-2 py-1 rounded hover:bg-gray-500"
+                              className="text-xs bg-gray-400 text-white px-2 py-1 rounded hover:bg-gray-500 min-w-[24px] h-[24px] flex items-center justify-center"
                               title="Mark as unpaid"
                             >
                               ✗

@@ -201,16 +201,16 @@ export default function ChatPage({ user, onBack, chatTarget }: ChatPageProps) {
     <div className="bg-white text-black min-h-screen flex flex-col max-h-screen">
       {/* Header */}
       <header className="bg-white border-b-4 border-black px-4 py-3 flex items-center gap-4">
-        <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full border-2 border-black">
+        <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full border-2 border-black min-w-[40px] h-[40px] flex items-center justify-center">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-[#44C76F] border-2 border-[#004D40] transform rotate-3 flex items-center justify-center shadow-[2px_2px_0px_0px_#004D40]">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="w-8 h-8 bg-[#44C76F] border-2 border-[#004D40] transform rotate-3 flex items-center justify-center shadow-[2px_2px_0px_0px_#004D40] flex-shrink-0">
             <span className="text-[#004D40] font-black text-sm transform -rotate-3">R</span>
           </div>
-          <h1 className="text-xl font-black transform -skew-x-3">
+          <h1 className="text-lg sm:text-xl font-black transform -skew-x-3 truncate">
             {initializingChat 
               ? "CONNECTING..."
               : selectedChat 
@@ -221,10 +221,10 @@ export default function ChatPage({ user, onBack, chatTarget }: ChatPageProps) {
         </div>
       </header>
 
-      <div className="flex-1 flex">
-        {/* Chat List */}
-        <div className="w-1/3 border-r-4 border-black bg-gray-50">
-          <div className="p-4">
+      <div className="flex-1 flex flex-col lg:flex-row">
+        {/* Chat List - Mobile: Hidden when chat selected, Desktop: Always visible */}
+        <div className={`${selectedChatId ? 'hidden lg:flex' : 'flex'} w-full lg:w-1/3 border-b-4 lg:border-b-0 lg:border-r-4 border-black bg-gray-50 flex-col`}>
+          <div className="p-4 flex-1">
             <h2 className="text-lg font-black mb-4 transform -skew-x-1">YOUR CHATS</h2>
             
             {initializingChat && (
@@ -244,9 +244,9 @@ export default function ChatPage({ user, onBack, chatTarget }: ChatPageProps) {
                   <div
                     key={chat.id}
                     onClick={() => setSelectedChatId(chat.id)}
-                    className={`p-3 rounded-lg cursor-pointer border-2 border-black transition-all ${
+                    className={`p-4 sm:p-3 rounded-lg cursor-pointer border-2 border-black transition-all min-h-[60px] sm:min-h-[auto] ${
                       selectedChatId === chat.id
-                        ? "bg-[#F05224] text-white shadow-[4px_4px_0px_0px_#000000]"
+                        ? "bg-[#F05224] text-white shadow-[3px_3px_0px_0px_#000000] sm:shadow-[4px_4px_0px_0px_#000000]"
                         : "bg-white hover:bg-gray-100 shadow-[2px_2px_0px_0px_#000000]"
                     }`}
                   >
@@ -254,12 +254,12 @@ export default function ChatPage({ user, onBack, chatTarget }: ChatPageProps) {
                       <img
                         src={chat.other_user_avatar || "/placeholder.svg?height=40&width=40"}
                         alt={chat.other_user_name}
-                        className="w-10 h-10 rounded-full border-2 border-black"
+                        className="w-10 h-10 sm:w-10 sm:h-10 rounded-full border-2 border-black flex-shrink-0"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-black truncate">{chat.other_user_name}</p>
+                        <p className="font-black truncate text-sm sm:text-base">{chat.other_user_name}</p>
                         {chat.last_message && (
-                          <p className="text-sm opacity-75 truncate">
+                          <p className="text-xs sm:text-sm opacity-75 truncate">
                             {chat.last_message}
                           </p>
                         )}
@@ -272,12 +272,32 @@ export default function ChatPage({ user, onBack, chatTarget }: ChatPageProps) {
           </div>
         </div>
 
-        {/* Chat Messages */}
-        <div className="flex-1 flex flex-col">
+        {/* Chat Messages - Mobile: Show when chat selected, Desktop: Always visible */}
+        <div className={`${selectedChatId ? 'flex' : 'hidden lg:flex'} flex-1 flex-col relative`}>
           {selectedChatId ? (
             <>
+              {/* Mobile back button */}
+              <div className="lg:hidden flex items-center gap-3 p-4 bg-gray-50 border-b-2 border-black">
+                <button 
+                  onClick={() => setSelectedChatId(null)} 
+                  className="p-2 hover:bg-gray-200 rounded-full border-2 border-black min-w-[40px] h-[40px] flex items-center justify-center"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <img
+                    src={selectedChat?.other_user_avatar || "/placeholder.svg?height=32&width=32"}
+                    alt={selectedChat?.other_user_name}
+                    className="w-8 h-8 rounded-full border-2 border-black flex-shrink-0"
+                  />
+                  <h3 className="font-black truncate">{selectedChat?.other_user_name}</h3>
+                </div>
+              </div>
+              
               {/* Messages */}
-              <div className="flex-1 p-4 overflow-y-auto bg-white max-h-[calc(100vh-200px)]">
+              <div className="flex-1 p-4 overflow-y-auto bg-white" style={{maxHeight: "calc(100vh - 200px)"}}>
                 <div className="space-y-4">
                   {(messages[selectedChatId] || []).map((message) => (
                     <div
@@ -285,13 +305,13 @@ export default function ChatPage({ user, onBack, chatTarget }: ChatPageProps) {
                       className={`flex ${message.sender_id === user.id ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg border-2 border-black font-bold ${
+                        className={`max-w-[280px] sm:max-w-xs lg:max-w-md px-3 sm:px-4 py-2 rounded-lg border-2 border-black font-bold text-sm sm:text-base ${
                           message.sender_id === user.id
-                            ? "bg-[#F05224] text-white shadow-[3px_3px_0px_0px_#000000]"
-                            : "bg-gray-100 text-black shadow-[3px_3px_0px_0px_#000000]"
+                            ? "bg-[#F05224] text-white shadow-[2px_2px_0px_0px_#000000] sm:shadow-[3px_3px_0px_0px_#000000]"
+                            : "bg-gray-100 text-black shadow-[2px_2px_0px_0px_#000000] sm:shadow-[3px_3px_0px_0px_#000000]"
                         }`}
                       >
-                        <p>{message.content}</p>
+                        <p className="break-words">{message.content}</p>
                         <p className="text-xs opacity-75 mt-1">
                           {new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </p>
@@ -304,28 +324,28 @@ export default function ChatPage({ user, onBack, chatTarget }: ChatPageProps) {
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center bg-white">
-              <div className="text-center">
-                <h3 className="text-2xl font-black text-gray-400 mb-2 transform -skew-x-1">SELECT A CHAT</h3>
-                <p className="text-gray-600 font-bold">Choose a conversation to start messaging</p>
+              <div className="text-center px-4">
+                <h3 className="text-xl sm:text-2xl font-black text-gray-400 mb-2 transform -skew-x-1">SELECT A CHAT</h3>
+                <p className="text-gray-600 font-bold text-sm sm:text-base">Choose a conversation to start messaging</p>
               </div>
             </div>
           )}
           
           {/* Message Input - Always show when there are chats available */}
           {(selectedChatId || chats.length > 0) && (
-            <form onSubmit={handleSendMessage} className="p-4 border-t-4 border-black bg-gray-50">
+            <form onSubmit={handleSendMessage} className="p-3 sm:p-4 border-t-4 border-black bg-gray-50">
               <div className="flex gap-2">
                 <Input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder={selectedChatId ? "TYPE YOUR MESSAGE..." : "Select a chat to start messaging..."}
-                  className="flex-1 border-4 border-black font-bold focus:border-[#F05224]"
+                  className="flex-1 border-2 sm:border-4 border-black font-bold focus:border-[#F05224] text-sm sm:text-base h-12 sm:h-auto"
                   disabled={!selectedChatId}
                 />
                 <Button
                   type="submit"
                   disabled={!newMessage.trim() || !selectedChatId}
-                  className="bg-[#F05224] hover:bg-[#D63E1A] text-white font-black px-6 border-4 border-black shadow-[4px_4px_0px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#000000] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-[#F05224] hover:bg-[#D63E1A] text-white font-black px-4 sm:px-6 py-3 text-sm sm:text-base border-2 sm:border-4 border-black shadow-[2px_2px_0px_0px_#000000] sm:shadow-[4px_4px_0px_0px_#000000] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[1px_1px_0px_0px_#000000] sm:hover:shadow-[2px_2px_0px_0px_#000000] transition-all disabled:opacity-50 disabled:cursor-not-allowed min-w-[60px] sm:min-w-[80px]"
                 >
                   SEND
                 </Button>

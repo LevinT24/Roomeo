@@ -390,7 +390,10 @@ export default function Home() {
                     onClick={() => setShowUserSettings(!showUserSettings)}
                     onError={(e) => {
                       console.log("🖼️ Avatar failed to load, falling back to placeholder:", user?.profilePicture);
-                      e.currentTarget.src = getFallbackAvatarUrl();
+                      const fallback = getFallbackAvatarUrl();
+                      if (e.currentTarget.src !== fallback) {
+                        e.currentTarget.src = fallback;
+                      }
                     }}
                   />
                   
