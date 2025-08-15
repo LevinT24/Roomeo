@@ -514,24 +514,24 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
 
       {/* Filter Dropdown */}
       {showFilters && (
-        <div className="fixed top-20 left-0 right-0 bg-[#F2F5F1] border-b-4 border-[#004D40] z-30">
-          <div className="container mx-auto px-6 py-4">
-            <div className="bg-[#B7C8B5] rounded-lg border-4 border-[#004D40] p-4 shadow-[4px_4px_0px_0px_#004D40]">
-              <div className="mb-4">
-                <h3 className="text-xl font-black text-[#004D40] transform -skew-x-2 text-center">FILTER MATCHES</h3>
+        <div className="fixed top-16 md:top-20 left-0 right-0 bg-[#F2F5F1] border-b-4 border-[#004D40] z-30 max-h-[80vh] overflow-y-auto">
+          <div className="container mx-auto px-4 md:px-6 py-4">
+            <div className="bg-[#B7C8B5] rounded-lg border-2 md:border-4 border-[#004D40] p-3 md:p-4 shadow-[2px_2px_0px_0px_#004D40] md:shadow-[4px_4px_0px_0px_#004D40]">
+              <div className="mb-3 md:mb-4">
+                <h3 className="text-lg md:text-xl font-black text-[#004D40] transform -skew-x-2 text-center">FILTER MATCHES</h3>
               </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                   {/* Age Range */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-black text-[#004D40]">AGE RANGE</label>
+                  <div className="space-y-1 md:space-y-2">
+                    <label className="block text-xs md:text-sm font-black text-[#004D40]">AGE RANGE</label>
                     <div className="flex gap-2">
                       <input
                         type="number"
                         placeholder="Min"
                         value={tempFilters.ageMin}
                         onChange={(e) => handleTempFilterChange('ageMin', e.target.value)}
-                        className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-sm"
+                        className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-xs md:text-sm h-10 md:h-auto"
                         min="18"
                         max="100"
                       />
@@ -540,7 +540,7 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
                         placeholder="Max"
                         value={tempFilters.ageMax}
                         onChange={(e) => handleTempFilterChange('ageMax', e.target.value)}
-                        className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-sm"
+                        className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-xs md:text-sm h-10 md:h-auto"
                         min="18"
                         max="100"
                       />
@@ -548,24 +548,24 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
                   </div>
 
                   {/* University Affiliation */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-black text-[#004D40]">UNIVERSITY</label>
+                  <div className="space-y-1 md:space-y-2">
+                    <label className="block text-xs md:text-sm font-black text-[#004D40]">UNIVERSITY</label>
                     <input
                       type="text"
                       placeholder="e.g. UW, Harvard, etc."
                       value={tempFilters.universityAffiliation}
                       onChange={(e) => handleTempFilterChange('universityAffiliation', e.target.value)}
-                      className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-sm"
+                      className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-xs md:text-sm h-10 md:h-auto"
                     />
                   </div>
 
                   {/* Professional Status */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-black text-[#004D40]">WORK STATUS</label>
+                  <div className="space-y-1 md:space-y-2">
+                    <label className="block text-xs md:text-sm font-black text-[#004D40]">WORK STATUS</label>
                     <select
                       value={tempFilters.professionalStatus}
                       onChange={(e) => handleTempFilterChange('professionalStatus', e.target.value)}
-                      className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-sm"
+                      className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-xs md:text-sm h-10 md:h-auto"
                     >
                       <option value="">Any</option>
                       <option value="student">Student</option>
@@ -575,15 +575,15 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
                   </div>
 
                   {/* Budget Range */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-black text-[#004D40]">BUDGET RANGE ($)</label>
+                  <div className="space-y-1 md:space-y-2">
+                    <label className="block text-xs md:text-sm font-black text-[#004D40]">BUDGET RANGE ($)</label>
                     <div className="flex gap-2">
                       <input
                         type="number"
                         placeholder="Min"
                         value={tempFilters.budgetMin}
                         onChange={(e) => handleTempFilterChange('budgetMin', e.target.value)}
-                        className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-sm"
+                        className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-xs md:text-sm h-10 md:h-auto"
                         min="0"
                       />
                       <input
@@ -591,44 +591,44 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
                         placeholder="Max"
                         value={tempFilters.budgetMax}
                         onChange={(e) => handleTempFilterChange('budgetMax', e.target.value)}
-                        className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-sm"
+                        className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-xs md:text-sm h-10 md:h-auto"
                         min="0"
                       />
                     </div>
                   </div>
 
                   {/* Area */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-black text-[#004D40]">AREA</label>
+                  <div className="space-y-1 md:space-y-2">
+                    <label className="block text-xs md:text-sm font-black text-[#004D40]">AREA</label>
                     <input
                       type="text"
                       placeholder="e.g. Downtown, University District"
                       value={tempFilters.area}
                       onChange={(e) => handleTempFilterChange('area', e.target.value)}
-                      className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-sm"
+                      className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-xs md:text-sm h-10 md:h-auto"
                     />
                   </div>
                 </div>
                 
                 {/* Apply and Reset Buttons */}
-                <div className="mt-6 flex gap-4 justify-center">
+                <div className="mt-4 md:mt-6 flex flex-col sm:flex-row gap-2 md:gap-4 justify-center">
                   <button
                     onClick={resetFilters}
-                    className="bg-[#F2F5F1] text-[#004D40] font-black px-6 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+                    className="bg-[#F2F5F1] text-[#004D40] font-black px-4 py-2 md:px-6 md:py-3 text-sm md:text-base rounded-lg border-2 md:border-4 border-[#004D40] shadow-[2px_2px_0px_0px_#004D40] md:shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[1px_1px_0px_0px_#004D40] md:hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
                   >
                     RESET ALL
                   </button>
                   <button
                     onClick={applyFiltersFromTemp}
-                    className="bg-[#44C76F] text-[#004D40] font-black px-8 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+                    className="bg-[#44C76F] text-[#004D40] font-black px-6 py-2 md:px-8 md:py-3 text-sm md:text-base rounded-lg border-2 md:border-4 border-[#004D40] shadow-[2px_2px_0px_0px_#004D40] md:shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[1px_1px_0px_0px_#004D40] md:hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
                   >
                     APPLY FILTERS
                   </button>
                 </div>
                 
                 {/* Results count */}
-                <div className="mt-4 text-center">
-                  <p className="text-[#004D40] font-black text-sm">
+                <div className="mt-3 md:mt-4 text-center">
+                  <p className="text-[#004D40] font-black text-xs md:text-sm">
                     SHOWING {profiles.length} OF {allProfiles.length} PROFILES
                   </p>
                 </div>
@@ -639,9 +639,9 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
 
       {/* Main Content */}
       <main className="flex items-center justify-center p-4 bg-[#F2F5F1] min-h-screen">
-        <div className="w-full max-w-sm mx-auto flex flex-col justify-center min-h-screen">
-            <div className="relative mb-8">
-              <div className="bg-[#B7C8B5] rounded-2xl border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] overflow-hidden transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#004D40] transition-all">
+        <div className="w-full max-w-sm mx-auto flex flex-col justify-center min-h-[calc(100vh-8rem)]">
+            <div className="relative mb-6 md:mb-8">
+              <div className="bg-[#B7C8B5] rounded-2xl border-2 md:border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] md:shadow-[8px_8px_0px_0px_#004D40] overflow-hidden transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] md:hover:shadow-[4px_4px_0px_0px_#004D40] transition-all">
                 <div className="relative">
                   {/* Display primary room photo for providers, profile picture for seekers */}
                   <img
@@ -752,8 +752,8 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
             </div>
             
             {/* Profile counter */}
-            <div className="text-center mb-4">
-              <p className="text-[#004D40] font-black text-sm">
+            <div className="text-center mb-3 md:mb-4">
+              <p className="text-[#004D40] font-black text-xs md:text-sm">
                 {currentIndex + 1} OF {profiles.length}
                 {activeFiltersCount > 0 && (
                   <span className="block text-xs text-[#44C76F] mt-1">
@@ -763,14 +763,14 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
               </p>
             </div>
 
-            <div className="flex justify-between items-center">
+            <div className="flex justify-center items-center gap-8 md:gap-12">
               {/* Cross/Pass Button - Left Side */}
               <button
-                className="size-20 bg-[#F2F5F1] border-4 border-[#004D40] text-red-500 hover:bg-red-50 flex items-center justify-center rounded-full shadow-[6px_6px_0px_0px_#004D40] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[3px_3px_0px_0px_#004D40] transition-all group"
+                className="w-16 h-16 md:w-20 md:h-20 bg-[#F2F5F1] border-2 md:border-4 border-[#004D40] text-red-500 hover:bg-red-50 flex items-center justify-center rounded-full shadow-[3px_3px_0px_0px_#004D40] md:shadow-[6px_6px_0px_0px_#004D40] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] md:hover:shadow-[3px_3px_0px_0px_#004D40] transition-all group active:scale-95"
                 onClick={() => handleSwipe(false)}
               >
                 <svg
-                  className="w-10 h-10 group-hover:scale-110 transition-transform"
+                  className="w-8 h-8 md:w-10 md:h-10 group-hover:scale-110 transition-transform"
                   fill="currentColor"
                   viewBox="0 0 24 24"
                 >
@@ -780,11 +780,11 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
 
               {/* Tick/Like Button - Right Side */}
               <button
-                className="size-24 bg-[#44C76F] text-[#004D40] border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] flex items-center justify-center rounded-full transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#004D40] transition-all group"
+                className="w-20 h-20 md:w-24 md:h-24 bg-[#44C76F] text-[#004D40] border-2 md:border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] md:shadow-[8px_8px_0px_0px_#004D40] flex items-center justify-center rounded-full transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] md:hover:shadow-[4px_4px_0px_0px_#004D40] transition-all group active:scale-95"
                 onClick={() => handleSwipe(true)}
               >
                 <svg
-                  className="w-12 h-12 group-hover:scale-110 transition-transform"
+                  className="w-10 h-10 md:w-12 md:h-12 group-hover:scale-110 transition-transform"
                   fill="currentColor"
                   viewBox="0 0 24 24"
                 >

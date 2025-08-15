@@ -123,12 +123,12 @@ export default function InviteModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg p-4 md:p-6 w-full max-w-md mx-auto max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Invite to {groupName}</h2>
-          <Button variant="ghost" size="sm" onClick={handleClose}>
+          <h2 className="text-lg md:text-xl font-semibold truncate pr-2">Invite to {groupName}</h2>
+          <Button variant="ghost" size="sm" onClick={handleClose} className="flex-shrink-0 h-8 w-8 p-0">
             <X className="w-4 h-4" />
           </Button>
         </div>
@@ -175,11 +175,11 @@ export default function InviteModal({
               </p>
             </div>
 
-            <div className="flex gap-2">
-              <Button onClick={resetForm} variant="outline" className="flex-1">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button onClick={resetForm} variant="outline" className="flex-1 h-12">
                 Send Another
               </Button>
-              <Button onClick={handleClose} className="flex-1">
+              <Button onClick={handleClose} className="flex-1 h-12">
                 Done
               </Button>
             </div>
@@ -192,28 +192,28 @@ export default function InviteModal({
               <label className="block text-sm font-medium text-gray-700 mb-3">
                 How would you like to invite them?
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2 md:gap-3">
                 <button
                   onClick={() => setInviteMethod('email')}
-                  className={`p-3 border rounded-lg flex flex-col items-center gap-2 transition-all ${
+                  className={`p-3 md:p-4 border rounded-lg flex flex-col items-center gap-1 md:gap-2 transition-all min-h-[80px] md:min-h-[90px] ${
                     inviteMethod === 'email'
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <Mail className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm font-medium">Email</span>
+                  <Mail className="w-5 h-5 md:w-6 md:h-6 text-gray-600" />
+                  <span className="text-xs md:text-sm font-medium">Email</span>
                 </button>
                 <button
                   onClick={() => setInviteMethod('whatsapp')}
-                  className={`p-3 border rounded-lg flex flex-col items-center gap-2 transition-all ${
+                  className={`p-3 md:p-4 border rounded-lg flex flex-col items-center gap-1 md:gap-2 transition-all min-h-[80px] md:min-h-[90px] ${
                     inviteMethod === 'whatsapp'
                       ? 'border-green-500 bg-green-50'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <MessageCircle className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm font-medium">WhatsApp</span>
+                  <MessageCircle className="w-5 h-5 md:w-6 md:h-6 text-gray-600" />
+                  <span className="text-xs md:text-sm font-medium">WhatsApp</span>
                 </button>
               </div>
             </div>
@@ -229,6 +229,7 @@ export default function InviteModal({
                   placeholder="friend@example.com"
                   value={recipientEmail}
                   onChange={(e) => setRecipientEmail(e.target.value)}
+                  className="h-12 text-base"
                 />
               </div>
             )}
@@ -243,6 +244,7 @@ export default function InviteModal({
                   placeholder="+1 (555) 123-4567"
                   value={recipientPhone}
                   onChange={(e) => setRecipientPhone(formatPhoneNumber(e.target.value))}
+                  className="h-12 text-base"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Include country code (e.g., +1 for US)
@@ -261,6 +263,7 @@ export default function InviteModal({
                   value={customMessage}
                   onChange={(e) => setCustomMessage(e.target.value)}
                   maxLength={200}
+                  className="h-12 text-base"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   {customMessage.length}/200 characters
@@ -276,16 +279,21 @@ export default function InviteModal({
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" onClick={handleClose} className="flex-1">
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <Button variant="outline" onClick={handleClose} className="flex-1 h-12">
                 Cancel
               </Button>
               <Button
                 onClick={handleCreateInvite}
                 disabled={!isFormValid() || isLoading}
-                className="flex-1"
+                className="flex-1 h-12"
               >
-                {isLoading ? 'Creating...' : `Send ${inviteMethod === 'email' ? 'Email' : 'WhatsApp'} Invite`}
+                {isLoading ? 'Creating...' : (
+                  <span className="text-center">
+                    <span className="hidden sm:inline">Send {inviteMethod === 'email' ? 'Email' : 'WhatsApp'} Invite</span>
+                    <span className="sm:hidden">Send Invite</span>
+                  </span>
+                )}
               </Button>
             </div>
           </div>

@@ -314,26 +314,29 @@ export default function Home() {
     console.log("📱 Showing app page:", currentPage);
 
     const AppNavigation = () => (
-      <div className="fixed bottom-0 left-0 right-0 bg-[#F2F5F1] border-t-4 border-[#004D40] px-4 py-2 z-50">
+      <div className="fixed bottom-0 left-0 right-0 bg-[#F2F5F1] border-t-4 border-[#004D40] px-2 py-2 z-50 safe-area-inset-bottom">
         <div className="flex justify-around max-w-md mx-auto">
           {[
-            { page: "swipe", icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z", label: "DISCOVER" },
-            { page: "matches", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z", label: "MATCHES" },
-            { page: "chat", icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z", label: "CHAT" },
-            { page: "marketplace", icon: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z", label: "MARKET" },
-            { page: "expenses", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1", label: "EXPENSES" }
-          ].map(({ page, icon, label }) => (
+            { page: "swipe", icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z", label: "DISCOVER", shortLabel: "SWIPE" },
+            { page: "matches", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z", label: "MATCHES", shortLabel: "MATCH" },
+            { page: "chat", icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z", label: "CHAT", shortLabel: "CHAT" },
+            { page: "marketplace", icon: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z", label: "MARKET", shortLabel: "SHOP" },
+            { page: "expenses", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1", label: "EXPENSES", shortLabel: "SPLIT" }
+          ].map(({ page, icon, label, shortLabel }) => (
             <button
               key={page}
               onClick={() => setCurrentPage(page as any)}
-              className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors font-black ${
+              className={`flex flex-col items-center py-2 px-1 sm:px-2 rounded-lg transition-colors font-black min-w-0 ${
                 currentPage === page ? "text-[#004D40] bg-[#44C76F]/20" : "text-[#004D40]"
               }`}
             >
-              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 mb-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d={icon} />
               </svg>
-              <span className="text-xs font-black">{label}</span>
+              <span className="text-[10px] sm:text-xs font-black leading-tight">
+                <span className="hidden sm:inline">{label}</span>
+                <span className="sm:hidden">{shortLabel}</span>
+              </span>
             </button>
           ))}
         </div>
@@ -346,11 +349,11 @@ export default function Home() {
           {/* Settings Header */}
           <div className="fixed top-0 left-0 right-0 bg-[#F2F5F1] border-b-4 border-[#004D40] px-4 py-3 z-40">
             <div className="flex justify-between items-center w-full">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-[#44C76F] border-2 border-[#004D40] transform rotate-3 flex items-center justify-center shadow-[2px_2px_0px_0px_#004D40]">
-                  <span className="text-[#004D40] font-black text-sm transform -rotate-3">R</span>
+              <div className="flex items-center space-x-2 md:space-x-3">
+                <div className="w-6 h-6 md:w-8 md:h-8 bg-[#44C76F] border-2 border-[#004D40] transform rotate-3 flex items-center justify-center shadow-[2px_2px_0px_0px_#004D40]">
+                  <span className="text-[#004D40] font-black text-xs md:text-sm transform -rotate-3">R</span>
                 </div>
-                <span className="font-black text-lg tracking-tight transform -skew-x-6 text-[#004D40]">ROOMIO</span>
+                <span className="font-black text-sm md:text-lg tracking-tight transform -skew-x-6 text-[#004D40]">ROOMIO</span>
               </div>
               <div className="flex items-center space-x-3">
                 {/* Session status indicator */}
@@ -381,7 +384,7 @@ export default function Home() {
                 <div className="relative">
                   <img
                     alt="User Profile"
-                    className="w-10 h-10 rounded-full object-cover border-2 border-[#44C76F] cursor-pointer hover:border-[#004D40] transition-colors"
+                    className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border-2 border-[#44C76F] cursor-pointer hover:border-[#004D40] transition-colors"
                     src={normalizeAvatarUrl(user?.profilePicture) || getFallbackAvatarUrl()}
                     title="Profile Menu"
                     onClick={() => setShowUserSettings(!showUserSettings)}
@@ -401,7 +404,7 @@ export default function Home() {
                       />
                       
                       {/* Settings Menu */}
-                      <div className="absolute right-0 top-12 bg-[#F2F5F1] border-4 border-[#004D40] rounded-lg shadow-[6px_6px_0px_0px_#004D40] z-50 min-w-56">
+                      <div className="absolute right-0 top-10 md:top-12 bg-[#F2F5F1] border-2 md:border-4 border-[#004D40] rounded-lg shadow-[3px_3px_0px_0px_#004D40] md:shadow-[6px_6px_0px_0px_#004D40] z-50 min-w-48 md:min-w-56">
                         <div className="py-2">
                           {/* User Info Header */}
                           <div className="px-4 py-2 border-b-2 border-[#004D40]">
@@ -504,9 +507,9 @@ export default function Home() {
           </div>
 
           {/* Main Content with top padding */}
-          <div className={`pt-20 transition-all duration-300 ${
+          <div className={`pt-16 md:pt-20 pb-20 transition-all duration-300 ${
             friendsPanelOpen && ['chat', 'marketplace', 'expenses'].includes(currentPage) 
-              ? 'pr-80' : ''
+              ? 'pr-0 lg:pr-80' : ''
           }`}>
             {currentPage === "swipe" && <SwipePage user={user as any} />}
             {currentPage === "matches" && (
@@ -563,81 +566,81 @@ export default function Home() {
           {/* Update Account Modal */}
           {showUpdateAccount && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <Card className="w-full max-w-md border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] bg-[#F2F5F1]">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-black text-[#004D40]">UPDATE ACCOUNT</h2>
+              <Card className="w-full max-w-md border-2 md:border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] md:shadow-[8px_8px_0px_0px_#004D40] bg-[#F2F5F1] max-h-[90vh] overflow-y-auto">
+                <CardContent className="p-4 md:p-6">
+                  <div className="flex items-center justify-between mb-4 md:mb-6">
+                    <h2 className="text-lg md:text-2xl font-black text-[#004D40]">UPDATE ACCOUNT</h2>
                     <Button
                       onClick={() => setShowUpdateAccount(false)}
                       variant="outline"
                       size="sm"
-                      className="border-2 border-[#004D40] text-[#004D40] hover:bg-[#004D40] hover:text-[#F2F5F1]"
+                      className="border-2 border-[#004D40] text-[#004D40] hover:bg-[#004D40] hover:text-[#F2F5F1] h-8 w-8 p-0"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-3 w-3 md:h-4 md:w-4" />
                     </Button>
                   </div>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-3 md:space-y-4">
                     <div>
-                      <label className="block text-sm font-black text-[#004D40] mb-2">NAME</label>
+                      <label className="block text-xs md:text-sm font-black text-[#004D40] mb-1 md:mb-2">NAME</label>
                       <Input
                         value={updateData.name}
                         onChange={(e) => setUpdateData({ ...updateData, name: e.target.value })}
-                        className="border-2 border-[#004D40] font-bold"
+                        className="border-2 border-[#004D40] font-bold text-sm md:text-base h-10 md:h-auto"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-black text-[#004D40] mb-2">AGE</label>
+                      <label className="block text-xs md:text-sm font-black text-[#004D40] mb-1 md:mb-2">AGE</label>
                       <Input
                         type="number"
                         value={updateData.age}
                         onChange={(e) => setUpdateData({ ...updateData, age: e.target.value })}
-                        className="border-2 border-[#004D40] font-bold"
+                        className="border-2 border-[#004D40] font-bold text-sm md:text-base h-10 md:h-auto"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-black text-[#004D40] mb-2">BIO</label>
+                      <label className="block text-xs md:text-sm font-black text-[#004D40] mb-1 md:mb-2">BIO</label>
                       <Input
                         value={updateData.bio}
                         onChange={(e) => setUpdateData({ ...updateData, bio: e.target.value })}
-                        className="border-2 border-[#004D40] font-bold"
+                        className="border-2 border-[#004D40] font-bold text-sm md:text-base h-10 md:h-auto"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-black text-[#004D40] mb-2">LOCATION</label>
+                      <label className="block text-xs md:text-sm font-black text-[#004D40] mb-1 md:mb-2">LOCATION</label>
                       <Input
                         value={updateData.location}
                         onChange={(e) => setUpdateData({ ...updateData, location: e.target.value })}
-                        className="border-2 border-[#004D40] font-bold"
+                        className="border-2 border-[#004D40] font-bold text-sm md:text-base h-10 md:h-auto"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-black text-[#004D40] mb-2">BUDGET ($)</label>
+                      <label className="block text-xs md:text-sm font-black text-[#004D40] mb-1 md:mb-2">BUDGET ($)</label>
                       <Input
                         type="number"
                         value={updateData.budget}
                         onChange={(e) => setUpdateData({ ...updateData, budget: e.target.value })}
-                        className="border-2 border-[#004D40] font-bold"
+                        className="border-2 border-[#004D40] font-bold text-sm md:text-base h-10 md:h-auto"
                       />
                     </div>
                   </div>
                   
-                  <div className="flex gap-3 mt-6">
+                  <div className="flex gap-2 md:gap-3 mt-4 md:mt-6">
                     <Button
                       onClick={handleUpdateAccount}
                       disabled={isUpdating}
-                      className="flex-1 bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black border-2 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+                      className="flex-1 bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black border-2 border-[#004D40] shadow-[2px_2px_0px_0px_#004D40] md:shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[1px_1px_0px_0px_#004D40] md:hover:shadow-[2px_2px_0px_0px_#004D40] transition-all text-sm md:text-base h-10 md:h-auto"
                     >
                       {isUpdating ? "UPDATING..." : "UPDATE"}
                     </Button>
                     <Button
                       onClick={() => setShowUpdateAccount(false)}
                       variant="outline"
-                      className="flex-1 border-2 border-[#004D40] text-[#004D40] hover:bg-[#004D40] hover:text-[#F2F5F1] font-black"
+                      className="flex-1 border-2 border-[#004D40] text-[#004D40] hover:bg-[#004D40] hover:text-[#F2F5F1] font-black text-sm md:text-base h-10 md:h-auto"
                     >
                       CANCEL
                     </Button>
@@ -689,40 +692,42 @@ export default function Home() {
     <ErrorBoundary>
       <div className="flex flex-col min-h-screen bg-[#F2F5F1] text-[#004D40]">
       {/* Header */}
-      <header className="px-4 lg:px-6 h-20 flex items-center border-b-4 border-[#004D40] bg-[#004D40]">
+      <header className="px-4 lg:px-6 h-16 md:h-20 flex items-center border-b-4 border-[#004D40] bg-[#004D40]">
         <button onClick={() => setCurrentPage("landing")} className="flex items-center justify-center">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-[#44C76F] border-4 border-[#F2F5F1] transform rotate-3 flex items-center justify-center shadow-[4px_4px_0px_0px_#F2F5F1]">
-              <span className="text-[#004D40] font-black text-xl transform -rotate-3">R</span>
+          <div className="flex items-center space-x-2 md:space-x-3">
+            <div className="w-8 h-8 md:w-12 md:h-12 bg-[#44C76F] border-2 md:border-4 border-[#F2F5F1] transform rotate-3 flex items-center justify-center shadow-[2px_2px_0px_0px_#F2F5F1] md:shadow-[4px_4px_0px_0px_#F2F5F1]">
+              <span className="text-[#004D40] font-black text-sm md:text-xl transform -rotate-3">R</span>
             </div>
-            <span className="font-black text-2xl tracking-tight transform -skew-x-6 text-[#F2F5F1]">ROOMIO</span>
+            <span className="font-black text-lg md:text-2xl tracking-tight transform -skew-x-6 text-[#F2F5F1]">ROOMIO</span>
           </div>
         </button>
-        <nav className="ml-auto flex gap-8 items-center">
-          <Link href="#features" className="text-lg font-black text-[#F2F5F1] hover:text-[#44C76F] transition-colors border-b-2 border-transparent hover:border-[#44C76F] pb-1">
+        <nav className="ml-auto flex gap-2 md:gap-8 items-center">
+          <Link href="#features" className="hidden md:block text-lg font-black text-[#F2F5F1] hover:text-[#44C76F] transition-colors border-b-2 border-transparent hover:border-[#44C76F] pb-1">
             FEATURES
           </Link>
-          <Link href="#how-it-works" className="text-lg font-black text-[#F2F5F1] hover:text-[#44C76F] transition-colors border-b-2 border-transparent hover:border-[#44C76F] pb-1">
+          <Link href="#how-it-works" className="hidden md:block text-lg font-black text-[#F2F5F1] hover:text-[#44C76F] transition-colors border-b-2 border-transparent hover:border-[#44C76F] pb-1">
             HOW IT WORKS
           </Link>
-          <Link href="#contact" className="text-lg font-black text-[#F2F5F1] hover:text-[#44C76F] transition-colors border-b-2 border-transparent hover:border-[#44C76F] pb-1">
+          <Link href="#contact" className="hidden md:block text-lg font-black text-[#F2F5F1] hover:text-[#44C76F] transition-colors border-b-2 border-transparent hover:border-[#44C76F] pb-1">
             CONTACT
           </Link>
 
           {user && sessionValid && (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
               <Button
                 onClick={handleGoToApp}
-                className="bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black px-6 py-3 border-4 border-[#F2F5F1] shadow-[4px_4px_0px_0px_#F2F5F1] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#F2F5F1] transition-all"
+                className="bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black px-3 py-2 md:px-6 md:py-3 text-sm md:text-base border-2 md:border-4 border-[#F2F5F1] shadow-[2px_2px_0px_0px_#F2F5F1] md:shadow-[4px_4px_0px_0px_#F2F5F1] hover:translate-x-1 hover:translate-y-1 hover:shadow-[1px_1px_0px_0px_#F2F5F1] md:hover:shadow-[2px_2px_0px_0px_#F2F5F1] transition-all"
               >
-                GO TO APP
+                <span className="hidden sm:inline">GO TO APP</span>
+                <span className="sm:hidden">APP</span>
               </Button>
               <Button
                 onClick={handleLogout}
                 variant="outline"
-                className="border-4 border-[#F2F5F1] text-[#F2F5F1] hover:bg-[#F2F5F1] hover:text-[#004D40] font-black px-6 py-3 shadow-[4px_4px_0px_0px_#F2F5F1] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#F2F5F1] transition-all bg-transparent"
+                className="border-2 md:border-4 border-[#F2F5F1] text-[#F2F5F1] hover:bg-[#F2F5F1] hover:text-[#004D40] font-black px-3 py-2 md:px-6 md:py-3 text-sm md:text-base shadow-[2px_2px_0px_0px_#F2F5F1] md:shadow-[4px_4px_0px_0px_#F2F5F1] hover:translate-x-1 hover:translate-y-1 hover:shadow-[1px_1px_0px_0px_#F2F5F1] md:hover:shadow-[2px_2px_0px_0px_#F2F5F1] transition-all bg-transparent"
               >
-                LOGOUT
+                <span className="hidden sm:inline">LOGOUT</span>
+                <span className="sm:hidden">OUT</span>
               </Button>
             </div>
           )}
@@ -731,40 +736,41 @@ export default function Home() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="w-full py-12 md:py-20 lg:py-24 bg-[#004D40] text-[#F2F5F1] relative overflow-hidden">
+        <section className="w-full py-8 md:py-20 lg:py-24 bg-[#004D40] text-[#F2F5F1] relative overflow-hidden">
           <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(68,199,111,0.1)_25%,rgba(68,199,111,0.1)_50%,transparent_50%,transparent_75%,rgba(68,199,111,0.1)_75%)] bg-[length:20px_20px]"></div>
           <div className="container px-4 md:px-6 relative z-10">
-            <div className="flex flex-col items-center space-y-8 text-center">
-              <div className="space-y-6">
+            <div className="flex flex-col items-center space-y-6 md:space-y-8 text-center">
+              <div className="space-y-4 md:space-y-6">
                 <div className="inline-block">
-                  <Badge className="mb-6 bg-[#D4AF37] text-[#004D40] font-black text-lg px-6 py-3 border-4 border-[#F2F5F1] shadow-[6px_6px_0px_0px_#F2F5F1] transform rotate-1">
-                    <Flame className="w-5 h-5 mr-2" />
-                    NO BULLSH*T. NO FAKE PROFILES.
+                  <Badge className="mb-4 md:mb-6 bg-[#D4AF37] text-[#004D40] font-black text-sm md:text-lg px-4 py-2 md:px-6 md:py-3 border-2 md:border-4 border-[#F2F5F1] shadow-[3px_3px_0px_0px_#F2F5F1] md:shadow-[6px_6px_0px_0px_#F2F5F1] transform rotate-1">
+                    <Flame className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" />
+                    <span className="hidden sm:inline">NO BULLSH*T. NO FAKE PROFILES.</span>
+                    <span className="sm:hidden">REAL PROFILES ONLY</span>
                   </Badge>
                 </div>
-                <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tighter leading-none">
+                <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-black tracking-tighter leading-none">
                   <span className="block transform -skew-y-1">FIND YOUR</span>
                   <span className="block text-[#44C76F] transform skew-y-1">PERFECT</span>
                   <span className="block transform -skew-y-1">ROOMMATE</span>
                   <span className="block text-[#44C76F] transform skew-y-1">TODAY</span>
                 </h1>
                 <div className="max-w-4xl mx-auto">
-                  <p className="text-xl md:text-2xl font-bold text-[#B7C8B5] leading-tight border-l-8 border-[#44C76F] pl-6 text-left">
+                  <p className="text-base sm:text-xl md:text-2xl font-bold text-[#B7C8B5] leading-tight border-l-4 md:border-l-8 border-[#44C76F] pl-3 md:pl-6 text-left">
                     SWIPE, MATCH, AND MOVE IN WITH COMPATIBLE ROOMMATES. SPLIT EXPENSES, SHARE FURNITURE, AND BUILD YOUR
                     PERFECT LIVING SPACE.
                   </p>
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-6">
+              <div className="flex flex-col gap-4 w-full max-w-lg">
                 <Button
                   size="lg"
                   onClick={handleGoToApp}
-                  className="bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black text-xl px-12 py-6 border-4 border-[#F2F5F1] shadow-[8px_8px_0px_0px_#F2F5F1] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#F2F5F1] transition-all"
+                  className="bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black text-lg md:text-xl px-8 py-4 md:px-12 md:py-6 border-2 md:border-4 border-[#F2F5F1] shadow-[4px_4px_0px_0px_#F2F5F1] md:shadow-[8px_8px_0px_0px_#F2F5F1] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#F2F5F1] md:hover:shadow-[4px_4px_0px_0px_#F2F5F1] transition-all w-full"
                 >
                   {user && sessionValid ? "GO TO APP" : "GET STARTED NOW"}
-                  <Target className="ml-3 h-6 w-6" />
+                  <Target className="ml-2 md:ml-3 h-5 w-5 md:h-6 md:w-6" />
                 </Button>
-                <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   <Button
                     variant="outline"
                     size="lg"
@@ -772,7 +778,7 @@ export default function Home() {
                       setCurrentPage("auth");
                       setAuthMode("signup");
                     }}
-                    className="border-4 border-[#44C76F] text-[#44C76F] hover:bg-[#44C76F] hover:text-[#004D40] font-black text-xl px-8 py-6 shadow-[8px_8px_0px_0px_#44C76F] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#44C76F] transition-all bg-transparent"
+                    className="border-2 md:border-4 border-[#44C76F] text-[#44C76F] hover:bg-[#44C76F] hover:text-[#004D40] font-black text-base md:text-xl px-6 py-3 md:px-8 md:py-6 shadow-[4px_4px_0px_0px_#44C76F] md:shadow-[8px_8px_0px_0px_#44C76F] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#44C76F] md:hover:shadow-[4px_4px_0px_0px_#44C76F] transition-all bg-transparent flex-1"
                   >
                     SIGN UP FREE
                   </Button>
@@ -783,7 +789,7 @@ export default function Home() {
                       setCurrentPage("auth");
                       setAuthMode("signin");
                     }}
-                    className="border-4 border-[#F2F5F1] text-[#F2F5F1] hover:bg-[#F2F5F1] hover:text-[#004D40] font-black text-xl px-8 py-6 shadow-[8px_8px_0px_0px_#F2F5F1] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#F2F5F1] transition-all bg-transparent"
+                    className="border-2 md:border-4 border-[#F2F5F1] text-[#F2F5F1] hover:bg-[#F2F5F1] hover:text-[#004D40] font-black text-base md:text-xl px-6 py-3 md:px-8 md:py-6 shadow-[4px_4px_0px_0px_#F2F5F1] md:shadow-[8px_8px_0px_0px_#F2F5F1] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#F2F5F1] md:hover:shadow-[4px_4px_0px_0px_#F2F5F1] transition-all bg-transparent flex-1"
                   >
                     SIGN IN
                   </Button>

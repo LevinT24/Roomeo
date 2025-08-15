@@ -129,10 +129,10 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
 
   return (
     <div className="min-h-screen bg-[#F2F5F1] flex flex-col">
-      <header className="px-4 lg:px-6 h-20 flex items-center border-b-4 border-[#004D40] bg-[#004D40]">
-        <button onClick={onBack} className="flex items-center justify-center mr-4">
+      <header className="px-4 lg:px-6 h-16 md:h-20 flex items-center border-b-4 border-[#004D40] bg-[#004D40]">
+        <button onClick={onBack} className="flex items-center justify-center mr-2 md:mr-4 p-2">
           <svg
-            className="w-8 h-8 text-[#F2F5F1] hover:text-[#44C76F] transition-colors"
+            className="w-6 h-6 md:w-8 md:h-8 text-[#F2F5F1] hover:text-[#44C76F] transition-colors"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -141,11 +141,11 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 bg-[#44C76F] border-4 border-[#F2F5F1] transform rotate-3 flex items-center justify-center shadow-[4px_4px_0px_0px_#F2F5F1]">
-            <span className="text-[#004D40] font-black text-xl transform -rotate-3">R</span>
+        <div className="flex items-center space-x-2 md:space-x-3">
+          <div className="w-8 h-8 md:w-12 md:h-12 bg-[#44C76F] border-2 md:border-4 border-[#F2F5F1] transform rotate-3 flex items-center justify-center shadow-[2px_2px_0px_0px_#F2F5F1] md:shadow-[4px_4px_0px_0px_#F2F5F1]">
+            <span className="text-[#004D40] font-black text-sm md:text-xl transform -rotate-3">R</span>
           </div>
-          <span className="font-black text-2xl tracking-tight transform -skew-x-6 text-[#F2F5F1]">ROOMIO</span>
+          <span className="font-black text-lg md:text-2xl tracking-tight transform -skew-x-6 text-[#F2F5F1]">ROOMIO</span>
         </div>
       </header>
 
@@ -153,21 +153,21 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
         <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(68,199,111,0.1)_25%,rgba(68,199,111,0.1)_50%,transparent_50%,transparent_75%,rgba(68,199,111,0.1)_75%)] bg-[length:20px_20px]"></div>
 
         <div className="max-w-4xl w-full relative z-10">
-          <div className="text-center mb-8">
-            <div className="mb-6">
-              <div className="w-20 h-20 bg-[#44C76F] border-4 border-[#004D40] transform rotate-3 flex items-center justify-center mx-auto mb-4 shadow-[6px_6px_0px_0px_#004D40]">
-                <span className="text-[#004D40] font-black text-3xl transform -rotate-3">R</span>
+          <div className="text-center mb-6 md:mb-8">
+            <div className="mb-4 md:mb-6">
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-[#44C76F] border-2 md:border-4 border-[#004D40] transform rotate-3 flex items-center justify-center mx-auto mb-3 md:mb-4 shadow-[3px_3px_0px_0px_#004D40] md:shadow-[6px_6px_0px_0px_#004D40]">
+                <span className="text-[#004D40] font-black text-2xl md:text-3xl transform -rotate-3">R</span>
               </div>
-              <h1 className="text-4xl font-black text-[#004D40] mb-3 transform -skew-x-2">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#004D40] mb-2 md:mb-3 transform -skew-x-2">
                 {isSignUp ? "JOIN ROOMIO" : "WELCOME BACK"}
               </h1>
-              <div className="w-24 h-2 bg-[#44C76F] mx-auto transform skew-x-12 mb-4"></div>
+              <div className="w-16 md:w-24 h-2 bg-[#44C76F] mx-auto transform skew-x-12 mb-3 md:mb-4"></div>
             </div>
 
-            <h2 className="text-2xl font-black text-[#004D40] mb-3 transform -skew-x-1">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-black text-[#004D40] mb-2 md:mb-3 transform -skew-x-1">
               {isSignUp ? "CREATE YOUR ACCOUNT" : "SIGN IN TO YOUR ACCOUNT"}
             </h2>
-            <p className="text-lg font-bold text-[#004D40] mb-6 border-l-6 border-[#44C76F] pl-4 text-left max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base md:text-lg font-bold text-[#004D40] mb-4 md:mb-6 border-l-4 md:border-l-6 border-[#44C76F] pl-3 md:pl-4 text-left max-w-2xl mx-auto">
               {isSignUp
                 ? "JOIN THOUSANDS OF PEOPLE FINDING THEIR PERFECT ROOMMATES ON ROOMIO."
                 : "WELCOME BACK! CONTINUE YOUR ROOMMATE SEARCH WHERE YOU LEFT OFF."}
@@ -175,33 +175,33 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-100 border-2 border-red-500 text-red-700 font-bold text-center">
+            <div className="mb-4 md:mb-6 p-3 md:p-4 bg-red-100 border-2 border-red-500 text-red-700 font-bold text-center text-sm md:text-base">
               {error}
             </div>
           )}
 
           {loading && (
-            <div className="mb-6 p-4 bg-blue-100 border-2 border-blue-500 text-blue-700 font-bold text-center">
+            <div className="mb-4 md:mb-6 p-3 md:p-4 bg-blue-100 border-2 border-blue-500 text-blue-700 font-bold text-center text-sm md:text-base">
               Processing... Please wait
             </div>
           )}
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <div className="bg-[#B7C8B5] border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] p-8">
-              <h3 className="text-2xl font-black text-[#004D40] mb-6 transform -skew-x-1 text-center">
+          <div className="grid md:grid-cols-2 gap-4 md:gap-8 max-w-4xl mx-auto">
+            <div className="bg-[#B7C8B5] border-2 md:border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] md:shadow-[8px_8px_0px_0px_#004D40] p-4 md:p-8">
+              <h3 className="text-lg md:text-2xl font-black text-[#004D40] mb-4 md:mb-6 transform -skew-x-1 text-center">
                 {isSignUp ? "SIGN UP WITH EMAIL" : "SIGN IN WITH EMAIL"}
               </h3>
 
-              <form onSubmit={handleEmailAuth} className="space-y-4">
+              <form onSubmit={handleEmailAuth} className="space-y-3 md:space-y-4">
                 {isSignUp && (
                   <div>
-                    <label className="block text-sm font-black text-[#004D40] mb-2">FULL NAME</label>
+                    <label className="block text-xs md:text-sm font-black text-[#004D40] mb-1 md:mb-2">FULL NAME</label>
                     <Input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Enter your full name"
-                      className="w-full border-4 border-[#004D40] font-bold focus:border-[#44C76F] focus:ring-[#44C76F] bg-[#F2F5F1]"
+                      className="w-full border-2 md:border-4 border-[#004D40] font-bold focus:border-[#44C76F] focus:ring-[#44C76F] bg-[#F2F5F1] h-12 md:h-auto text-base"
                       required={isSignUp}
                       disabled={loading}
                     />
@@ -209,26 +209,26 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
                 )}
 
                 <div>
-                  <label className="block text-sm font-black text-[#004D40] mb-2">EMAIL ADDRESS</label>
+                  <label className="block text-xs md:text-sm font-black text-[#004D40] mb-1 md:mb-2">EMAIL ADDRESS</label>
                   <Input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email"
-                    className="w-full border-4 border-[#004D40] font-bold focus:border-[#44C76F] focus:ring-[#44C76F] bg-[#F2F5F1]"
+                    className="w-full border-2 md:border-4 border-[#004D40] font-bold focus:border-[#44C76F] focus:ring-[#44C76F] bg-[#F2F5F1] h-12 md:h-auto text-base"
                     required
                     disabled={loading}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-black text-[#004D40] mb-2">PASSWORD</label>
+                  <label className="block text-xs md:text-sm font-black text-[#004D40] mb-1 md:mb-2">PASSWORD</label>
                   <Input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full border-4 border-[#004D40] font-bold focus:border-[#44C76F] focus:ring-[#44C76F] bg-[#F2F5F1]"
+                    className="w-full border-2 md:border-4 border-[#004D40] font-bold focus:border-[#44C76F] focus:ring-[#44C76F] bg-[#F2F5F1] h-12 md:h-auto text-base"
                     required
                     disabled={loading}
                   />
@@ -237,16 +237,16 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#004D40] hover:bg-[#004D40]/80 text-[#F2F5F1] font-black text-lg py-4 px-6 border-4 border-[#004D40] shadow-[6px_6px_0px_0px_#004D40] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[3px_3px_0px_0px_#004D40] transition-all disabled:opacity-50"
+                  className="w-full bg-[#004D40] hover:bg-[#004D40]/80 text-[#F2F5F1] font-black text-base md:text-lg py-3 md:py-4 px-4 md:px-6 border-2 md:border-4 border-[#004D40] shadow-[3px_3px_0px_0px_#004D40] md:shadow-[6px_6px_0px_0px_#004D40] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] md:hover:shadow-[3px_3px_0px_0px_#004D40] transition-all disabled:opacity-50 h-12 md:h-auto"
                 >
                   {loading ? "PROCESSING..." : isSignUp ? "CREATE ACCOUNT" : "SIGN IN"}
                 </Button>
               </form>
 
-              <div className="mt-6 text-center">
+              <div className="mt-4 md:mt-6 text-center">
                 <button
                   onClick={() => setIsSignUp(!isSignUp)}
-                  className="text-sm font-black text-[#44C76F] hover:text-[#44C76F]/80 transition-colors"
+                  className="text-xs md:text-sm font-black text-[#44C76F] hover:text-[#44C76F]/80 transition-colors p-2"
                   disabled={loading}
                 >
                   {isSignUp ? "Already have an account? SIGN IN" : "Don't have an account? SIGN UP"}
