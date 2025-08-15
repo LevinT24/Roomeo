@@ -1,8 +1,8 @@
 // lib/supabase.ts - Enhanced client-side Supabase configuration with robust session management
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://pzolweuvoyzyrzeozsxq.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b2x3ZXV2b3l6eXJ6ZW96c3hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM3NTg5MjUsImV4cCI6MjA2OTMzNDkyNX0.rm8C9aqUAhq1wAE3BZuEERZ0Mz3bYRFWNSOEws07s70'
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 // Enhanced session storage wrapper
 class SupabaseStorage {

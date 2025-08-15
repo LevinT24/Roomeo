@@ -71,6 +71,14 @@ export default function InviteModal({
         body: JSON.stringify(payload),
       });
       
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError('Authentication expired. Please sign in again and try.');
+          return;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       
       if (!data.success) {

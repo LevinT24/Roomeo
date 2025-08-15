@@ -164,8 +164,20 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateInv
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    if (authError || !user) {
-      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (authError) {
+      console.error('Auth error in invite API:', authError);
+      return NextResponse.json({ 
+        success: false, 
+        error: `Authentication error: ${authError.message}` 
+      }, { status: 401 });
+    }
+    
+    if (!user) {
+      console.error('No user found in invite API');
+      return NextResponse.json({ 
+        success: false, 
+        error: 'User not authenticated. Please sign in again.' 
+      }, { status: 401 });
     }
     
     // Check rate limit
