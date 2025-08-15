@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
 
+interface InviteRecord {
+  id: string;
+  invited_email: string | null;
+  invited_phone: string | null;
+  status: string;
+  expires_at: string;
+  created_at: string;
+  users?: {
+    display_name?: string;
+    email?: string;
+  };
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { groupId: string } }
@@ -55,7 +68,7 @@ export async function GET(
     }
     
     // Format the response
-    const formattedInvites = invites.map((invite) => ({
+    const formattedInvites = invites.map((invite: InviteRecord) => ({
       id: invite.id,
       invited_email: invite.invited_email,
       invited_phone: invite.invited_phone,
