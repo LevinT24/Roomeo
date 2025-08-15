@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
 
-interface AcceptInviteResponse {
-  success: true;
-  groupId: string;
-  alreadyMember?: boolean;
+type AcceptInviteResponse = {
+  success: true,
+  groupId: string,
+  alreadyMember?: boolean
 } | {
-  success: false;
-  error: 'TOKEN_INVALID' | 'EXPIRED' | 'AUTH_REQUIRED' | 'ALREADY_ACCEPTED';
+  success: false,
+  error: 'TOKEN_INVALID' | 'EXPIRED' | 'AUTH_REQUIRED' | 'ALREADY_ACCEPTED'
 }
 
 export async function POST(

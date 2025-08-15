@@ -9,17 +9,17 @@ interface CreateInviteRequest {
   customMessage?: string;
 }
 
-interface CreateInviteResponse {
-  success: true;
+type CreateInviteResponse = {
+  success: true,
   invite: {
-    token: string;
-    inviteUrl: string;
-    whatsappUrl?: string;
-    expiresAt: string;
-  };
+    token: string,
+    inviteUrl: string,
+    whatsappUrl?: string,
+    expiresAt: string
+  }
 } | {
-  success: false;
-  error: string;
+  success: false,
+  error: string
 }
 
 // Rate limiting helper (simple in-memory - could use Redis in production)

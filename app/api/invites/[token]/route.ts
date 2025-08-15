@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
 
-interface ValidateInviteResponse {
-  success: true;
+type ValidateInviteResponse = {
+  success: true,
   invite: {
-    groupId: string;
-    groupName: string;
-    inviterName: string;
-    status: 'pending' | 'accepted' | 'expired';
-    expiresAt: string;
-  };
+    groupId: string,
+    groupName: string,
+    inviterName: string,
+    status: 'pending' | 'accepted' | 'expired',
+    expiresAt: string
+  }
 } | {
-  success: false;
-  error: 'TOKEN_NOT_FOUND' | 'EXPIRED' | 'ALREADY_ACCEPTED';
+  success: false,
+  error: 'TOKEN_NOT_FOUND' | 'EXPIRED' | 'ALREADY_ACCEPTED'
 }
 
 export async function GET(

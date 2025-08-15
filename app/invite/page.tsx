@@ -90,7 +90,7 @@ async function acceptInviteAndRedirect(token: string, userId: string, groupId: s
   }
 }
 
-export default async function InvitePage({ searchParams }: InvitePageProps) {
+async function InvitePage({ searchParams }: InvitePageProps) {
   const token = searchParams.t;
   
   if (!token) {
