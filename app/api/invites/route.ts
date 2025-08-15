@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { supabaseServer } from '@/lib/supabase';
 
 interface CreateInviteRequest {
   groupId: string;
@@ -137,31 +136,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateInv
       return NextResponse.json({ success: false, error: 'Phone required for WhatsApp invites' }, { status: 400 });
     }
     
-    // Get authenticated user
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {
-              // The `setAll` method was called from a Server Component.
-              // This can be ignored if you have middleware refreshing
-              // user sessions.
-            }
-          },
-        },
-      }
-    );
+    // Use the supabaseServer helper - this should handle authentication properly
+    const supabase = supabaseServer();
     
+    // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError) {
@@ -180,6 +158,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateInv
       }, { status: 401 });
     }
     
+    console.log('✅ User authenticated:', user.id);
+    
     // Check rate limit
     if (!checkRateLimit(user.id)) {
       return NextResponse.json({ success: false, error: 'Rate limit exceeded' }, { status: 429 });
@@ -194,8 +174,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateInv
       .single();
     
     if (participationError || !participation) {
+      console.error('Participation check failed:', participationError);
       return NextResponse.json({ success: false, error: 'Not authorized to invite to this group' }, { status: 403 });
     }
+    
+    console.log('✅ User is participant in group');
     
     // Get group details
     const { data: group, error: groupError } = await supabase
@@ -205,6 +188,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateInv
       .single();
     
     if (groupError || !group) {
+      console.error('Group fetch failed:', groupError);
       return NextResponse.json({ success: false, error: 'Group not found' }, { status: 404 });
     }
     
@@ -216,6 +200,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateInv
       .single();
     
     if (inviterError || !inviter) {
+      console.error('Inviter fetch failed:', inviterError);
       return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
     
@@ -241,6 +226,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateInv
       return NextResponse.json({ success: false, error: 'Failed to create invite' }, { status: 500 });
     }
     
+    console.log('✅ Invite created successfully');
+    
     // Generate URLs
     const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:3000';
     const inviteUrl = `${appUrl}/invite?t=${token}`;
@@ -251,6 +238,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateInv
     if (inviteMethod === 'email' && recipientEmail) {
       try {
         await sendEmailInvite(recipientEmail, inviteUrl, group.name, inviterName, customMessage);
+        console.log('✅ Email sent successfully');
       } catch (emailError) {
         console.error('Failed to send email:', emailError);
         // Don't fail the whole request if email fails - user can still copy link
@@ -261,6 +249,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateInv
     const whatsappUrl = inviteMethod === 'whatsapp' && recipientPhone 
       ? generateWhatsAppUrl(recipientPhone, inviteUrl, group.name)
       : undefined;
+    
+    console.log('✅ Invite process completed successfully');
     
     return NextResponse.json({
       success: true,
@@ -274,6 +264,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<CreateInv
     
   } catch (error) {
     console.error('Error creating invite:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Internal server error' 
+    }, { status: 500 });
   }
 }

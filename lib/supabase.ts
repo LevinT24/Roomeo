@@ -1,5 +1,7 @@
 // lib/supabase.ts - Enhanced client-side Supabase configuration with robust session management
 import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -357,22 +359,50 @@ export const connectionMonitor = {
 }
 
 // Server-side Supabase client for API routes
-export const supabaseServer = (serviceRoleKey?: string) => {
-  // Use service role key if provided, otherwise use anon key
-  const key = serviceRoleKey || supabaseAnonKey
+export function supabaseServer(serviceRoleKey?: string) {
+  const cookieStore = cookies();
   
-  if (typeof window !== 'undefined') {
-    throw new Error('supabaseServer should only be used on the server side')
+  // If service role key is provided, use it for admin operations
+  if (serviceRoleKey) {
+    return createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      serviceRoleKey,
+      {
+        cookies: {
+          getAll() {
+            return [];
+          },
+          setAll() {
+            // No-op for service role
+          },
+        },
+      }
+    );
   }
-
-  // Simple server client without cookies for API routes
-  return createClient(supabaseUrl, key, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false
+  
+  // Regular authenticated client
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {
+            // The `setAll` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+      },
     }
-  })
+  );
 }
 
 // Test function to verify client setup
