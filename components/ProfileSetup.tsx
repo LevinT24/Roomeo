@@ -114,6 +114,10 @@
           email: user.email || "",
         };
 
+        console.log("🔍 Profile picture being saved:", photoUrl);
+        console.log("🔍 Selected avatar:", selectedAvatar);
+        console.log("🔍 Profile image file:", profileImage ? profileImage.name : 'none');
+
         // Save to Supabase
         console.log("🔄 Saving profile data...");
         const success = await updateUserProfile(user.id, profileData);

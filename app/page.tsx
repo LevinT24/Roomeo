@@ -54,13 +54,18 @@ export default function Home() {
         name: user.name, 
         age: user.age, 
         userType: user.userType, 
-        preferences: !!user.preferences 
+        preferences: !!user.preferences,
+        profilePicture: user.profilePicture
       } : null,
       loading,
       currentPage,
       authError,
       sessionValid
     });
+    
+    if (user?.profilePicture) {
+      console.log("🖼️ Current user profile picture URL:", user.profilePicture);
+    }
   }, [user, loading, currentPage, authError, sessionValid]);
 
   // Handle user authentication state and profile completion
