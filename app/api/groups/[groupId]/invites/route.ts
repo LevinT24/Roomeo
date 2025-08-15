@@ -75,7 +75,7 @@ export async function GET(
       status: invite.status,
       expires_at: invite.expires_at,
       created_at: invite.created_at,
-      inviter_name: (invite as any).users?.display_name || (invite as any).users?.email || 'Unknown',
+      inviter_name: invite.users?.display_name || invite.users?.email || 'Unknown',
     }));
     
     return NextResponse.json({

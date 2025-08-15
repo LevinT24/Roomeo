@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase';
 
+interface MemberRecord {
+  joined_at: string;
+  users: {
+    id: string;
+    display_name: string | null;
+    email: string;
+  };
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { groupId: string } }
@@ -53,10 +62,10 @@ export async function GET(
     }
     
     // Format the response
-    const formattedMembers = members.map((member) => ({
-      id: (member as any).users.id,
-      display_name: (member as any).users.display_name,
-      email: (member as any).users.email,
+    const formattedMembers = members.map((member: MemberRecord) => ({
+      id: member.users.id,
+      display_name: member.users.display_name,
+      email: member.users.email,
       joined_at: member.joined_at,
     }));
     
