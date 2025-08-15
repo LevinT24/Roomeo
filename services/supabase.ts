@@ -84,8 +84,7 @@ export async function updateUserProfile(uid: string, updates: any): Promise<bool
     }
     
     const updateData = {
-      ...convertedUpdates,
-      updatedat: new Date().toISOString()
+      ...convertedUpdates
     };
     
     console.log("🔄 About to update with data:", updateData);

@@ -109,7 +109,6 @@
           professionalstatus: professionalStatus,
           preferences,
           profilepicture: photoUrl, // Fixed: use lowercase to match database
-          updatedat: new Date().toISOString(), // Fixed: use lowercase and ISO string
           usertype: userType, // Fixed: use lowercase to match database
           name: user.name || "",
           email: user.email || "",
