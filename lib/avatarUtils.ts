@@ -1,8 +1,8 @@
 // lib/avatarUtils.ts - Utility functions for handling avatar URLs
 
 /**
- * Ensures avatar URLs are properly encoded for production use
- * Handles both old paths with spaces and new encoded paths
+ * Ensures avatar URLs are properly formatted for production use
+ * Handles both old paths with spaces and new paths without spaces
  */
 export function normalizeAvatarUrl(avatarUrl: string | null | undefined): string {
   if (!avatarUrl) {
@@ -14,20 +14,25 @@ export function normalizeAvatarUrl(avatarUrl: string | null | undefined): string
     return avatarUrl;
   }
 
-  // If it's an avatar path with spaces, encode it
-  if (avatarUrl.includes('/avatars/Avatar ') && !avatarUrl.includes('%20')) {
-    return avatarUrl.replace(/Avatar (\d+)\.PNG/g, 'Avatar%20$1.PNG');
+  // Convert old paths with spaces to new paths without spaces
+  if (avatarUrl.includes('/avatars/Avatar ')) {
+    return avatarUrl.replace(/Avatar (\d+)\.PNG/g, 'Avatar$1.PNG');
   }
 
-  // Return as is if already encoded or different format
+  // Convert old encoded paths to new paths without spaces
+  if (avatarUrl.includes('/avatars/Avatar%20')) {
+    return avatarUrl.replace(/Avatar%20(\d+)\.PNG/g, 'Avatar$1.PNG');
+  }
+
+  // Return as is if already in correct format
   return avatarUrl;
 }
 
 /**
- * Generates the list of available avatar URLs with proper encoding
+ * Generates the list of available avatar URLs (no spaces, no encoding needed)
  */
 export function getAvailableAvatars(): string[] {
-  return Array.from({ length: 16 }, (_, i) => `/avatars/Avatar%20${i + 1}.PNG`);
+  return Array.from({ length: 16 }, (_, i) => `/avatars/Avatar${i + 1}.PNG`);
 }
 
 /**
