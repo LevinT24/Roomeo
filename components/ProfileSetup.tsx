@@ -19,6 +19,7 @@
     const [userType, setUserType] = useState<"seeker" | "provider" | null>(null)
     const [profileImage, setProfileImage] = useState<File | null>(null)
     const [imagePreview, setImagePreview] = useState<string>("")
+    const [selectedAvatar, setSelectedAvatar] = useState<string>("")
     const [age, setAge] = useState("")
     const [bio, setBio] = useState("")
     const [location, setLocation] = useState("")
@@ -38,16 +39,28 @@
     const [error, setError] = useState<string | null>(null)
     const [uploadError, setUploadError] = useState<string | null>(null)
 
+    // Generate avatar list
+    const avatars = Array.from({ length: 16 }, (_, i) => `/avatars/Avatar ${i + 1}.PNG`)
+
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
       if (file) {
         setProfileImage(file)
+        // Clear selected avatar if uploading custom image
+        setSelectedAvatar("")
         const reader = new FileReader()
         reader.onload = (e) => {
           setImagePreview(e.target?.result as string)
         }
         reader.readAsDataURL(file)
       }
+    }
+
+    const handleAvatarSelect = (avatarPath: string) => {
+      setSelectedAvatar(avatarPath)
+      setImagePreview(avatarPath)
+      // Clear uploaded image if avatar is selected
+      setProfileImage(null)
     }
 
     const handlePreferenceToggle = (key: keyof typeof preferences) => {
@@ -64,10 +77,13 @@
       setUploadError(null);
 
       try {
-        let photoUrl = imagePreview || "";
+        let photoUrl = "";
         
-        // Only upload if new image was selected
-        if (profileImage) {
+        // Use selected avatar if available, otherwise use uploaded image
+        if (selectedAvatar) {
+          photoUrl = selectedAvatar;
+          console.log("✅ Using selected avatar:", photoUrl);
+        } else if (profileImage) {
           console.log("🔄 Starting image upload...");
           const uploadResult = await uploadImage(profileImage, user.id);
           
@@ -188,12 +204,13 @@
           <Card className="w-full max-w-md border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] bg-[#B7C8B5]">
             <CardContent className="p-8">
               <div className="text-center mb-8">
-                <h2 className="text-3xl font-black text-[#004D40] mb-2 transform -skew-x-2">ADD YOUR PHOTO</h2>
+                <h2 className="text-3xl font-black text-[#004D40] mb-2 transform -skew-x-2">CHOOSE YOUR AVATAR</h2>
                 <div className="w-24 h-3 bg-[#44C76F] mx-auto transform skew-x-12 mb-4"></div>
-                <p className="text-[#004D40] font-bold">Upload a profile picture to get started</p>
+                <p className="text-[#004D40] font-bold">Select an avatar or upload your own photo</p>
               </div>
 
               <div className="space-y-6">
+                {/* Selected Avatar Preview */}
                 <div className="flex flex-col items-center">
                   {imagePreview ? (
                     <img
@@ -214,7 +231,35 @@
                       </svg>
                     </div>
                   )}
+                </div>
 
+                {/* Avatar Grid */}
+                <div>
+                  <h3 className="text-lg font-black text-[#004D40] mb-4 text-center">CHOOSE AN AVATAR</h3>
+                  <div className="grid grid-cols-4 gap-3 max-h-64 overflow-y-auto scrollbar-hide p-2">
+                    {avatars.map((avatar, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleAvatarSelect(avatar)}
+                        className={`w-16 h-16 rounded-full border-4 transition-all hover:scale-105 ${
+                          selectedAvatar === avatar
+                            ? "border-[#44C76F] shadow-[3px_3px_0px_0px_#004D40]"
+                            : "border-[#004D40] hover:border-[#44C76F]"
+                        }`}
+                      >
+                        <img
+                          src={avatar}
+                          alt={`Avatar ${index + 1}`}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Upload Custom Photo Option */}
+                <div className="text-center">
+                  <p className="text-[#004D40] font-bold mb-3">OR UPLOAD YOUR OWN</p>
                   <input
                     type="file"
                     accept="image/*"
@@ -224,25 +269,16 @@
                   />
                   <label
                     htmlFor="profile-image"
-                    className="mt-4 cursor-pointer bg-[#44C76F] text-[#004D40] font-black px-6 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+                    className="cursor-pointer bg-[#44C76F] text-[#004D40] font-black px-6 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all inline-block"
                   >
-                    CHOOSE PHOTO
+                    UPLOAD PHOTO
                   </label>
-                </div>
-
-                {/* Optional: Skip photo upload */}
-                <div className="text-center">
-                  <button
-                    onClick={() => setStep(3)}
-                    className="text-[#004D40] font-bold underline hover:text-[#44C76F] transition-colors"
-                  >
-                    SKIP FOR NOW
-                  </button>
                 </div>
 
                 <Button
                   onClick={() => setStep(3)}
-                  className="w-full bg-[#004D40] hover:bg-[#004D40]/80 text-[#F2F5F1] font-black py-3 border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+                  disabled={!imagePreview}
+                  className="w-full bg-[#004D40] hover:bg-[#004D40]/80 text-[#F2F5F1] font-black py-3 border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   CONTINUE
                 </Button>
