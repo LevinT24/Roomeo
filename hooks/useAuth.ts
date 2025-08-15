@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { User, createFallbackUser } from "@/types/user";
 import { getUserProfile, ensureUserProfile } from "@/services/supabase";
 import type { AuthChangeEvent, Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { normalizeAvatarUrl } from "@/lib/avatarUtils";
 
 interface AuthState {
   user: User | null;
@@ -70,8 +71,11 @@ export function useAuth() {
       const profile = await getUserProfile(supabaseUser.id);
       
       if (profile) {
-        const profilePictureUrl = profile.profilepicture || supabaseUser.user_metadata?.avatar_url || "";
-        console.log("🔍 Loading user profile picture:", profilePictureUrl);
+        const rawProfilePictureUrl = profile.profilepicture || supabaseUser.user_metadata?.avatar_url || "";
+        const profilePictureUrl = normalizeAvatarUrl(rawProfilePictureUrl);
+        console.log("🔍 Loading user profile picture:");
+        console.log("   - Raw URL:", rawProfilePictureUrl);
+        console.log("   - Normalized URL:", profilePictureUrl);
         console.log("🔍 Raw profile data:", JSON.stringify(profile, null, 2));
         
         return {
@@ -114,7 +118,7 @@ export function useAuth() {
             email: supabaseUser.email ?? null,
             name: newProfile.name || supabaseUser.user_metadata?.full_name || "",
             userType: newProfile.usertype,
-            profilePicture: newProfile.profilepicture || supabaseUser.user_metadata?.avatar_url || "",
+            profilePicture: normalizeAvatarUrl(newProfile.profilepicture || supabaseUser.user_metadata?.avatar_url || ""),
             createdAt: newProfile.createdat ? new Date(newProfile.createdat) : undefined,
             updatedAt: newProfile.updatedat ? new Date(newProfile.updatedat) : undefined,
             age: newProfile.age,

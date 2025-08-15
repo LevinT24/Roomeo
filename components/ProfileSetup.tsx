@@ -12,6 +12,7 @@
   import { ProfileData } from "@/types/user";
   import RoomPhotoUpload from "@/components/roomPhotos/RoomPhotoUpload";
   import { RoomPhoto } from "@/types/roomPhotos";
+  import { getAvailableAvatars, normalizeAvatarUrl } from "@/lib/avatarUtils";
 
   export default function ProfileSetup({ onComplete }: { onComplete: () => void }) {
     const { user, refreshUser } = useAuth()
@@ -39,8 +40,8 @@
     const [error, setError] = useState<string | null>(null)
     const [uploadError, setUploadError] = useState<string | null>(null)
 
-    // Generate avatar list
-    const avatars = Array.from({ length: 16 }, (_, i) => `/avatars/Avatar ${i + 1}.PNG`)
+    // Generate avatar list with URL encoding for production
+    const avatars = getAvailableAvatars()
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
@@ -117,6 +118,7 @@
         console.log("🔍 Profile picture being saved:", photoUrl);
         console.log("🔍 Selected avatar:", selectedAvatar);
         console.log("🔍 Profile image file:", profileImage ? profileImage.name : 'none');
+        console.log("🔍 Avatar URL encoded properly:", photoUrl.includes('%20') ? 'Yes' : 'No');
 
         // Save to Supabase
         console.log("🔄 Saving profile data...");

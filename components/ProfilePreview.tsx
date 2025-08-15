@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
+import { normalizeAvatarUrl, getFallbackAvatarUrl } from "@/lib/avatarUtils"
 
 interface User {
   id: string
@@ -65,7 +66,11 @@ export default function ProfilePreview({ user, onBack }: ProfilePreviewProps) {
                   <img
                     alt={user.name}
                     className="w-full h-80 object-cover"
-                    src={user.profilePicture || "/placeholder.svg"}
+                    src={normalizeAvatarUrl(user.profilePicture) || getFallbackAvatarUrl()}
+                    onError={(e) => {
+                      console.log("🖼️ Profile preview avatar failed to load, falling back:", user.profilePicture);
+                      e.currentTarget.src = getFallbackAvatarUrl();
+                    }}
                   />
                   <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent text-white">
                     <h2 className="text-2xl font-black transform -skew-x-1">

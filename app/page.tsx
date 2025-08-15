@@ -24,7 +24,8 @@ import { useState, useEffect } from "react"
 import LoadingSpinner from "@/components/LoadingSpinner"
 import ErrorBoundary from "@/components/ErrorBoundary"
 import DebugInfo from "@/components/DebugInfo"
-import { FriendsPanel, FriendsPanelToggle } from "@/components/friends" 
+import { FriendsPanel, FriendsPanelToggle } from "@/components/friends"
+import { normalizeAvatarUrl, getFallbackAvatarUrl } from "@/lib/avatarUtils" 
 
 export default function Home() {
   const { user, loading, logout, error: authError, sessionValid } = useAuth()
@@ -381,9 +382,13 @@ export default function Home() {
                   <img
                     alt="User Profile"
                     className="w-10 h-10 rounded-full object-cover border-2 border-[#44C76F] cursor-pointer hover:border-[#004D40] transition-colors"
-                    src={user?.profilePicture || "/placeholder.svg?height=40&width=40"}
+                    src={normalizeAvatarUrl(user?.profilePicture) || getFallbackAvatarUrl()}
                     title="Profile Menu"
                     onClick={() => setShowUserSettings(!showUserSettings)}
+                    onError={(e) => {
+                      console.log("🖼️ Avatar failed to load, falling back to placeholder:", user?.profilePicture);
+                      e.currentTarget.src = getFallbackAvatarUrl();
+                    }}
                   />
                   
                   {/* Settings Dropdown */}
