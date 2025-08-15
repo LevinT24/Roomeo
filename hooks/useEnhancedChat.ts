@@ -128,7 +128,7 @@ export function useEnhancedChat(currentUser: User | null): UseEnhancedChatReturn
       if (result.success && result.messages) {
         setMessages(prev => ({
           ...prev,
-          [chatId]: result.messages || []
+          [chatId]: (result.messages || []) as ChatMessage[]
         }))
         
         // Mark messages as read
@@ -239,6 +239,16 @@ export function useEnhancedChat(currentUser: User | null): UseEnhancedChatReturn
       error: (err) => {
         console.error('Real-time chat error:', err)
         setError(err.message)
+      },
+      
+      userOnline: (userId: string) => {
+        // Handle user online status if needed
+        console.log('User online:', userId)
+      },
+      
+      userOffline: (userId: string) => {
+        // Handle user offline status if needed
+        console.log('User offline:', userId)
       }
     }
 
@@ -291,7 +301,7 @@ export function useEnhancedChat(currentUser: User | null): UseEnhancedChatReturn
       message_type: type,
       image_url: imageUrl,
       sender_name: currentUser.name,
-      sender_avatar: currentUser.profilepicture || '/placeholder.svg',
+      sender_avatar: currentUser.profilePicture || '/placeholder.svg',
       isOptimistic: true,
       retryCount: 0
     }

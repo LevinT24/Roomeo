@@ -114,8 +114,7 @@ export async function createExpenseGroup(
 
     return {
       group_id: result,
-      success: true,
-      invitesSent: data.invites?.length || 0
+      success: true
     };
   } catch (error) {
     console.error("❌ Exception creating expense group:", error);
@@ -279,10 +278,10 @@ export async function approveSettlement(
         data.approved ? 'settlement_approved' : 'settlement_rejected',
         {
           expense_group_id: '',
-          expense_name: settlement.expense_groups?.name || 'Unknown Group',
+          expense_name: (settlement as any).expense_groups?.name || 'Unknown Group',
           amount: settlement.amount,
           settlement_id: data.settlement_id,
-          payer_name: settlement.users?.name || 'Someone'
+          payer_name: (settlement as any).users?.name || 'Someone'
         }
       );
     }
@@ -515,8 +514,8 @@ async function getExpenseSummaryWithPendingStatus(userId: string): Promise<Expen
 
             return {
               user_id: participant.user_id,
-              name: participant.users.name,
-              profile_picture: participant.users.profilePicture,
+              name: (participant as any).users.name,
+              profile_picture: (participant as any).users.profilePicture,
               amount_owed: participant.amount_owed,
               amount_paid: participant.amount_paid,
               is_settled: participant.is_settled,
@@ -547,7 +546,7 @@ async function getExpenseSummaryWithPendingStatus(userId: string): Promise<Expen
           amount_owed: expense.expense_participants[0].amount_owed,
           amount_paid: expense.expense_participants[0].amount_paid,
           is_settled: expense.expense_participants[0].is_settled,
-          created_by_name: expense.users.name,
+          created_by_name: (expense as any).users.name,
           created_by_id: expense.created_by,
           created_at: expense.created_at,
           group_status: expense.status,

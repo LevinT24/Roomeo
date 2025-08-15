@@ -38,7 +38,7 @@ export default function RoomPhotoUpload({
 
   // Validate file
   const validateFile = (file: File): { valid: boolean; error?: string } => {
-    if (!ROOM_PHOTO_LIMITS.ALLOWED_TYPES.includes(file.type)) {
+    if (!ROOM_PHOTO_LIMITS.ALLOWED_TYPES.includes(file.type as any)) {
       return { valid: false, error: 'Only JPEG, PNG, and WebP images are allowed' };
     }
     

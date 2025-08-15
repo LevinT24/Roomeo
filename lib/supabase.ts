@@ -356,6 +356,25 @@ export const connectionMonitor = {
   }
 }
 
+// Server-side Supabase client for API routes
+export const supabaseServer = (serviceRoleKey?: string) => {
+  // Use service role key if provided, otherwise use anon key
+  const key = serviceRoleKey || supabaseAnonKey
+  
+  if (typeof window !== 'undefined') {
+    throw new Error('supabaseServer should only be used on the server side')
+  }
+
+  // Simple server client without cookies for API routes
+  return createClient(supabaseUrl, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    }
+  })
+}
+
 // Test function to verify client setup
 export const testSupabaseClient = async () => {
   console.log('🧪 Testing Supabase Client Setup...');

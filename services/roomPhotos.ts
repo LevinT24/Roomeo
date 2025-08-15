@@ -340,7 +340,7 @@ export async function deleteRoomPhoto(photoId: string): Promise<{ success: boole
     // Extract file path from URL
     const url = photo.photo_url;
     const urlParts = url.split('/');
-    const bucketIndex = urlParts.findIndex(part => part === 'room-photos');
+    const bucketIndex = urlParts.findIndex((part: string) => part === 'room-photos');
     const filePath = urlParts.slice(bucketIndex + 1).join('/');
     
     // Delete from database first

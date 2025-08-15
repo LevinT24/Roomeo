@@ -185,10 +185,10 @@ export default function GroupMembersWithInvites({
                           {formatDisplayName(invite)}
                         </p>
                         {getInviteMethod(invite) === 'email' && (
-                          <Mail className="w-4 h-4 text-blue-500" title="Sent via Email" />
+                          <Mail className="w-4 h-4 text-blue-500" />
                         )}
                         {getInviteMethod(invite) === 'whatsapp' && (
-                          <MessageCircle className="w-4 h-4 text-green-500" title="Sent via WhatsApp" />
+                          <MessageCircle className="w-4 h-4 text-green-500" />
                         )}
                       </div>
                       <p className="text-sm text-amber-700">

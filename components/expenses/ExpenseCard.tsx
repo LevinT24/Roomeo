@@ -469,7 +469,7 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
             fetchPendingInvites(); // Refresh invites after modal closes
           }}
           groupId={expense.group_id}
-          groupName={expense.name}
+          groupName={(expense as any).name}
         />
       )}
     </div>

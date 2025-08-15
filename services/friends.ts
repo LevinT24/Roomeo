@@ -75,9 +75,9 @@ export async function getFriendsList(): Promise<Friend[]> {
         
         return {
           id: friendship.id,
-          friendId: friend.id,
-          name: friend.name,
-          profilePicture: friend.profilepicture,
+          friendId: (friend as any).id,
+          name: (friend as any).name,
+          profilePicture: (friend as any).profilepicture,
           friendsSince: friendship.created_at
         }
       })
@@ -142,9 +142,9 @@ export async function getFriendRequests(): Promise<{ sent: FriendRequest[], rece
     const sentRequests: FriendRequest[] = (sentData || []).map(request => ({
       id: request.id,
       type: 'sent' as const,
-      userId: request.receiver.id,
-      name: request.receiver.name,
-      profilePicture: request.receiver.profilepicture,
+      userId: (request as any).receiver.id,
+      name: (request as any).receiver.name,
+      profilePicture: (request as any).receiver.profilepicture,
       createdAt: request.created_at
     }))
 
@@ -152,9 +152,9 @@ export async function getFriendRequests(): Promise<{ sent: FriendRequest[], rece
     const receivedRequests: FriendRequest[] = (receivedData || []).map(request => ({
       id: request.id,
       type: 'received' as const,
-      userId: request.sender.id,
-      name: request.sender.name,
-      profilePicture: request.sender.profilepicture,
+      userId: (request as any).sender.id,
+      name: (request as any).sender.name,
+      profilePicture: (request as any).sender.profilepicture,
       createdAt: request.created_at
     }))
 
