@@ -1,7 +1,5 @@
 // lib/supabase.ts - Enhanced client-side Supabase configuration with robust session management
 import { createClient } from '@supabase/supabase-js'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -360,6 +358,10 @@ export const connectionMonitor = {
 
 // Server-side Supabase client for API routes
 export function supabaseServer(serviceRoleKey?: string) {
+  // Import server-side dependencies dynamically to avoid client-side issues
+  const { createServerClient } = require('@supabase/ssr');
+  const { cookies } = require('next/headers');
+  
   const cookieStore = cookies();
   
   // If service role key is provided, use it for admin operations
