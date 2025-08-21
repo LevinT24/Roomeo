@@ -11,24 +11,24 @@ export default function SettlementCard({ settlement, onApprove, currentUserId }:
   const getStatusColor = () => {
     switch (settlement.status) {
       case 'approved':
-        return "bg-emerald-100 text-emerald-700 border-emerald-200"
+        return "bg-roomeo-success/10 text-roomeo-success border-roomeo-success/20"
       case 'rejected':
-        return "bg-red-100 text-red-700 border-red-200"
+        return "bg-roomeo-danger/10 text-roomeo-danger border-roomeo-danger/20"
       case 'pending':
-        return "bg-yellow-100 text-yellow-700 border-yellow-200"
+        return "bg-gold-accent/10 text-gold-accent border-gold-accent/20"
       default:
-        return "bg-gray-100 text-gray-700 border-gray-200"
+        return "bg-sage/10 text-emerald-primary border-sage/20"
     }
   }
 
   const getStatusText = () => {
     switch (settlement.status) {
       case 'approved':
-        return "Approved"
+        return "✅ Approved"
       case 'rejected':
-        return "Rejected"
+        return "❌ Rejected"
       case 'pending':
-        return "Pending Review"
+        return "⏳ Pending Review"
       default:
         return settlement.status
     }
@@ -41,9 +41,9 @@ export default function SettlementCard({ settlement, onApprove, currentUserId }:
       case 'zelle':
         return '📱'
       case 'venmo':
-        return '💸'
+        return '💳'
       case 'paypal':
-        return '🏛️'
+        return '💰'
       case 'bank_transfer':
         return '🏦'
       default:
@@ -79,64 +79,64 @@ export default function SettlementCard({ settlement, onApprove, currentUserId }:
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-      <div className="flex items-start justify-between mb-4">
+    <div className="roomeo-card p-6 hover:bg-sage/5 animate-slide-up">
+      <div className="flex items-start justify-between mb-5">
         <div className="flex items-center gap-4">
-          <div className="flex items-center justify-center rounded-full bg-blue-100 shrink-0 size-12 text-blue-600">
-            <span className="text-xl">{getPaymentMethodIcon()}</span>
+          <div className="flex items-center justify-center rounded-xl bg-emerald-primary shrink-0 size-14">
+            <span className="text-2xl">{getPaymentMethodIcon()}</span>
           </div>
           <div>
-            <h3 className="font-bold text-gray-900">{settlement.group_name}</h3>
-            <p className="text-sm text-gray-600">
-              Payment from <span className="font-medium">{settlement.payer_name}</span>
+            <h3 className="roomeo-heading text-lg">{settlement.group_name}</h3>
+            <p className="roomeo-body text-emerald-primary/70 text-sm">
+              Payment from <span className="font-semibold text-emerald-primary">{settlement.payer_name}</span>
             </p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="roomeo-body text-emerald-primary/50 text-xs mt-1">
               {formatDate(settlement.created_at)}
             </p>
           </div>
         </div>
         
-        <Badge className={`${getStatusColor()} font-medium px-3 py-1`}>
+        <div className={`${getStatusColor()} font-medium px-3 py-1.5 rounded-full text-xs`}>
           {getStatusText()}
-        </Badge>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+      <div className="grid grid-cols-2 gap-4 mb-5 p-4 bg-mint-cream rounded-xl border border-sage/20">
         <div className="text-center">
-          <p className="text-sm text-gray-600">Amount</p>
-          <p className="text-xl font-bold text-gray-900">${settlement.amount.toFixed(2)}</p>
+          <p className="roomeo-body text-emerald-primary/60 text-sm">💸 Amount</p>
+          <p className="roomeo-heading text-2xl text-emerald-primary">${settlement.amount.toFixed(2)}</p>
         </div>
         <div className="text-center">
-          <p className="text-sm text-gray-600">Payment Method</p>
-          <p className="text-sm font-medium text-gray-700 flex items-center justify-center gap-1">
-            <span>{getPaymentMethodIcon()}</span>
+          <p className="roomeo-body text-emerald-primary/60 text-sm">💳 Payment Method</p>
+          <p className="roomeo-body text-sm font-semibold text-emerald-primary flex items-center justify-center gap-2">
+            <span className="text-lg">{getPaymentMethodIcon()}</span>
             {getPaymentMethodName()}
           </p>
         </div>
       </div>
 
       {settlement.notes && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-gray-700">
-            <span className="font-medium text-blue-700">Note:</span> {settlement.notes}
+        <div className="mb-5 p-4 bg-gold-accent/10 border border-gold-accent/20 rounded-xl">
+          <p className="roomeo-body text-emerald-primary text-sm">
+            <span className="font-semibold text-gold-accent">📝 Note:</span> {settlement.notes}
           </p>
         </div>
       )}
 
       {settlement.proof_image && (
-        <div className="mb-4">
-          <p className="text-sm text-gray-600 mb-2">Payment Proof:</p>
+        <div className="mb-5">
+          <p className="roomeo-body text-emerald-primary/60 text-sm mb-3 flex items-center gap-2">
+            <span>🖼️</span> Payment Proof:
+          </p>
           <div className="relative">
             <img 
               src={settlement.proof_image} 
               alt="Payment proof" 
-              className="w-full max-w-sm rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+              className="w-full max-w-sm rounded-xl border border-sage/30 shadow-card cursor-pointer hover:shadow-soft transition-all duration-300 transform hover:scale-105"
               onClick={() => window.open(settlement.proof_image, '_blank')}
             />
-            <div className="absolute top-2 right-2 bg-white bg-opacity-90 rounded-full p-1">
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" className="text-gray-600">
-                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zM3 11a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zM9 5a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1zM7 3a1 1 0 000 2v1a1 1 0 11-2 0V5a1 1 0 000-2h2zM15 6a1 1 0 100-2h-2a1 1 0 100 2h2z" clipRule="evenodd" />
-              </svg>
+            <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-soft">
+              <span className="text-emerald-primary text-sm">🔍</span>
             </div>
           </div>
         </div>
@@ -144,39 +144,34 @@ export default function SettlementCard({ settlement, onApprove, currentUserId }:
 
       {canApprove && settlement.status === 'pending' && (
         <div className="flex gap-3">
-          <Button
+          <button
             onClick={() => onApprove?.(settlement.settlement_id, false)}
-            variant="outline"
-            className="flex-1 border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400"
+            className="flex-1 border-2 border-roomeo-danger/30 text-roomeo-danger bg-roomeo-danger/5 hover:bg-roomeo-danger/10 rounded-xl px-6 py-3 font-semibold transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2"
           >
-            Reject
-          </Button>
-          <Button
+            <span>❌</span> Reject
+          </button>
+          <button
             onClick={() => onApprove?.(settlement.settlement_id, true)}
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white border-2 border-black shadow-[2px_2px_0px_0px_#000000] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#000000]"
+            className="flex-1 roomeo-button-primary flex items-center justify-center gap-2"
           >
-            Approve
-          </Button>
+            <span>✅</span> Approve
+          </button>
         </div>
       )}
 
       {settlement.status === 'approved' && (
-        <div className="w-full text-center py-2 px-4 bg-emerald-50 border border-emerald-200 rounded-md">
-          <span className="text-emerald-700 font-medium flex items-center justify-center gap-2">
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-            Payment Approved
+        <div className="w-full text-center py-4 px-6 bg-roomeo-success/10 border border-roomeo-success/20 rounded-xl">
+          <span className="roomeo-body text-roomeo-success font-semibold flex items-center justify-center gap-2 text-lg">
+            <span className="text-2xl">🎉</span>
+            Payment Approved!
           </span>
         </div>
       )}
 
       {settlement.status === 'rejected' && (
-        <div className="w-full text-center py-2 px-4 bg-red-50 border border-red-200 rounded-md">
-          <span className="text-red-700 font-medium flex items-center justify-center gap-2">
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+        <div className="w-full text-center py-4 px-6 bg-roomeo-danger/10 border border-roomeo-danger/20 rounded-xl">
+          <span className="roomeo-body text-roomeo-danger font-semibold flex items-center justify-center gap-2 text-lg">
+            <span className="text-2xl">😢</span>
             Payment Rejected
           </span>
         </div>

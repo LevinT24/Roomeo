@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -64,18 +66,37 @@
 
 @layer base {
   body {
-    background-color: #f2f5f1;
-    color: #004d40;
+    background-color: #F2F5F1;
+    color: #006D5B;
+    font-family: 'Inter', sans-serif;
   }
 }
 
-/* Custom Colors */
-:root {
-  --emerald-green: #004d40;
-  --moss-green: #44c76f;
-  --sage: #b7c8b5;
-  --mint-cream: #f2f5f1;
-  --gold-accent: #d4af37;
+/* Roomeo Design System Custom Classes */
+@layer components {
+  .roomeo-card {
+    @apply bg-white rounded-2xl shadow-card border border-sage/30 hover:shadow-soft transition-all duration-300;
+  }
+  
+  .roomeo-button-primary {
+    @apply bg-emerald-primary text-gold-accent rounded-xl px-6 py-3 font-semibold shadow-gold hover:bg-emerald-primary/90 hover:shadow-lg transition-all duration-300 transform hover:scale-105;
+  }
+  
+  .roomeo-button-secondary {
+    @apply bg-sage text-emerald-primary rounded-xl px-6 py-3 font-semibold hover:bg-sage/80 transition-all duration-300 transform hover:scale-105;
+  }
+  
+  .roomeo-heading {
+    @apply font-poppins font-semibold text-emerald-primary;
+  }
+  
+  .roomeo-body {
+    @apply font-inter text-emerald-primary;
+  }
+  
+  .roomeo-interactive {
+    @apply text-gold-accent hover:underline cursor-pointer transition-all duration-200;
+  }
 }
 
 .text-stroke {

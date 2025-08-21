@@ -114,7 +114,7 @@ export default function ListingCard({
             
             <h2 className="text-2xl font-black text-red-700 mb-4">DELETE LISTING</h2>
             <p className="text-red-700 font-bold mb-6">
-              Are you sure you want to delete "{listing.title}"? This action cannot be undone.
+              Are you sure you want to delete &quot;{listing.title}&quot;? This action cannot be undone.
             </p>
             
             <div className="flex gap-3">

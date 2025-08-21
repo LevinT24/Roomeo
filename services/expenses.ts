@@ -211,7 +211,7 @@ export async function approveSettlement(
         data.approved ? 'settlement_approved' : 'settlement_rejected',
         {
           expense_group_id: '',
-          expense_name: settlement.expense_groups.name,
+          expense_name: settlement.expense_groups[0]?.name || 'Unknown Expense',
           amount: settlement.amount,
           settlement_id: data.settlement_id
         }
@@ -287,8 +287,8 @@ export async function getPendingSettlements(userId?: string): Promise<PendingSet
 
     const pendingSettlements: PendingSettlement[] = (data || []).map(settlement => ({
       settlement_id: settlement.id,
-      group_name: settlement.expense_groups.name,
-      payer_name: settlement.users.name,
+      group_name: settlement.expense_groups[0]?.name || 'Unknown Group',
+      payer_name: settlement.users[0]?.name || 'Unknown User',
       amount: settlement.amount,
       payment_method: settlement.payment_method,
       status: settlement.status,

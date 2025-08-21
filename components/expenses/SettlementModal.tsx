@@ -40,8 +40,8 @@ export default function SettlementModal({
   const paymentMethods: { value: PaymentMethod; label: string; icon: string }[] = [
     { value: 'cash', label: 'Cash', icon: '💵' },
     { value: 'zelle', label: 'Zelle', icon: '📱' },
-    { value: 'venmo', label: 'Venmo', icon: '💸' },
-    { value: 'paypal', label: 'PayPal', icon: '🏛️' },
+    { value: 'venmo', label: 'Venmo', icon: '💳' },
+    { value: 'paypal', label: 'PayPal', icon: '💰' },
     { value: 'bank_transfer', label: 'Bank Transfer', icon: '🏦' }
   ]
 
@@ -132,48 +132,55 @@ export default function SettlementModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="roomeo-card max-w-lg w-full max-h-[90vh] overflow-y-auto animate-slide-up">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-black text-black tracking-tight">SETTLE UP</h2>
+            <h2 className="roomeo-heading text-2xl flex items-center gap-2">
+              <span>💳</span> Settle Up
+            </h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="roomeo-interactive text-emerald-primary/60 hover:text-emerald-primary hover:no-underline p-2 rounded-lg hover:bg-sage/10"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <span className="text-xl">✕</span>
             </button>
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {error}
+            <div className="mb-6 p-4 bg-alert-red/10 border border-alert-red/20 rounded-xl animate-slide-up">
+              <div className="flex items-center gap-2">
+                <span className="text-alert-red text-lg">⚠️</span>
+                <span className="roomeo-body text-alert-red text-sm font-medium">{error}</span>
+              </div>
             </div>
           )}
 
           {/* Expense Details */}
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-bold text-gray-900 mb-2">{expense.group_name}</h3>
+          <div className="mb-6 p-5 bg-mint-cream rounded-xl border border-sage/30">
+            <h3 className="roomeo-heading text-lg mb-2 flex items-center gap-2">
+              <span>🏠</span> {expense.group_name}
+            </h3>
             {expense.group_description && (
-              <p className="text-sm text-gray-600 mb-3">{expense.group_description}</p>
+              <p className="roomeo-body text-emerald-primary/70 text-sm mb-4">{expense.group_description}</p>
             )}
             
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Total Share</p>
-                <p className="text-lg font-bold text-gray-900">${expense.amount_owed.toFixed(2)}</p>
+            <div className="grid grid-cols-2 gap-4 text-center mb-4">
+              <div className="p-3 bg-white rounded-lg border border-sage/20">
+                <p className="roomeo-body text-emerald-primary/60 text-xs uppercase tracking-wide mb-1">Total Share</p>
+                <p className="roomeo-heading text-lg text-emerald-primary">${expense.amount_owed.toFixed(2)}</p>
               </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Already Paid</p>
-                <p className="text-lg font-bold text-emerald-600">${expense.amount_paid.toFixed(2)}</p>
+              <div className="p-3 bg-white rounded-lg border border-sage/20">
+                <p className="roomeo-body text-emerald-primary/60 text-xs uppercase tracking-wide mb-1">Already Paid</p>
+                <p className="roomeo-heading text-lg text-roomeo-success">${expense.amount_paid.toFixed(2)}</p>
               </div>
             </div>
             
-            <div className="mt-4 p-3 bg-white rounded border border-orange-200">
-              <p className="text-sm text-gray-600 text-center">Amount to settle</p>
-              <p className="text-2xl font-black text-[#F05224] text-center">
+            <div className="p-4 bg-gradient-to-r from-gold-accent/10 to-emerald-primary/10 rounded-xl border border-gold-accent/30">
+              <p className="roomeo-body text-emerald-primary/70 text-sm text-center mb-2 flex items-center justify-center gap-2">
+                <span>💸</span> Amount to settle
+              </p>
+              <p className="roomeo-heading text-3xl text-emerald-primary text-center">
                 ${remainingAmount.toFixed(2)}
               </p>
             </div>
@@ -182,22 +189,22 @@ export default function SettlementModal({
           <div className="space-y-6">
             {/* Payment Method Selection */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Payment Method *
+              <label className="roomeo-body font-semibold text-emerald-primary mb-4 block flex items-center gap-2">
+                <span>💳</span> Payment Method *
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 {paymentMethods.map(method => (
                   <button
                     key={method.value}
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, payment_method: method.value }))}
-                    className={`flex items-center gap-2 p-3 border-2 rounded-lg text-sm font-medium transition-all ${
+                    className={`flex items-center gap-3 p-4 rounded-xl roomeo-body font-semibold transition-all duration-300 transform hover:scale-105 ${
                       formData.payment_method === method.value
-                        ? 'border-[#F05224] bg-[#F05224] text-white'
-                        : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                        ? 'roomeo-button-primary'
+                        : 'roomeo-button-secondary'
                     }`}
                   >
-                    <span className="text-base">{method.icon}</span>
+                    <span className="text-lg">{method.icon}</span>
                     <span>{method.label}</span>
                   </button>
                 ))}
@@ -206,11 +213,11 @@ export default function SettlementModal({
 
             {/* Payment Proof Upload */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Payment Proof (Optional)
+              <label className="roomeo-body font-semibold text-emerald-primary mb-4 block flex items-center gap-2">
+                <span>🖼️</span> Payment Proof (Optional)
               </label>
               
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
+              <div className="border-2 border-dashed border-sage/40 rounded-xl p-6 text-center hover:border-sage/60 hover:bg-sage/5 transition-all duration-300 cursor-pointer">
                 <input
                   type="file"
                   accept="image/*"
@@ -220,25 +227,23 @@ export default function SettlementModal({
                 />
                 <label htmlFor="proof-upload" className="cursor-pointer">
                   {imagePreview ? (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <img 
                         src={imagePreview} 
                         alt="Payment proof preview" 
-                        className="max-w-full max-h-32 mx-auto rounded-lg shadow-sm"
+                        className="max-w-full max-h-32 mx-auto rounded-xl shadow-card border border-sage/30"
                       />
-                      <p className="text-sm text-gray-600">
-                        Click to change image
+                      <p className="roomeo-body text-emerald-primary/60 text-sm">
+                        🔄 Click to change image
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      <svg className="mx-auto h-8 w-8 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <div className="text-sm text-gray-600">
-                        <span className="font-medium text-[#F05224]">Upload a screenshot</span> or drag and drop
+                    <div className="space-y-3">
+                      <div className="text-4xl mb-2">📷</div>
+                      <div className="roomeo-body text-emerald-primary/70">
+                        <span className="font-semibold text-gold-accent">🎆 Upload a screenshot</span> or drag and drop
                       </div>
-                      <p className="text-xs text-gray-500">PNG, JPG up to 5MB</p>
+                      <p className="roomeo-body text-emerald-primary/50 text-xs">PNG, JPG up to 5MB</p>
                     </div>
                   )}
                 </label>
@@ -247,44 +252,54 @@ export default function SettlementModal({
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Notes (Optional)
+              <label className="roomeo-body font-semibold text-emerald-primary mb-3 block flex items-center gap-2">
+                <span>📝</span> Notes (Optional)
               </label>
               <textarea
                 placeholder="Add any notes about this payment..."
                 value={formData.notes}
                 onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F05224] focus:border-transparent resize-none"
+                className="w-full px-4 py-3 bg-mint-cream border border-sage/30 rounded-xl roomeo-body text-emerald-primary placeholder:text-emerald-primary/50 focus:outline-none focus:ring-2 focus:ring-gold-accent focus:border-transparent resize-none transition-all"
               />
             </div>
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 mt-8">
-            <Button
+          <div className="flex gap-4 mt-8 pt-6 border-t border-sage/20">
+            <button
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              variant="outline"
-              className="flex-1"
+              className="flex-1 roomeo-button-secondary"
             >
-              Cancel
-            </Button>
-            <Button
+              <span>❌</span> Cancel
+            </button>
+            <button
               type="button"
               onClick={handleSubmit}
               disabled={isLoading}
-              className="flex-1 bg-[#F05224] hover:bg-[#D63E1A] text-white font-semibold border-2 border-black shadow-[4px_4px_0px_0px_#000000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#000000]"
+              className={`flex-1 roomeo-button-primary flex items-center justify-center gap-2 ${
+                isLoading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
-              {isLoading ? 'Submitting...' : `Submit Payment $${remainingAmount.toFixed(2)}`}
-            </Button>
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-gold-accent border-t-transparent"></div>
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <span>💳</span> Submit ${remainingAmount.toFixed(2)}
+                </>
+              )}
+            </button>
           </div>
 
           {/* Disclaimer */}
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-xs text-blue-700 text-center">
-              Your payment will be reviewed by the expense creator before being approved.
+          <div className="mt-6 p-4 bg-gold-accent/10 border border-gold-accent/20 rounded-xl">
+            <p className="roomeo-body text-emerald-primary text-xs text-center flex items-center justify-center gap-2">
+              <span>ℹ️</span> Your payment will be reviewed by the room creator before being approved.
             </p>
           </div>
         </div>

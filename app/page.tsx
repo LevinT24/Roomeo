@@ -456,7 +456,7 @@ export default function Home() {
                   </h2>
                   <div className="w-32 h-2 bg-[#004D40] transform skew-x-12"></div>
                   <p className="text-xl md:text-2xl font-bold leading-tight">
-                    FINDING THE PERFECT ROOMMATE SHOULDN'T BE A NIGHTMARE. WE MAKE IT SIMPLE, SAFE, AND ACTUALLY FUN.
+                    FINDING THE PERFECT ROOMMATE SHOULDN&apos;T BE A NIGHTMARE. WE MAKE IT SIMPLE, SAFE, AND ACTUALLY FUN.
                   </p>
                 </div>
                 <div className="grid gap-4">
@@ -558,7 +558,7 @@ export default function Home() {
                 </h2>
                 <div className="w-32 h-3 bg-[#44C76F] mx-auto transform -skew-x-12"></div>
                 <p className="text-xl md:text-2xl font-bold max-w-3xl mx-auto">
-                  HAVE QUESTIONS? NEED HELP? WE'RE HERE TO MAKE YOUR ROOMMATE SEARCH AS SMOOTH AS POSSIBLE.
+                  HAVE QUESTIONS? NEED HELP? WE&apos;RE HERE TO MAKE YOUR ROOMMATE SEARCH AS SMOOTH AS POSSIBLE.
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-6 items-center justify-center">

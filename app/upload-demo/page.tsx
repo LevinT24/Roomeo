@@ -108,7 +108,7 @@ export default function UploadDemo() {
               How It Works
             </h3>
             <div className="text-sm font-bold text-[#004D40] space-y-2">
-              <p>1. Click "UPLOAD PROFILE PICTURE" to select an image</p>
+              <p>1. Click &quot;UPLOAD PROFILE PICTURE&quot; to select an image</p>
               <p>2. The image is validated (type and size)</p>
               <p>3. A preview is shown immediately</p>
               <p>4. The image uploads to Supabase Storage (avatars bucket)</p>

@@ -71,13 +71,13 @@ export async function getFriendsList(): Promise<Friend[]> {
       // Transform data to friends format
       const friends: Friend[] = (data || []).map(friendship => {
         const isUser1 = friendship.user1_id === user.id
-        const friend = isUser1 ? friendship.user2 : friendship.user1
+        const friend = isUser1 ? friendship.user2[0] : friendship.user1[0]
         
         return {
           id: friendship.id,
-          friendId: friend.id,
-          name: friend.name,
-          profilePicture: friend.profilepicture,
+          friendId: friend?.id || '',
+          name: friend?.name || 'Unknown',
+          profilePicture: friend?.profilepicture || null,
           friendsSince: friendship.created_at
         }
       })
@@ -142,9 +142,9 @@ export async function getFriendRequests(): Promise<{ sent: FriendRequest[], rece
     const sentRequests: FriendRequest[] = (sentData || []).map(request => ({
       id: request.id,
       type: 'sent' as const,
-      userId: request.receiver.id,
-      name: request.receiver.name,
-      profilePicture: request.receiver.profilepicture,
+      userId: request.receiver[0]?.id || '',
+      name: request.receiver[0]?.name || 'Unknown',
+      profilePicture: request.receiver[0]?.profilepicture || null,
       createdAt: request.created_at
     }))
 
@@ -152,9 +152,9 @@ export async function getFriendRequests(): Promise<{ sent: FriendRequest[], rece
     const receivedRequests: FriendRequest[] = (receivedData || []).map(request => ({
       id: request.id,
       type: 'received' as const,
-      userId: request.sender.id,
-      name: request.sender.name,
-      profilePicture: request.sender.profilepicture,
+      userId: request.sender[0]?.id || '',
+      name: request.sender[0]?.name || 'Unknown',
+      profilePicture: request.sender[0]?.profilepicture || null,
       createdAt: request.created_at
     }))
 
