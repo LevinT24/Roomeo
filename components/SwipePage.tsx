@@ -3,9 +3,6 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import { supabase } from "@/lib/supabase"
-import { getRoomPhotos, getPrimaryRoomPhoto } from "@/services/roomPhotos"
-import { RoomPhoto } from "@/types/roomPhotos"
-import PhotoGalleryModal from "@/components/roomPhotos/PhotoGalleryModal"
 
 interface User {
   id: string
@@ -15,10 +12,6 @@ interface User {
   age?: number
   bio?: string
   location?: string
-  area?: string
-  budget?: number
-  universityAffiliation?: string
-  professionalStatus?: "student" | "employed" | "unemployed"
   preferences?: {
     smoking: boolean
     drinking: boolean
@@ -26,87 +19,18 @@ interface User {
     pets: boolean
   }
   userType?: "seeker" | "provider" | null
-  roomPhotos?: RoomPhoto[]
-  primaryRoomPhoto?: RoomPhoto
-  roomPhotoCount?: number
 }
 
 interface SwipePageProps {
   user?: User // Make it optional since we'll fetch from useAuth
 }
 
-// Filter functions
-const applyFilters = (allProfiles: User[], filters: any) => {
-  let filteredProfiles = [...allProfiles]
-
-  // Age filter
-  if (filters.ageMin) {
-    filteredProfiles = filteredProfiles.filter(p => p.age && p.age >= parseInt(filters.ageMin))
-  }
-  if (filters.ageMax) {
-    filteredProfiles = filteredProfiles.filter(p => p.age && p.age <= parseInt(filters.ageMax))
-  }
-
-  // University affiliation filter
-  if (filters.universityAffiliation) {
-    filteredProfiles = filteredProfiles.filter(p => 
-      p.universityAffiliation && 
-      p.universityAffiliation.toLowerCase().includes(filters.universityAffiliation.toLowerCase())
-    )
-  }
-
-  // Professional status filter
-  if (filters.professionalStatus) {
-    filteredProfiles = filteredProfiles.filter(p => p.professionalStatus === filters.professionalStatus)
-  }
-
-  // Budget filter (pricing)
-  if (filters.budgetMin) {
-    filteredProfiles = filteredProfiles.filter(p => p.budget && p.budget >= parseInt(filters.budgetMin))
-  }
-  if (filters.budgetMax) {
-    filteredProfiles = filteredProfiles.filter(p => p.budget && p.budget <= parseInt(filters.budgetMax))
-  }
-
-  // Area filter
-  if (filters.area) {
-    filteredProfiles = filteredProfiles.filter(p => 
-      (p.area && p.area.toLowerCase().includes(filters.area.toLowerCase())) ||
-      (p.location && p.location.toLowerCase().includes(filters.area.toLowerCase()))
-    )
-  }
-
-  return filteredProfiles
-}
-
 export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
   const { user: authUser, logout } = useAuth()
   const [profiles, setProfiles] = useState<User[]>([])
-  const [allProfiles, setAllProfiles] = useState<User[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isGalleryOpen, setIsGalleryOpen] = useState(false)
-  const [showFilters, setShowFilters] = useState(false)
-  const [filters, setFilters] = useState({
-    ageMin: "",
-    ageMax: "",
-    universityAffiliation: "",
-    professionalStatus: "",
-    budgetMin: "",
-    budgetMax: "",
-    area: ""
-  })
-  const [activeFiltersCount, setActiveFiltersCount] = useState(0)
-  const [tempFilters, setTempFilters] = useState({
-    ageMin: "",
-    ageMax: "",
-    universityAffiliation: "",
-    professionalStatus: "",
-    budgetMin: "",
-    budgetMax: "",
-    area: ""
-  })
 
   // Use the user from props or auth
   const currentUser = propUser || authUser
@@ -116,46 +40,6 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
       fetchOppositeTypeUsers()
     }
   }, [currentUser])
-
-  // Apply filters only when filters state changes (not tempFilters)
-  useEffect(() => {
-    const filteredProfiles = applyFilters(allProfiles, filters)
-    setProfiles(filteredProfiles)
-    
-    // Count active filters
-    const filterCount = Object.values(filters).filter(value => value !== "").length
-    setActiveFiltersCount(filterCount)
-  }, [allProfiles, filters])
-
-  // Initialize tempFilters when filters change
-  useEffect(() => {
-    setTempFilters(filters)
-  }, [filters])
-
-  const handleTempFilterChange = (filterKey: string, value: string) => {
-    setTempFilters(prev => ({
-      ...prev,
-      [filterKey]: value
-    }))
-  }
-
-  const applyFiltersFromTemp = () => {
-    setFilters(tempFilters)
-  }
-
-  const resetFilters = () => {
-    const resetState = {
-      ageMin: "",
-      ageMax: "",
-      universityAffiliation: "",
-      professionalStatus: "",
-      budgetMin: "",
-      budgetMax: "",
-      area: ""
-    }
-    setFilters(resetState)
-    setTempFilters(resetState)
-  }
 
   const fetchOppositeTypeUsers = async () => {
     if (!currentUser?.id) {
@@ -199,12 +83,8 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
           age,
           bio,
           location,
-          area,
-          budget,
           profilepicture,
           usertype,
-          universityaffiliation,
-          professionalstatus,
           preferences
         `)
         .eq('usertype', targetUserType)
@@ -217,52 +97,23 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
         return
       }
 
-      // Transform the data to match our interface and fetch room photos for providers
-      let formattedProfiles: User[] = await Promise.all(
-        (oppositeUsers || []).map(async (profile) => {
-          let roomPhotos: RoomPhoto[] = [];
-          let primaryRoomPhoto: RoomPhoto | null = null;
-          let roomPhotoCount = 0;
-
-          // Fetch room photos for providers
-          if (profile.usertype === 'provider') {
-            try {
-              roomPhotos = await getRoomPhotos(profile.id);
-              roomPhotoCount = roomPhotos.length;
-              
-              if (roomPhotos.length > 0) {
-                primaryRoomPhoto = roomPhotos.find(photo => photo.is_primary) || roomPhotos[0];
-              }
-            } catch (photoError) {
-              console.warn(`Failed to fetch room photos for user ${profile.id}:`, photoError);
-            }
-          }
-
-          return {
-            id: profile.id,
-            email: profile.email || '',
-            name: profile.name || 'Unknown User',
-            age: profile.age,
-            bio: profile.bio || '',
-            location: profile.location || '',
-            area: profile.area || '',
-            budget: profile.budget || undefined,
-            universityAffiliation: profile.universityaffiliation || '',
-            professionalStatus: profile.professionalstatus as "student" | "employed" | "unemployed" | undefined,
-            profilePicture: profile.profilepicture || '/placeholder.svg',
-            userType: profile.usertype,
-            preferences: profile.preferences || {
-              smoking: false,
-              drinking: false,
-              vegetarian: false,
-              pets: false
-            },
-            roomPhotos,
-            primaryRoomPhoto: primaryRoomPhoto || undefined,
-            roomPhotoCount
-          };
-        })
-      )
+      // Transform the data to match our interface
+      let formattedProfiles: User[] = (oppositeUsers || []).map(profile => ({
+        id: profile.id,
+        email: profile.email || '',
+        name: profile.name || 'Unknown User',
+        age: profile.age,
+        bio: profile.bio || '',
+        location: profile.location || '',
+        profilePicture: profile.profilepicture || '/placeholder.svg',
+        userType: profile.usertype,
+        preferences: profile.preferences || {
+          smoking: false,
+          drinking: false,
+          vegetarian: false,
+          pets: false
+        }
+      }))
 
       // Only filter out users you've already LIKED (not passed) - safer approach
       try {
@@ -287,7 +138,6 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
         // Continue with all profiles if filtering fails
       }
 
-      setAllProfiles(formattedProfiles)
       setProfiles(formattedProfiles)
     } catch (err) {
       console.error('Unexpected error:', err)
@@ -405,11 +255,11 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F2F5F1] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#44C76F] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <h2 className="text-2xl font-black text-[#004D40] transform -skew-x-2">FINDING MATCHES...</h2>
-          <p className="text-lg font-bold text-[#004D40] mt-2">Looking for compatible roommates</p>
+      <div className="bg-mint-cream min-h-screen flex items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-sage/30 border-t-emerald-primary mx-auto mb-6"></div>
+          <h2 className="roomeo-heading text-2xl mb-2">Finding Your Perfect Match...</h2>
+          <p className="roomeo-body text-emerald-primary/70 text-lg">Looking for compatible roommates 💕</p>
         </div>
       </div>
     )
@@ -418,16 +268,16 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-[#F2F5F1] flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
+      <div className="bg-mint-cream min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6 animate-fade-in">
           <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-3xl font-black text-[#004D40] mb-4 transform -skew-x-2">OOPS!</h2>
-          <p className="text-lg font-bold text-[#004D40] mb-6">{error}</p>
+          <h2 className="roomeo-heading text-3xl mb-4">Oops!</h2>
+          <p className="roomeo-body text-emerald-primary mb-6">{error}</p>
           <button
             onClick={fetchOppositeTypeUsers}
-            className="bg-[#44C76F] text-[#004D40] font-black px-6 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+            className="roomeo-button-primary"
           >
-            TRY AGAIN
+            Try Again
           </button>
         </div>
       </div>
@@ -437,63 +287,20 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
   // No more profiles state
   if (currentIndex >= profiles.length) {
     return (
-      <div className="bg-[#F2F5F1] text-[#004D40] min-h-screen">
-        {/* Hidden filter button for white header to trigger */}
-        <button 
-          data-filter-trigger
-          onClick={() => setShowFilters(!showFilters)}
-          className="hidden"
-        >
-          Filter Toggle
-        </button>
-        
-        {/* Filter Dropdown */}
-        {showFilters && (
-          <div className="fixed top-20 left-0 right-0 bg-[#F2F5F1] border-b-4 border-[#004D40] z-30">
-            <div className="container mx-auto px-6 py-4">
-              <div className="bg-[#B7C8B5] rounded-lg border-4 border-[#004D40] p-4 shadow-[4px_4px_0px_0px_#004D40]">
-                <div className="mb-4">
-                  <h3 className="text-xl font-black text-[#004D40] transform -skew-x-2 text-center">FILTER MATCHES</h3>
-                </div>
-                <div className="text-center">
-                  <p className="text-[#004D40] font-black text-sm">
-                    {activeFiltersCount > 0 ? `NO MATCHES FOR CURRENT FILTERS (${activeFiltersCount} ACTIVE)` : `NO PROFILES AVAILABLE`}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* No profiles message */}
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="text-8xl mb-6">🏠</div>
-            <h2 className="text-4xl font-black text-[#004D40] mb-4 transform -skew-x-2">NO MORE PROFILES</h2>
-            <p className="text-xl font-bold text-[#004D40] mb-6">
-              {activeFiltersCount > 0 ? "TRY ADJUSTING YOUR FILTERS" : "CHECK BACK LATER FOR NEW MATCHES!"}
-            </p>
-            <div className="w-24 h-3 bg-[#44C76F] mx-auto transform skew-x-12 mb-6"></div>
-            <div className="space-y-4">
-              {activeFiltersCount > 0 && (
-                <button
-                  onClick={resetFilters}
-                  className="bg-[#44C76F] text-[#004D40] font-black px-6 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all mr-4"
-                >
-                  CLEAR FILTERS
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  setCurrentIndex(0)
-                  fetchOppositeTypeUsers()
-                }}
-                className="bg-[#44C76F] text-[#004D40] font-black px-6 py-3 rounded-lg border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
-              >
-                REFRESH
-              </button>
-            </div>
-          </div>
+      <div className="bg-mint-cream min-h-screen flex items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <div className="text-8xl mb-6">🏠</div>
+          <h2 className="roomeo-heading text-4xl mb-4">No More Profiles</h2>
+          <p className="roomeo-body text-emerald-primary/70 text-xl mb-6">Check back later for new matches!</p>
+          <button
+            onClick={() => {
+              setCurrentIndex(0)
+              fetchOppositeTypeUsers()
+            }}
+            className="roomeo-button-primary"
+          >
+            🔄 Refresh
+          </button>
         </div>
       </div>
     )
@@ -502,314 +309,140 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
   const currentProfile = profiles[currentIndex]
 
   return (
-    <div className="bg-[#F2F5F1] text-[#004D40] min-h-screen">
-      {/* Hidden filter button for white header to trigger */}
-      <button 
-        data-filter-trigger
-        onClick={() => setShowFilters(!showFilters)}
-        className="hidden"
-      >
-        Filter Toggle
-      </button>
-
-      {/* Filter Dropdown */}
-      {showFilters && (
-        <div className="fixed top-16 md:top-20 left-0 right-0 bg-[#F2F5F1] border-b-4 border-[#004D40] z-30 max-h-[80vh] overflow-y-auto">
-          <div className="container mx-auto px-4 md:px-6 py-4">
-            <div className="bg-[#B7C8B5] rounded-lg border-2 md:border-4 border-[#004D40] p-3 md:p-4 shadow-[2px_2px_0px_0px_#004D40] md:shadow-[4px_4px_0px_0px_#004D40]">
-              <div className="mb-3 md:mb-4">
-                <h3 className="text-lg md:text-xl font-black text-[#004D40] transform -skew-x-2 text-center">FILTER MATCHES</h3>
+    <div className="bg-mint-cream min-h-screen">
+      <div className="relative flex size-full min-h-screen flex-col overflow-x-hidden">
+        <div className="layout-container flex h-full grow flex-col">
+          <main className="flex-1 px-6 py-6 lg:px-12 xl:px-20 bg-mint-cream min-h-screen overflow-y-auto">
+            <div className="mx-auto max-w-4xl animate-fade-in">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+                <div className="animate-slide-up">
+                  <h1 className="roomeo-heading text-4xl mb-2">💕 Find Your Roommate</h1>
+                  <p className="roomeo-body text-emerald-primary/70">Swipe to discover compatible living partners</p>
+                </div>
               </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                  {/* Age Range */}
-                  <div className="space-y-1 md:space-y-2">
-                    <label className="block text-xs md:text-sm font-black text-[#004D40]">AGE RANGE</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        placeholder="Min"
-                        value={tempFilters.ageMin}
-                        onChange={(e) => handleTempFilterChange('ageMin', e.target.value)}
-                        className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-xs md:text-sm h-10 md:h-auto"
-                        min="18"
-                        max="100"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Max"
-                        value={tempFilters.ageMax}
-                        onChange={(e) => handleTempFilterChange('ageMax', e.target.value)}
-                        className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-xs md:text-sm h-10 md:h-auto"
-                        min="18"
-                        max="100"
-                      />
+
+              {/* Main Swipe Content */}
+              <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+                <div className="w-full max-w-sm mx-auto flex flex-col justify-center">
+                  <div className="relative mb-8">
+                    <div className="roomeo-card overflow-hidden animate-slide-up">
+                      <div className="relative">
+                        <img
+                          alt={currentProfile.name}
+                          className="w-full h-80 object-cover"
+                          src={currentProfile.profilePicture || "/placeholder.svg"}
+                        />
+                        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent text-white">
+                          <h2 className="roomeo-heading text-2xl text-white mb-1">
+                            {currentProfile.name}, {currentProfile.age}
+                          </h2>
+                          <p className="roomeo-body text-white font-semibold">
+                            {currentProfile.userType === "provider" ? "HAS A PLACE" : "LOOKING FOR A PLACE"}
+                          </p>
+                          {currentProfile.location && (
+                            <p className="roomeo-body text-white/90 text-sm">📍 {currentProfile.location}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="p-6 space-y-4">
+                        <div className="flex items-center text-emerald-primary space-x-3 flex-wrap gap-2">
+                          <span className="flex items-center gap-1 roomeo-body font-semibold text-sm">
+                            <svg
+                              className={`w-4 h-4 ${currentProfile.preferences?.smoking ? 'text-alert-red' : 'text-moss-green'}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              strokeWidth={3}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"
+                              />
+                            </svg>
+                            {currentProfile.preferences?.smoking ? "SMOKER" : "NON-SMOKER"}
+                          </span>
+                          <span className="flex items-center gap-1 roomeo-body font-semibold text-sm">
+                            <svg
+                              className="w-4 h-4 text-moss-green"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              strokeWidth={3}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                              />
+                            </svg>
+                            {currentProfile.preferences?.pets ? "PET-FRIENDLY" : "NO PETS"}
+                          </span>
+                          {currentProfile.preferences?.vegetarian && (
+                            <span className="flex items-center gap-1 roomeo-body font-semibold text-sm">
+                              <span className="text-moss-green">🌱</span>
+                              VEGETARIAN
+                            </span>
+                          )}
+                          {currentProfile.preferences?.drinking && (
+                            <span className="flex items-center gap-1 roomeo-body font-semibold text-sm">
+                              <span className="text-moss-green">🍺</span>
+                              DRINKS
+                            </span>
+                          )}
+                        </div>
+                        {currentProfile.bio && (
+                          <p className="roomeo-body text-emerald-primary leading-relaxed border-l-4 border-sage pl-3 text-sm">
+                            {currentProfile.bio}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
-
-                  {/* University Affiliation */}
-                  <div className="space-y-1 md:space-y-2">
-                    <label className="block text-xs md:text-sm font-black text-[#004D40]">UNIVERSITY</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. UW, Harvard, etc."
-                      value={tempFilters.universityAffiliation}
-                      onChange={(e) => handleTempFilterChange('universityAffiliation', e.target.value)}
-                      className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-xs md:text-sm h-10 md:h-auto"
-                    />
+                  
+                  {/* Profile counter */}
+                  <div className="text-center mb-6">
+                    <p className="roomeo-body text-emerald-primary/70 font-semibold text-sm">
+                      {currentIndex + 1} OF {profiles.length}
+                    </p>
                   </div>
 
-                  {/* Professional Status */}
-                  <div className="space-y-1 md:space-y-2">
-                    <label className="block text-xs md:text-sm font-black text-[#004D40]">WORK STATUS</label>
-                    <select
-                      value={tempFilters.professionalStatus}
-                      onChange={(e) => handleTempFilterChange('professionalStatus', e.target.value)}
-                      className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-xs md:text-sm h-10 md:h-auto"
+                  <div className="flex justify-between items-center gap-8">
+                    {/* Cross/Pass Button - Left Side */}
+                    <button
+                      className="size-20 bg-white border-3 border-sage text-alert-red hover:bg-alert-red/10 flex items-center justify-center rounded-full shadow-soft transform hover:scale-105 transition-all group"
+                      onClick={() => handleSwipe(false)}
                     >
-                      <option value="">Any</option>
-                      <option value="student">Student</option>
-                      <option value="employed">Employed</option>
-                      <option value="unemployed">Unemployed</option>
-                    </select>
-                  </div>
+                      <svg
+                        className="w-10 h-10 group-hover:scale-110 transition-transform"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                      </svg>
+                    </button>
 
-                  {/* Budget Range */}
-                  <div className="space-y-1 md:space-y-2">
-                    <label className="block text-xs md:text-sm font-black text-[#004D40]">BUDGET RANGE ($)</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        placeholder="Min"
-                        value={tempFilters.budgetMin}
-                        onChange={(e) => handleTempFilterChange('budgetMin', e.target.value)}
-                        className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-xs md:text-sm h-10 md:h-auto"
-                        min="0"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Max"
-                        value={tempFilters.budgetMax}
-                        onChange={(e) => handleTempFilterChange('budgetMax', e.target.value)}
-                        className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-xs md:text-sm h-10 md:h-auto"
-                        min="0"
-                      />
-                    </div>
+                    {/* Tick/Like Button - Right Side */}
+                    <button
+                      className="size-24 roomeo-button-primary flex items-center justify-center rounded-full group"
+                      onClick={() => handleSwipe(true)}
+                    >
+                      <svg
+                        className="w-12 h-12 group-hover:scale-110 transition-transform"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                      </svg>
+                    </button>
                   </div>
-
-                  {/* Area */}
-                  <div className="space-y-1 md:space-y-2">
-                    <label className="block text-xs md:text-sm font-black text-[#004D40]">AREA</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Downtown, University District"
-                      value={tempFilters.area}
-                      onChange={(e) => handleTempFilterChange('area', e.target.value)}
-                      className="w-full border-2 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1] p-2 rounded text-xs md:text-sm h-10 md:h-auto"
-                    />
-                  </div>
-                </div>
-                
-                {/* Apply and Reset Buttons */}
-                <div className="mt-4 md:mt-6 flex flex-col sm:flex-row gap-2 md:gap-4 justify-center">
-                  <button
-                    onClick={resetFilters}
-                    className="bg-[#F2F5F1] text-[#004D40] font-black px-4 py-2 md:px-6 md:py-3 text-sm md:text-base rounded-lg border-2 md:border-4 border-[#004D40] shadow-[2px_2px_0px_0px_#004D40] md:shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[1px_1px_0px_0px_#004D40] md:hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
-                  >
-                    RESET ALL
-                  </button>
-                  <button
-                    onClick={applyFiltersFromTemp}
-                    className="bg-[#44C76F] text-[#004D40] font-black px-6 py-2 md:px-8 md:py-3 text-sm md:text-base rounded-lg border-2 md:border-4 border-[#004D40] shadow-[2px_2px_0px_0px_#004D40] md:shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[1px_1px_0px_0px_#004D40] md:hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
-                  >
-                    APPLY FILTERS
-                  </button>
-                </div>
-                
-                {/* Results count */}
-                <div className="mt-3 md:mt-4 text-center">
-                  <p className="text-[#004D40] font-black text-xs md:text-sm">
-                    SHOWING {profiles.length} OF {allProfiles.length} PROFILES
-                  </p>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-
-      {/* Main Content */}
-      <main className="flex items-center justify-center p-4 bg-[#F2F5F1] min-h-screen">
-        <div className="w-full max-w-sm mx-auto flex flex-col justify-center min-h-[calc(100vh-8rem)]">
-            <div className="relative mb-6 md:mb-8">
-              <div className="bg-[#B7C8B5] rounded-2xl border-2 md:border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] md:shadow-[8px_8px_0px_0px_#004D40] overflow-hidden transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] md:hover:shadow-[4px_4px_0px_0px_#004D40] transition-all">
-                <div className="relative">
-                  {/* Display primary room photo for providers, profile picture for seekers */}
-                  <img
-                    alt={currentProfile.name}
-                    className="w-full h-80 object-cover cursor-pointer"
-                    src={
-                      currentProfile.userType === "provider" && currentProfile.primaryRoomPhoto
-                        ? currentProfile.primaryRoomPhoto.photo_url
-                        : currentProfile.profilePicture || "/placeholder.svg"
-                    }
-                    onClick={() => {
-                      if (currentProfile.userType === "provider" && currentProfile.roomPhotos && currentProfile.roomPhotos.length > 0) {
-                        setIsGalleryOpen(true);
-                      }
-                    }}
-                  />
-                  
-                  {/* Photo count badge for providers with room photos */}
-                  {currentProfile.userType === "provider" && currentProfile.roomPhotoCount && currentProfile.roomPhotoCount > 0 && (
-                    <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-bold">
-                      📷 {currentProfile.roomPhotoCount} photo{currentProfile.roomPhotoCount === 1 ? '' : 's'}
-                    </div>
-                  )}
-                  
-                  {/* No photos indicator for providers */}
-                  {currentProfile.userType === "provider" && (!currentProfile.roomPhotoCount || currentProfile.roomPhotoCount === 0) && (
-                    <div className="absolute top-4 right-4 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold">
-                      No room photos
-                    </div>
-                  )}
-                  
-                  {/* View Photos hint for providers with photos */}
-                  {currentProfile.userType === "provider" && currentProfile.roomPhotoCount && currentProfile.roomPhotoCount > 1 && (
-                    <div className="absolute bottom-20 left-4 right-4 bg-black/50 text-white p-2 rounded-lg text-center">
-                      <p className="text-sm font-bold">Tap to view all photos</p>
-                    </div>
-                  )}
-
-                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent text-white">
-                    <h2 className="text-2xl font-black transform -skew-x-1">
-                      {currentProfile.name}, {currentProfile.age}
-                    </h2>
-                    <p className="text-base font-bold">
-                      {currentProfile.userType === "provider" ? "HAS A PLACE" : "LOOKING FOR A PLACE"}
-                    </p>
-                    {currentProfile.location && (
-                      <p className="text-sm font-bold opacity-90">📍 {currentProfile.location}</p>
-                    )}
-                    {currentProfile.userType === "provider" && currentProfile.budget && (
-                      <p className="text-sm font-bold opacity-90">💰 ${currentProfile.budget}/month</p>
-                    )}
-                  </div>
-                </div>
-                <div className="p-4 space-y-3">
-                  <div className="flex items-center text-[#004D40] space-x-3 flex-wrap gap-2">
-                    <span className="flex items-center gap-1 font-black text-sm">
-                      <svg
-                        className={`w-4 h-4 ${currentProfile.preferences?.smoking ? 'text-red-500' : 'text-[#44C76F]'}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        strokeWidth={3}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"
-                        />
-                      </svg>
-                      {currentProfile.preferences?.smoking ? "SMOKER" : "NON-SMOKER"}
-                    </span>
-                    <span className="flex items-center gap-1 font-black text-sm">
-                      <svg
-                        className="w-4 h-4 text-[#44C76F]"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        strokeWidth={3}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                        />
-                      </svg>
-                      {currentProfile.preferences?.pets ? "PET-FRIENDLY" : "NO PETS"}
-                    </span>
-                    {currentProfile.preferences?.vegetarian && (
-                      <span className="flex items-center gap-1 font-black text-sm">
-                        <span className="text-[#44C76F]">🌱</span>
-                        VEGETARIAN
-                      </span>
-                    )}
-                    {currentProfile.preferences?.drinking && (
-                      <span className="flex items-center gap-1 font-black text-sm">
-                        <span className="text-[#44C76F]">🍺</span>
-                        DRINKS
-                      </span>
-                    )}
-                  </div>
-                  {currentProfile.bio && (
-                    <p className="text-[#004D40] font-bold leading-relaxed border-l-4 border-[#44C76F] pl-3 text-sm">
-                      {currentProfile.bio}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            {/* Profile counter */}
-            <div className="text-center mb-3 md:mb-4">
-              <p className="text-[#004D40] font-black text-xs md:text-sm">
-                {currentIndex + 1} OF {profiles.length}
-                {activeFiltersCount > 0 && (
-                  <span className="block text-xs text-[#44C76F] mt-1">
-                    {activeFiltersCount} FILTER{activeFiltersCount > 1 ? 'S' : ''} ACTIVE
-                  </span>
-                )}
-              </p>
-            </div>
-
-            <div className="flex justify-center items-center gap-8 md:gap-12">
-              {/* Cross/Pass Button - Left Side */}
-              <button
-                className="w-16 h-16 md:w-20 md:h-20 bg-[#F2F5F1] border-2 md:border-4 border-[#004D40] text-red-500 hover:bg-red-50 flex items-center justify-center rounded-full shadow-[3px_3px_0px_0px_#004D40] md:shadow-[6px_6px_0px_0px_#004D40] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] md:hover:shadow-[3px_3px_0px_0px_#004D40] transition-all group active:scale-95"
-                onClick={() => handleSwipe(false)}
-              >
-                <svg
-                  className="w-8 h-8 md:w-10 md:h-10 group-hover:scale-110 transition-transform"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                </svg>
-              </button>
-
-              {/* Tick/Like Button - Right Side */}
-              <button
-                className="w-20 h-20 md:w-24 md:h-24 bg-[#44C76F] text-[#004D40] border-2 md:border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] md:shadow-[8px_8px_0px_0px_#004D40] flex items-center justify-center rounded-full transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] md:hover:shadow-[4px_4px_0px_0px_#004D40] transition-all group active:scale-95"
-                onClick={() => handleSwipe(true)}
-              >
-                <svg
-                  className="w-10 h-10 md:w-12 md:h-12 group-hover:scale-110 transition-transform"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                </svg>
-              </button>
-            </div>
+          </main>
         </div>
-      </main>
-
-      {/* Photo Gallery Modal */}
-      {currentProfile && currentProfile.roomPhotos && (
-        <PhotoGalleryModal
-          photos={currentProfile.roomPhotos}
-          isOpen={isGalleryOpen}
-          onClose={() => setIsGalleryOpen(false)}
-          userName={currentProfile.name}
-          userAge={currentProfile.age}
-          userLocation={currentProfile.location}
-          userBudget={currentProfile.budget}
-          userBio={currentProfile.bio}
-          onLike={() => handleSwipe(true)}
-          onPass={() => handleSwipe(false)}
-        />
-      )}
+      </div>
     </div>
   )
 }
