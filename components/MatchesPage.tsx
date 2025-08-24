@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
-import { removeMatch } from "@/services/matches"
+import { getRoomPhotos, getPrimaryRoomPhoto } from "@/services/roomPhotos"
+import { RoomPhoto } from "@/types/roomPhotos"
+import PhotoGalleryModal from "@/components/roomPhotos/PhotoGalleryModal"
 
 interface User {
   id: string
@@ -12,6 +14,7 @@ interface User {
   age?: number
   bio?: string
   location?: string
+  budget?: number
   preferences?: {
     smoking: boolean
     drinking: boolean
@@ -19,6 +22,9 @@ interface User {
     pets: boolean
   }
   userType?: "seeker" | "provider"
+  roomPhotos?: RoomPhoto[]
+  primaryRoomPhoto?: RoomPhoto
+  roomPhotoCount?: number
 }
 
 interface Match {
@@ -29,7 +35,11 @@ interface Match {
   userType: "seeker" | "provider"
   bio?: string
   location?: string
+  budget?: number
   chatId?: string
+  roomPhotos?: RoomPhoto[]
+  primaryRoomPhoto?: RoomPhoto
+  roomPhotoCount?: number
 }
 
 interface MatchesPageProps {
@@ -41,6 +51,8 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
   const [matches, setMatches] = useState<Match[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false)
 
   useEffect(() => {
     if (user?.id) {
@@ -95,7 +107,7 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
       // Get user data for the matched users
       const { data: matchedUsers, error: usersError } = await supabase
         .from('users')
-        .select('id, name, profilepicture, age, bio, location, usertype')
+        .select('id, name, profilepicture, age, bio, location, budget, usertype')
         .in('id', matchUserIds)
 
       if (usersError) {
@@ -111,24 +123,48 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
         console.error('Error fetching chats:', chatsError)
       }
 
-      // Format the matches with chat info
-      const formattedMatches: Match[] = (matchedUsers || []).map(userData => {
-        const chatId = existingChats?.find(chat => 
-          (chat.user1_id === user.id && chat.user2_id === userData.id) ||
-          (chat.user2_id === user.id && chat.user1_id === userData.id)
-        )?.id
+      // Format the matches with chat info and fetch room photos for providers
+      const formattedMatches: Match[] = await Promise.all(
+        (matchedUsers || []).map(async (userData) => {
+          const chatId = existingChats?.find(chat => 
+            (chat.user1_id === user.id && chat.user2_id === userData.id) ||
+            (chat.user2_id === user.id && chat.user1_id === userData.id)
+          )?.id
 
-        return {
-          id: userData.id,
-          name: userData.name || 'Unknown User',
-          age: userData.age,
-          profilePicture: userData.profilepicture || '/placeholder.svg',
-          userType: userData.usertype || 'seeker',
-          bio: userData.bio || '',
-          location: userData.location || '',
-          chatId
-        }
-      })
+          let roomPhotos: RoomPhoto[] = [];
+          let primaryRoomPhoto: RoomPhoto | null = null;
+          let roomPhotoCount = 0;
+
+          // Fetch room photos for providers
+          if (userData.usertype === 'provider') {
+            try {
+              roomPhotos = await getRoomPhotos(userData.id);
+              roomPhotoCount = roomPhotos.length;
+              
+              if (roomPhotos.length > 0) {
+                primaryRoomPhoto = roomPhotos.find(photo => photo.is_primary) || roomPhotos[0];
+              }
+            } catch (photoError) {
+              console.warn(`Failed to fetch room photos for matched user ${userData.id}:`, photoError);
+            }
+          }
+
+          return {
+            id: userData.id,
+            name: userData.name || 'Unknown User',
+            age: userData.age,
+            profilePicture: userData.profilepicture || '/placeholder.svg',
+            userType: userData.usertype || 'seeker',
+            bio: userData.bio || '',
+            location: userData.location || '',
+            budget: userData.budget || undefined,
+            chatId,
+            roomPhotos,
+            primaryRoomPhoto: primaryRoomPhoto || undefined,
+            roomPhotoCount
+          }
+        })
+      )
 
       setMatches(formattedMatches)
     } catch (error) {
@@ -138,6 +174,26 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
       setLoading(false)
     }
   }
+
+  const handleViewPhotos = (match: Match) => {
+    console.log("🔍 Attempting to view photos for:", match.name, {
+      userType: match.userType,
+      roomPhotosLength: match.roomPhotos?.length,
+      roomPhotoCount: match.roomPhotoCount
+    });
+    
+    if (match.userType === "provider" && match.roomPhotos && match.roomPhotos.length > 0) {
+      console.log("✅ Opening photo gallery for:", match.name);
+      setSelectedMatch(match);
+      setIsGalleryOpen(true);
+    } else {
+      console.log("❌ Cannot open gallery - missing requirements:", {
+        isProvider: match.userType === "provider",
+        hasRoomPhotos: !!match.roomPhotos,
+        photoCount: match.roomPhotos?.length || 0
+      });
+    }
+  };
 
   const handleStartChat = async (matchUser: Match) => {
     if (!matchUser.chatId) {
@@ -174,123 +230,97 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
     }
   }
 
-  const handleRemoveMatch = async (matchUser: Match) => {
-    if (!confirm(`Remove ${matchUser.name} from your matches? They will appear in discovery again.`)) {
-      return
-    }
-
-    try {
-      const result = await removeMatch(user.id, matchUser.id)
-      
-      if (result.success) {
-        // Remove the match from local state
-        setMatches(prev => prev.filter(m => m.id !== matchUser.id))
-      } else {
-        console.error('Failed to remove match:', result.error)
-        alert('Failed to remove match. Please try again.')
-      }
-    } catch (error) {
-      console.error('Error removing match:', error)
-      alert('Failed to remove match. Please try again.')
-    }
-  }
-
   return (
-    <div className="bg-mint-cream min-h-screen">
+    <div className="bg-white text-black min-h-screen">
       <div className="relative flex size-full min-h-screen flex-col overflow-x-hidden">
         <div className="layout-container flex h-full grow flex-col">
-          <main className="flex-1 px-6 py-6 lg:px-12 xl:px-20 bg-mint-cream min-h-screen overflow-y-auto">
-            <div className="mx-auto max-w-6xl animate-fade-in">
-              {/* Header */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-                <div className="animate-slide-up">
-                  <h1 className="roomeo-heading text-4xl mb-2">💕 Your Matches</h1>
-                  <p className="roomeo-body text-emerald-primary/70">Connect with people who liked you back</p>
-                </div>
+          {/* Main Content */}
+          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 bg-white min-h-screen overflow-y-auto">
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-6">
+                <h2 className="text-3xl font-black tracking-tight text-black mb-3 transform -skew-x-2">
+                  MUTUAL MATCHES
+                </h2>
+                <div className="w-24 h-2 bg-[#F05224] mx-auto transform skew-x-12"></div>
               </div>
 
-              {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-center animate-fade-in">
-                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-sage/30 border-t-emerald-primary mx-auto mb-6"></div>
-                    <p className="roomeo-heading text-xl">Finding your matches...</p>
-                    <p className="roomeo-body text-emerald-primary/70">Looking for mutual connections 💕</p>
-                  </div>
-                </div>
-              ) : error ? (
-                <div className="roomeo-card text-center py-16 animate-slide-up">
-                  <div className="text-6xl mb-4">⚠️</div>
-                  <h3 className="roomeo-heading text-xl mb-2">Something went wrong</h3>
-                  <p className="roomeo-body text-emerald-primary/60 mb-8">{error}</p>
-                  <button
-                    onClick={fetchMutualMatches}
-                    className="roomeo-button-primary"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              ) : matches.length === 0 ? (
-                <div className="roomeo-card text-center py-16 animate-slide-up">
-                  <div className="text-6xl mb-4">💕</div>
-                  <h3 className="roomeo-heading text-xl mb-2">No matches yet</h3>
-                  <p className="roomeo-body text-emerald-primary/60 mb-8">Keep swiping to find your perfect roommate!</p>
-                  <button className="roomeo-button-primary">
-                    <span>🔥</span> Start Swiping
-                  </button>
+              {matches.length === 0 ? (
+                <div className="text-center py-12">
+                  <h3 className="text-2xl font-black text-black mb-2 transform -skew-x-1">NO MATCHES YET</h3>
+                  <p className="text-lg font-bold text-gray-700">KEEP SWIPING TO FIND YOUR PERFECT ROOMMATE!</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {matches.map((match, index) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {matches.map((match) => (
                     <div
                       key={match.id}
-                      className="roomeo-card overflow-hidden group animate-on-scroll"
-                      style={{animationDelay: `${index * 100}ms`}}
+                      className="bg-white rounded-lg border-4 border-black shadow-[6px_6px_0px_0px_#000000] overflow-hidden transition-transform duration-300 hover:translate-x-1 hover:translate-y-1 hover:shadow-[3px_3px_0px_0px_#000000] cursor-pointer group"
                     >
                       <div className="relative">
+                        {/* Display primary room photo for providers, profile picture for seekers */}
                         <div
-                          className="w-full h-48 bg-center bg-no-repeat bg-cover"
-                          style={{ backgroundImage: `url("${match.profilePicture}")` }}
-                        ></div>
+                          className="w-full h-48 bg-center bg-no-repeat bg-cover cursor-pointer"
+                          style={{
+                            backgroundImage: `url("${
+                              match.userType === "provider" && match.primaryRoomPhoto
+                                ? match.primaryRoomPhoto.photo_url
+                                : match.profilePicture
+                            }")`
+                          }}
+                          onClick={() => handleViewPhotos(match)}
+                        />
+                        
+                        {/* Photo count badge for providers with room photos */}
+                        {match.userType === "provider" && match.roomPhotoCount && match.roomPhotoCount > 0 && (
+                          <div 
+                            className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-bold cursor-pointer hover:bg-black/90 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewPhotos(match);
+                            }}
+                          >
+                            📷 {match.roomPhotoCount} photo{match.roomPhotoCount === 1 ? '' : 's'}
+                          </div>
+                        )}
+                        
+                        {/* No photos indicator for providers */}
+                        {match.userType === "provider" && (!match.roomPhotoCount || match.roomPhotoCount === 0) && (
+                          <div className="absolute top-2 right-2 bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                            No room photos
+                          </div>
+                        )}
+                        
+                        {/* View Photos hint for providers with photos */}
+                        {match.userType === "provider" && match.roomPhotoCount && match.roomPhotoCount > 1 && (
+                          <div 
+                            className="absolute bottom-12 left-2 right-2 bg-black/50 text-white p-2 rounded text-center cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewPhotos(match);
+                            }}
+                          >
+                            <p className="text-xs font-bold">Tap to view all photos</p>
+                          </div>
+                        )}
+                        
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                        <h3 className="absolute bottom-4 left-4 text-white roomeo-heading text-lg">
+                        <h3 className="absolute bottom-4 left-4 text-white text-lg font-black transform -skew-x-1">
                           {match.name}
                         </h3>
                       </div>
-                      <div className="p-6">
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <span className="roomeo-body font-semibold text-emerald-primary">{match.age}</span>
-                            <span className="text-sage">•</span>
-                            <span className="roomeo-body text-emerald-primary/70">
-                              {match.userType === "provider" ? "Has a place" : "Looking for a place"}
-                            </span>
-                          </div>
-                          {match.location && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-sage">📍</span>
-                              <span className="roomeo-body text-emerald-primary/70">{match.location}</span>
-                            </div>
-                          )}
-                          {match.bio && (
-                            <p className="roomeo-body text-emerald-primary text-sm line-clamp-2 border-l-3 border-sage pl-3">
-                              {match.bio}
-                            </p>
-                          )}
-                        </div>
-                        <div className="mt-6 space-y-3">
+                      <div className="p-4">
+                        <p className="text-black font-bold text-sm line-clamp-3 border-l-4 border-[#F05224] pl-3">
+                          {match.age}, {match.userType === "provider" ? "HAS A PLACE" : "LOOKING FOR A PLACE"}
+                          {match.location && ` • 📍 ${match.location}`}
+                          {match.userType === "provider" && match.budget && ` • 💰 $${match.budget}/month`}
+                          {match.bio && `. ${match.bio}`}
+                        </p>
+                        <div className="mt-4 flex justify-end">
                           <button 
                             onClick={() => handleStartChat(match)}
-                            className="roomeo-button-primary w-full flex items-center justify-center gap-2"
+                            className="text-sm font-black text-[#F05224] bg-[#F05224]/10 px-4 py-2 rounded border-2 border-[#F05224] hover:bg-[#F05224] hover:text-white transition-all transform hover:translate-x-1 hover:translate-y-1"
                           >
-                            <span>💬</span>
-                            <span>Start Chat</span>
-                          </button>
-                          <button 
-                            onClick={() => handleRemoveMatch(match)}
-                            className="w-full bg-white border-2 border-alert-red text-alert-red hover:bg-alert-red hover:text-white transition-colors duration-200 rounded-lg px-4 py-3 font-medium flex items-center justify-center gap-2"
-                          >
-                            <span>❌</span>
-                            <span>Remove Match</span>
+                            💬 START CHAT
                           </button>
                         </div>
                       </div>
@@ -302,6 +332,42 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
           </main>
         </div>
       </div>
+
+      {/* Photo Gallery Modal */}
+      {selectedMatch && selectedMatch.roomPhotos && (
+        <>
+          {console.log("🎬 Rendering PhotoGalleryModal:", {
+            selectedMatch: selectedMatch.name,
+            isGalleryOpen,
+            photosLength: selectedMatch.roomPhotos.length,
+            photos: selectedMatch.roomPhotos
+          })}
+          <PhotoGalleryModal
+            photos={selectedMatch.roomPhotos}
+            isOpen={isGalleryOpen}
+            onClose={() => {
+              console.log("🔴 Closing gallery modal");
+              setIsGalleryOpen(false);
+              setSelectedMatch(null);
+            }}
+            userName={selectedMatch.name}
+            userAge={selectedMatch.age}
+            userLocation={selectedMatch.location}
+            userBudget={selectedMatch.budget}
+            userBio={selectedMatch.bio}
+            onLike={() => {
+              console.log("👍 Like button clicked in gallery");
+              setIsGalleryOpen(false);
+              setSelectedMatch(null);
+            }}
+            onPass={() => {
+              console.log("👎 Pass button clicked in gallery");
+              setIsGalleryOpen(false);
+              setSelectedMatch(null);
+            }}
+          />
+        </>
+      )}
     </div>
   )
 }

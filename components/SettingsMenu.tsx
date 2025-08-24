@@ -4,82 +4,98 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { User, Settings, LogOut, Trash2, X, Camera, Upload, Eye } from "lucide-react"
+import { User, Settings, LogOut, Trash2, X, Eye } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { supabase } from "@/lib/supabase"
 import { updateUserProfile } from "@/services/supabase"
-import EnhancedProfileEdit from "@/components/EnhancedProfileEdit"
 
 interface SettingsMenuProps {
   user: any
+  onProfilePreview?: () => void
 }
 
-export default function SettingsMenu({ user }: SettingsMenuProps) {
+export default function SettingsMenu({ user, onProfilePreview }: SettingsMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [showUpdateAccount, setShowUpdateAccount] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [showProfileEdit, setShowProfileEdit] = useState(false)
-  const [showProfileView, setShowProfileView] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  
-  const [profileData, setProfileData] = useState({
-    role: user?.role || "seeker",
-    profilePhoto: null as File | null,
-    roomImages: [] as File[]
+  const [updateData, setUpdateData] = useState({
+    name: user?.name || "",
+    age: user?.age || "",
+    bio: user?.bio || "",
+    location: user?.location || "",
+    budget: user?.budget || ""
   })
   
   const { logout } = useAuth()
 
-  const handleProfilePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setProfileData({ ...profileData, profilePhoto: file })
+  const handleUpdateAccount = async () => {
+    if (!user?.id) {
+      console.error("No user ID available for update")
+      alert("Error: No user information available. Please sign in again.")
+      return
     }
-  }
-
-  const handleRoomImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    setProfileData({ ...profileData, roomImages: [...profileData.roomImages, ...files] })
-  }
-
-  const removeRoomImage = (index: number) => {
-    const newImages = profileData.roomImages.filter((_, i) => i !== index)
-    setProfileData({ ...profileData, roomImages: newImages })
-  }
-
-  const handleSaveProfile = async () => {
+    
+    setIsUpdating(true)
     try {
-      setIsUpdating(true)
+      console.log("🔄 Starting account update for user:", user.id)
+      console.log("🔄 Update data:", updateData)
       
-      // Here you would typically upload the files to your storage service
-      // and update the user profile with the new role and image URLs
+      // Validate required fields
+      if (!updateData.name?.trim()) {
+        alert("Name is required")
+        setIsUpdating(false)
+        return
+      }
       
-      console.log("Saving profile:", {
-        role: profileData.role,
-        profilePhoto: profileData.profilePhoto?.name,
-        roomImages: profileData.roomImages.map(img => img.name)
-      })
+      // Parse numbers safely
+      const ageValue = updateData.age ? parseInt(updateData.age.toString()) : null
+      const budgetValue = updateData.budget ? parseInt(updateData.budget.toString()) : null
       
-      // For now, just update the role in the user profile
-      const success = await updateUserProfile(user.id, { 
-        role: profileData.role 
-      })
+      // Check if parsed numbers are valid
+      if (updateData.age && (ageValue === null || isNaN(ageValue))) {
+        alert("Please enter a valid age")
+        setIsUpdating(false)
+        return
+      }
+      
+      if (updateData.budget && (budgetValue === null || isNaN(budgetValue))) {
+        alert("Please enter a valid budget")
+        setIsUpdating(false)
+        return
+      }
+      
+      const updatePayload = {
+        name: updateData.name.trim(),
+        age: ageValue,
+        bio: updateData.bio?.trim() || "",
+        location: updateData.location?.trim() || "",
+        budget: budgetValue
+      }
+      
+      console.log("🔄 Final update payload:", updatePayload)
+      
+      const success = await updateUserProfile(user.id, updatePayload)
       
       if (success) {
-        alert("Profile updated successfully!")
-        setShowProfileEdit(false)
+        console.log("✅ Account update successful")
+        alert("Account updated successfully!")
+        setShowUpdateAccount(false)
         setIsOpen(false)
+        // Refresh the page to reflect changes
         window.location.reload()
       } else {
-        alert("Failed to update profile. Please try again.")
+        console.error("❌ Account update failed - updateUserProfile returned false")
+        alert("Failed to update account. Please check the console for details and try again.")
       }
     } catch (error) {
-      console.error("Error updating profile:", error)
-      alert("Failed to update profile. Please try again.")
+      console.error("❌ Exception during account update:", error)
+      alert(`Failed to update account: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsUpdating(false)
     }
   }
-
 
   const handleDeleteAccount = async () => {
     if (!user?.id) return
@@ -130,6 +146,93 @@ export default function SettingsMenu({ user }: SettingsMenuProps) {
     }
   }
 
+  if (showUpdateAccount) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <Card className="w-full max-w-md border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] bg-[#F2F5F1]">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-black text-[#004D40]">UPDATE ACCOUNT</h2>
+              <Button
+                onClick={() => setShowUpdateAccount(false)}
+                variant="outline"
+                size="sm"
+                className="border-2 border-[#004D40] text-[#004D40] hover:bg-[#004D40] hover:text-[#F2F5F1]"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-black text-[#004D40] mb-2">NAME</label>
+                <Input
+                  value={updateData.name}
+                  onChange={(e) => setUpdateData({ ...updateData, name: e.target.value })}
+                  className="border-2 border-[#004D40] font-bold"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-black text-[#004D40] mb-2">AGE</label>
+                <Input
+                  type="number"
+                  value={updateData.age}
+                  onChange={(e) => setUpdateData({ ...updateData, age: e.target.value })}
+                  className="border-2 border-[#004D40] font-bold"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-black text-[#004D40] mb-2">BIO</label>
+                <Input
+                  value={updateData.bio}
+                  onChange={(e) => setUpdateData({ ...updateData, bio: e.target.value })}
+                  className="border-2 border-[#004D40] font-bold"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-black text-[#004D40] mb-2">LOCATION</label>
+                <Input
+                  value={updateData.location}
+                  onChange={(e) => setUpdateData({ ...updateData, location: e.target.value })}
+                  className="border-2 border-[#004D40] font-bold"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-black text-[#004D40] mb-2">BUDGET ($)</label>
+                <Input
+                  type="number"
+                  value={updateData.budget}
+                  onChange={(e) => setUpdateData({ ...updateData, budget: e.target.value })}
+                  className="border-2 border-[#004D40] font-bold"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <Button
+                onClick={handleUpdateAccount}
+                disabled={isUpdating}
+                className="flex-1 bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black border-2 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
+              >
+                {isUpdating ? "UPDATING..." : "UPDATE"}
+              </Button>
+              <Button
+                onClick={() => setShowUpdateAccount(false)}
+                variant="outline"
+                className="flex-1 border-2 border-[#004D40] text-[#004D40] hover:bg-[#004D40] hover:text-[#F2F5F1] font-black"
+              >
+                CANCEL
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   if (showDeleteConfirm) {
     return (
@@ -167,20 +270,6 @@ export default function SettingsMenu({ user }: SettingsMenuProps) {
     )
   }
 
-  if (showProfileView) {
-    return (
-      <EnhancedProfileEdit
-        user={user}
-        onClose={() => setShowProfileView(false)}
-        onUpdate={() => {
-          setShowProfileView(false)
-          setIsOpen(false)
-          window.location.reload()
-        }}
-      />
-    )
-  }
-
   return (
     <div className="relative">
       <Button
@@ -207,15 +296,25 @@ export default function SettingsMenu({ user }: SettingsMenuProps) {
                 
                 <Button
                   onClick={() => {
-                    setShowProfileView(true)
+                    onProfilePreview?.()
                     setIsOpen(false)
                   }}
                   className="w-full justify-start bg-transparent hover:bg-[#44C76F]/20 text-[#004D40] font-black border-2 border-[#004D40] shadow-[2px_2px_0px_0px_#004D40] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#004D40] transition-all"
                 >
                   <Eye className="h-4 w-4 mr-2" />
-                  VIEW & EDIT PROFILE
+                  PROFILE PREVIEW
                 </Button>
-
+                
+                <Button
+                  onClick={() => {
+                    setShowUpdateAccount(true)
+                    setIsOpen(false)
+                  }}
+                  className="w-full justify-start bg-transparent hover:bg-[#44C76F]/20 text-[#004D40] font-black border-2 border-[#004D40] shadow-[2px_2px_0px_0px_#004D40] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#004D40] transition-all"
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  UPDATE ACCOUNT
+                </Button>
                 
                 <Button
                   onClick={() => {

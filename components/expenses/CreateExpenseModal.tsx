@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CreateExpenseModalProps, SplitType } from "@/types/expenses"
+import { Mail, MessageCircle, UserPlus, X, Users } from "lucide-react"
 
 export default function CreateExpenseModal({ 
   isOpen, 
@@ -15,13 +16,23 @@ export default function CreateExpenseModal({
     name: '',
     description: '',
     total_amount: '',
-    split_type: 'equal' as SplitType,
-    create_group_chat: false
+    split_type: 'equal' as SplitType
   })
   const [selectedFriends, setSelectedFriends] = useState<string[]>([])
   const [customAmounts, setCustomAmounts] = useState<{ [friendId: string]: string }>({})
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string>('')
+
+  // Invite state
+  const [invites, setInvites] = useState<Array<{
+    id: string;
+    method: 'email' | 'whatsapp';
+    contact: string;
+    message?: string;
+  }>>([])
+  const [newInviteMethod, setNewInviteMethod] = useState<'email' | 'whatsapp'>('email')
+  const [newInviteContact, setNewInviteContact] = useState('')
+  const [newInviteMessage, setNewInviteMessage] = useState('')
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -30,12 +41,16 @@ export default function CreateExpenseModal({
         name: '',
         description: '',
         total_amount: '',
-        split_type: 'equal',
-        create_group_chat: false
+        split_type: 'equal'
       })
       setSelectedFriends([])
       setCustomAmounts({})
       setError('')
+      // Reset invite state
+      setInvites([])
+      setNewInviteMethod('email')
+      setNewInviteContact('')
+      setNewInviteMessage('')
     }
   }, [isOpen])
 
@@ -76,6 +91,51 @@ export default function CreateExpenseModal({
     }))
   }
 
+  // Invite handling functions
+  const addInvite = () => {
+    if (!newInviteContact.trim()) return
+
+    // Validate contact based on method
+    if (newInviteMethod === 'email' && !newInviteContact.includes('@')) {
+      setError('Please enter a valid email address')
+      return
+    }
+    if (newInviteMethod === 'whatsapp' && newInviteContact.length < 8) {
+      setError('Please enter a valid phone number')
+      return
+    }
+
+    // Check for duplicates
+    if (invites.some(inv => inv.contact === newInviteContact.trim())) {
+      setError('This contact is already in the invite list')
+      return
+    }
+
+    const newInvite = {
+      id: Date.now().toString(),
+      method: newInviteMethod,
+      contact: newInviteContact.trim(),
+      message: newInviteMessage.trim() || undefined
+    }
+
+    setInvites(prev => [...prev, newInvite])
+    setNewInviteContact('')
+    setNewInviteMessage('')
+    setError('')
+  }
+
+  const removeInvite = (inviteId: string) => {
+    setInvites(prev => prev.filter(inv => inv.id !== inviteId))
+  }
+
+  const formatPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length > 0 && !phone.startsWith('+')) {
+      return '+' + cleaned;
+    }
+    return phone;
+  }
+
   const validateForm = () => {
     if (!formData.name.trim()) {
       setError('Expense name is required')
@@ -87,8 +147,8 @@ export default function CreateExpenseModal({
       return false
     }
     
-    if (selectedFriends.length === 0) {
-      setError('At least one friend must be selected')
+    if (selectedFriends.length === 0 && invites.length === 0) {
+      setError('Select friends or add invites to create a room')
       return false
     }
 
@@ -112,18 +172,28 @@ export default function CreateExpenseModal({
     setError('')
 
     try {
-      const customAmountsList = formData.split_type === 'custom' 
-        ? selectedFriends.map(friendId => parseFloat(customAmounts[friendId] || '0'))
-        : undefined
+      // For equal split, adjust the custom amounts
+      let adjustedParticipants = selectedFriends;
+      let customAmountsList = undefined;
+
+      if (formData.split_type === 'equal') {
+        // Don't include creator in the participants for equal split
+        // The backend will handle adding them with 0 owed
+        customAmountsList = undefined;
+      } else if (formData.split_type === 'custom') {
+        customAmountsList = selectedFriends.map(friendId => 
+          parseFloat(customAmounts[friendId] || '0')
+        );
+      }
 
       await onCreateExpense({
         name: formData.name,
         description: formData.description || undefined,
         total_amount: parseFloat(formData.total_amount),
         split_type: formData.split_type,
-        participants: selectedFriends,
+        participants: adjustedParticipants,
         custom_amounts: customAmountsList,
-        create_group_chat: formData.create_group_chat
+        invites: invites.length > 0 ? invites : undefined
       })
 
       onClose()
@@ -137,124 +207,117 @@ export default function CreateExpenseModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="roomeo-card max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-slide-up">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="roomeo-heading text-2xl flex items-center gap-2">
-              <span>🏠</span> Create Room
-            </h2>
+            <h2 className="text-2xl font-black text-black tracking-tight">CREATE EXPENSE ROOM</h2>
             <button
               onClick={onClose}
-              className="roomeo-interactive text-emerald-primary/60 hover:text-emerald-primary hover:no-underline p-2 rounded-lg hover:bg-sage/10"
+              className="text-gray-400 hover:text-gray-600 transition-colors"
             >
-              <span className="text-xl">✕</span>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-alert-red/10 border border-alert-red/20 rounded-xl animate-slide-up">
-              <div className="flex items-center gap-2">
-                <span className="text-alert-red text-lg">⚠️</span>
-                <span className="roomeo-body text-alert-red text-sm font-medium">{error}</span>
-              </div>
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {error}
             </div>
           )}
 
           <div className="space-y-6">
             {/* Expense Details */}
-            <div className="space-y-4">
-              <div>
-                <label className="roomeo-body font-semibold text-emerald-primary mb-3 block flex items-center gap-2">
-                  <span>🏷️</span> Room Name *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Pizza Night, Rent Split, Trip Expenses..."
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-4 py-3 bg-mint-cream border border-sage/30 rounded-xl roomeo-body text-emerald-primary placeholder:text-emerald-primary/50 focus:outline-none focus:ring-2 focus:ring-gold-accent focus:border-transparent transition-all"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Expense Name *
+              </label>
+              <Input
+                type="text"
+                placeholder="e.g., Rent, Groceries, Dinner..."
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full"
+              />
+            </div>
 
-              <div>
-                <label className="roomeo-body font-semibold text-emerald-primary mb-3 block flex items-center gap-2">
-                  <span>📝</span> Description
-                </label>
-                <input
-                  type="text"
-                  placeholder="Add some details about this expense..."
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-4 py-3 bg-mint-cream border border-sage/30 rounded-xl roomeo-body text-emerald-primary placeholder:text-emerald-primary/50 focus:outline-none focus:ring-2 focus:ring-gold-accent focus:border-transparent transition-all"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Description
+              </label>
+              <Input
+                type="text"
+                placeholder="Optional description..."
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                className="w-full"
+              />
+            </div>
 
-              <div>
-                <label className="roomeo-body font-semibold text-emerald-primary mb-3 block flex items-center gap-2">
-                  <span>💰</span> Total Amount *
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 roomeo-body text-emerald-primary/60 text-lg">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={formData.total_amount}
-                    onChange={(e) => setFormData(prev => ({ ...prev, total_amount: e.target.value }))}
-                    className="w-full pl-10 pr-4 py-3 bg-mint-cream border border-sage/30 rounded-xl roomeo-body text-emerald-primary placeholder:text-emerald-primary/50 focus:outline-none focus:ring-2 focus:ring-gold-accent focus:border-transparent transition-all"
-                  />
-                </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Total Amount *
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={formData.total_amount}
+                  onChange={(e) => setFormData(prev => ({ ...prev, total_amount: e.target.value }))}
+                  className="pl-8"
+                />
               </div>
             </div>
 
             {/* Split Type */}
             <div>
-              <label className="roomeo-body font-semibold text-emerald-primary mb-4 block flex items-center gap-2">
-                <span>⚖️</span> How to split?
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                How to split?
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setFormData(prev => ({ ...prev, split_type: 'equal' }))}
-                  className={`p-4 rounded-xl roomeo-body font-semibold transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 ${
+                  className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
                     formData.split_type === 'equal'
-                      ? 'roomeo-button-primary'
-                      : 'roomeo-button-secondary'
+                      ? 'border-[#F05224] bg-[#F05224] text-white'
+                      : 'border-gray-200 text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  <span>🍽️</span> Equal Split
+                  Equal Split
                 </button>
                 <button
                   type="button"
                   onClick={() => setFormData(prev => ({ ...prev, split_type: 'custom' }))}
-                  className={`p-4 rounded-xl roomeo-body font-semibold transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 ${
+                  className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
                     formData.split_type === 'custom'
-                      ? 'roomeo-button-primary'
-                      : 'roomeo-button-secondary'
+                      ? 'border-[#F05224] bg-[#F05224] text-white'
+                      : 'border-gray-200 text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  <span>🎯</span> Custom Amounts
+                  Custom Amounts
                 </button>
               </div>
             </div>
 
             {/* Friends Selection */}
             <div>
-              <label className="roomeo-body font-semibold text-emerald-primary mb-4 block flex items-center gap-2">
-                <span>👥</span> Select Friends * 
-                <span className="text-gold-accent">({selectedFriends.length} selected)</span>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Select Friends * ({selectedFriends.length} selected)
               </label>
               
               {friends.length === 0 ? (
-                <div className="text-center py-12 bg-sage/5 rounded-xl border border-sage/20">
-                  <div className="text-4xl mb-4">😢</div>
-                  <p className="roomeo-body text-emerald-primary/60">No friends available.</p>
-                  <p className="roomeo-body text-emerald-primary/50 text-sm mt-1">Add friends first to split expenses with them.</p>
+                <div className="text-center py-8 text-gray-500">
+                  <p>No friends available.</p>
+                  <p className="text-sm mt-1">Add friends first to split expenses with them.</p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                <div className="space-y-3 max-h-64 overflow-y-auto">
                   {friends.map(friend => {
                     const isSelected = selectedFriends.includes(friend.id)
                     const customAmount = customAmounts[friend.id] || ''
@@ -262,38 +325,36 @@ export default function CreateExpenseModal({
                     return (
                       <div
                         key={friend.id}
-                        className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:shadow-card ${
+                        className={`flex items-center justify-between p-3 border-2 rounded-lg transition-all ${
                           isSelected
-                            ? 'border-emerald-primary bg-emerald-primary/5 shadow-soft'
-                            : 'border-sage/30 hover:border-sage/50 bg-white'
+                            ? 'border-[#F05224] bg-orange-50'
+                            : 'border-gray-200 hover:border-gray-300'
                         }`}
-                        onClick={() => handleFriendToggle(friend.id)}
                       >
-                        <div className="flex items-center gap-4">
-                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                            isSelected 
-                              ? 'bg-emerald-primary border-emerald-primary' 
-                              : 'border-sage/50'
-                          }`}>
-                            {isSelected && <span className="text-white text-xs">✓</span>}
-                          </div>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleFriendToggle(friend.id)}
+                            className="w-4 h-4 text-[#F05224] border-gray-300 rounded focus:ring-[#F05224]"
+                          />
                           <div className="flex items-center gap-3">
                             <div
-                              className="w-12 h-12 rounded-full bg-sage/30 bg-cover bg-center border-2 border-white shadow-sm"
+                              className="w-10 h-10 rounded-full bg-gray-200 bg-cover bg-center"
                               style={{
                                 backgroundImage: friend.profilePicture
                                   ? `url("${friend.profilePicture}")`
                                   : 'url("/placeholder.svg?height=40&width=40")'
                               }}
                             />
-                            <span className="roomeo-body font-semibold text-emerald-primary">{friend.name}</span>
+                            <span className="font-medium text-gray-900">{friend.name}</span>
                           </div>
                         </div>
                         
                         {isSelected && (
-                          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                            <span className="roomeo-body text-emerald-primary/60">$</span>
-                            <input
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600">$</span>
+                            <Input
                               type="number"
                               step="0.01"
                               min="0"
@@ -301,9 +362,7 @@ export default function CreateExpenseModal({
                               value={customAmount}
                               onChange={(e) => handleCustomAmountChange(friend.id, e.target.value)}
                               disabled={formData.split_type === 'equal'}
-                              className={`w-20 px-2 py-1 text-sm bg-mint-cream border border-sage/30 rounded-lg roomeo-body text-emerald-primary focus:outline-none focus:ring-2 focus:ring-gold-accent transition-all ${
-                                formData.split_type === 'equal' ? 'opacity-50 cursor-not-allowed' : ''
-                              }`}
+                              className="w-20 text-sm"
                             />
                           </div>
                         )}
@@ -314,54 +373,154 @@ export default function CreateExpenseModal({
               )}
             </div>
 
-            {/* Group Chat Option */}
-            <div className="flex items-center gap-4 p-4 bg-gold-accent/5 border border-gold-accent/20 rounded-xl">
-              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all cursor-pointer ${
-                formData.create_group_chat 
-                  ? 'bg-emerald-primary border-emerald-primary' 
-                  : 'border-sage/50'
-              }`}
-                onClick={() => setFormData(prev => ({ ...prev, create_group_chat: !prev.create_group_chat }))}
-              >
-                {formData.create_group_chat && <span className="text-white text-xs">✓</span>}
+            {/* Invite Section */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Invite People
+                </label>
+                <span className="text-xs text-gray-500">
+                  {invites.length > 0 && `${invites.length} pending invite${invites.length > 1 ? 's' : ''}`}
+                </span>
               </div>
-              <label className="roomeo-body font-semibold text-emerald-primary cursor-pointer flex items-center gap-2" 
-                onClick={() => setFormData(prev => ({ ...prev, create_group_chat: !prev.create_group_chat }))}
-              >
-                <span>💬</span> Create group chat for this room
-              </label>
+
+              {/* Add Invite Form */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-3">
+                <div className="space-y-3">
+                  {/* Method Selection */}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setNewInviteMethod('email')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        newInviteMethod === 'email'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Mail className="w-4 h-4" />
+                      Email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewInviteMethod('whatsapp')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        newInviteMethod === 'whatsapp'
+                          ? 'bg-green-500 text-white'
+                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      WhatsApp
+                    </button>
+                  </div>
+
+                  {/* Contact Input */}
+                  <div className="flex gap-2">
+                    <Input
+                      type={newInviteMethod === 'email' ? 'email' : 'tel'}
+                      placeholder={
+                        newInviteMethod === 'email' 
+                          ? 'friend@example.com' 
+                          : '+1 (555) 123-4567'
+                      }
+                      value={newInviteContact}
+                      onChange={(e) => setNewInviteContact(
+                        newInviteMethod === 'whatsapp' 
+                          ? formatPhoneNumber(e.target.value)
+                          : e.target.value
+                      )}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      onClick={addInvite}
+                      disabled={!newInviteContact.trim()}
+                      size="sm"
+                      className="bg-blue-500 hover:bg-blue-600 text-white"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  {/* Custom Message */}
+                  <Input
+                    placeholder="Custom message (optional)"
+                    value={newInviteMessage}
+                    onChange={(e) => setNewInviteMessage(e.target.value)}
+                    maxLength={200}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Invite List */}
+              {invites.length > 0 && (
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {invites.map((invite) => (
+                    <div
+                      key={invite.id}
+                      className="flex items-center justify-between p-2 bg-amber-50 border border-amber-200 rounded-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        {invite.method === 'email' ? (
+                          <Mail className="w-4 h-4 text-blue-500" />
+                        ) : (
+                          <MessageCircle className="w-4 h-4 text-green-500" />
+                        )}
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">
+                            {invite.contact}
+                          </span>
+                          {invite.message && (
+                            <p className="text-xs text-gray-600 truncate max-w-48">
+                              "{invite.message}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeInvite(invite.id)}
+                        className="text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {invites.length === 0 && (
+                <div className="text-center py-4 text-gray-500 border border-dashed border-gray-300 rounded-lg">
+                  <Users className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm">No invites added yet</p>
+                  <p className="text-xs text-gray-400">Invite people to join this expense room</p>
+                </div>
+              )}
             </div>
+
           </div>
 
           {/* Actions */}
-          <div className="flex gap-4 mt-8 pt-6 border-t border-sage/20">
-            <button
+          <div className="flex gap-3 mt-8">
+            <Button
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="flex-1 roomeo-button-secondary"
+              variant="outline"
+              className="flex-1"
             >
-              <span>❌</span> Cancel
-            </button>
-            <button
+              Cancel
+            </Button>
+            <Button
               type="button"
               onClick={handleSubmit}
-              disabled={isLoading || selectedFriends.length === 0}
-              className={`flex-1 roomeo-button-primary flex items-center justify-center gap-2 ${
-                isLoading || selectedFriends.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+              disabled={isLoading || (selectedFriends.length === 0 && invites.length === 0)}
+              className="flex-1 bg-[#F05224] hover:bg-[#D63E1A] text-white font-semibold border-2 border-black shadow-[4px_4px_0px_0px_#000000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#000000]"
             >
-              {isLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-gold-accent border-t-transparent"></div>
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <span>🚀</span> Create Room
-                </>
-              )}
-            </button>
+              {isLoading ? 'Creating...' : 'Create Room'}
+            </Button>
           </div>
         </div>
       </div>

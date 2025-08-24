@@ -60,14 +60,13 @@ export default function UserCard({
   const handleAcceptRequest = async (requestId: string) => {
     setLoading(true)
     try {
-      const response = await authAPI.patch(`/api/friends/requests/${requestId}`, { action: 'accept' })
+      const result = await acceptFriendRequest(requestId)
 
-      if (response.ok) {
+      if (result.success) {
         setLocalStatus('friend')
         onActionComplete()
       } else {
-        const error = await response.json()
-        console.error('Failed to accept friend request:', error.error)
+        console.error('Failed to accept friend request:', result.error)
       }
     } catch (error) {
       console.error('Error accepting friend request:', error)
@@ -79,14 +78,13 @@ export default function UserCard({
   const handleDeclineRequest = async (requestId: string) => {
     setLoading(true)
     try {
-      const response = await authAPI.patch(`/api/friends/requests/${requestId}`, { action: 'decline' })
+      const result = await declineFriendRequest(requestId)
 
-      if (response.ok) {
+      if (result.success) {
         setLocalStatus('stranger')
         onActionComplete()
       } else {
-        const error = await response.json()
-        console.error('Failed to decline friend request:', error.error)
+        console.error('Failed to decline friend request:', result.error)
       }
     } catch (error) {
       console.error('Error declining friend request:', error)

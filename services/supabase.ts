@@ -58,38 +58,31 @@ export async function updateUserProfile(uid: string, updates: any): Promise<bool
       return false;
     }
     
-    // Convert camelCase field names to lowercase to match database schema
+    // Convert ALL camelCase field names to lowercase to match database schema
     const convertedUpdates = { ...updates };
     
-    // Fix common camelCase mismatches
-    if (convertedUpdates.profilePicture !== undefined) {
-      convertedUpdates.profilepicture = convertedUpdates.profilePicture;
-      delete convertedUpdates.profilePicture;
-    }
-    if (convertedUpdates.userType !== undefined) {
-      convertedUpdates.usertype = convertedUpdates.userType;
-      delete convertedUpdates.userType;
-    }
-    if (convertedUpdates.updatedAt !== undefined) {
-      convertedUpdates.updatedat = convertedUpdates.updatedAt;
-      delete convertedUpdates.updatedAt;
-    }
-    if (convertedUpdates.createdAt !== undefined) {
-      convertedUpdates.createdat = convertedUpdates.createdAt;
-      delete convertedUpdates.createdAt;
-    }
-    if (convertedUpdates.isVerified !== undefined) {
-      convertedUpdates.isverified = convertedUpdates.isVerified;
-      delete convertedUpdates.isVerified;
-    }
-    if (convertedUpdates.housingStatus !== undefined) {
-      convertedUpdates.housingstatus = convertedUpdates.housingStatus;
-      delete convertedUpdates.housingStatus;
-    }
+    // COMPLETE conversion map for all known fields
+    const fieldConversions: { [key: string]: string } = {
+      'profilePicture': 'profilepicture',
+      'userType': 'usertype', 
+      'updatedAt': 'updatedat',
+      'createdAt': 'createdat',
+      'isVerified': 'isverified',
+      'universityAffiliation': 'universityaffiliation',
+      'professionalStatus': 'professionalstatus'
+    };
     
+    // Apply all conversions
+    Object.keys(fieldConversions).forEach(camelCase => {
+      if (convertedUpdates[camelCase] !== undefined) {
+        convertedUpdates[fieldConversions[camelCase]] = convertedUpdates[camelCase];
+        delete convertedUpdates[camelCase];
+      }
+    });
+    
+    // Prepare update data without automatic timestamp
     const updateData = {
-      ...convertedUpdates,
-      updatedat: new Date().toISOString()
+      ...convertedUpdates
     };
     
     console.log("🔄 About to update with data:", updateData);
@@ -149,28 +142,37 @@ export async function createUserProfile(userData: any): Promise<boolean> {
     }
     console.log("✅ Users table is accessible");
     
-    // Debug: Check existing policies
-    console.log("🔍 Checking RLS policies...");
-    const { data: policies, error: policyError } = await supabase
-      .rpc('get_policies_for_table', { table_name: 'users' })
-      .then(
-        result => result,
-        () => ({ data: null, error: { message: "RPC not available - this is normal" } })
-      );
+    // Convert camelCase to lowercase for database compatibility
+    const convertedUserData = { ...userData };
+    const fieldConversions: { [key: string]: string } = {
+      'profilePicture': 'profilepicture',
+      'userType': 'usertype', 
+      'updatedAt': 'updatedat',
+      'createdAt': 'createdat',
+      'isVerified': 'isverified',
+      'universityAffiliation': 'universityaffiliation',
+      'professionalStatus': 'professionalstatus'
+    };
     
-    console.log("🔍 Policies check result:", policies, policyError);
+    // Apply all conversions
+    Object.keys(fieldConversions).forEach(camelCase => {
+      if (convertedUserData[camelCase] !== undefined) {
+        convertedUserData[fieldConversions[camelCase]] = convertedUserData[camelCase];
+        delete convertedUserData[camelCase];
+      }
+    });
     
     // Debug: Log the exact insert data and structure
     console.log("🔍 About to insert this exact data:");
-    console.log("📋 Data keys:", Object.keys(userData));
-    console.log("📋 Data values:", Object.values(userData));
-    console.log("📋 Full data object:", JSON.stringify(userData, null, 2));
+    console.log("📋 Data keys:", Object.keys(convertedUserData));
+    console.log("📋 Data values:", Object.values(convertedUserData));
+    console.log("📋 Full data object:", JSON.stringify(convertedUserData, null, 2));
     
     // Attempt the insert with detailed error catching
     console.log("🔄 Attempting insert...");
     const { data: insertResult, error } = await supabase
       .from('users')
-      .insert(userData)
+      .insert(convertedUserData)
       .select(); // Return the inserted data to confirm it worked
 
     if (error) {
@@ -184,7 +186,7 @@ export async function createUserProfile(userData: any): Promise<boolean> {
       // Additional debugging for common error codes
       if (error.code === '42501') {
         console.error("🚨 PERMISSION DENIED: RLS policy is blocking this insert");
-        console.error("🔍 Check if auth.uid() matches the id field:", userData.id);
+        console.error("🔍 Check if auth.uid() matches the id field:", convertedUserData.id);
       }
       if (error.code === '23505') {
         console.error("🚨 UNIQUE CONSTRAINT VIOLATION: User already exists");
@@ -232,7 +234,10 @@ export async function ensureUserProfile(uid: string, email: string, name: string
       age: null,
       bio: "",
       location: "",
+      area: "",
       budget: null,
+      universityaffiliation: "",
+      professionalstatus: "",
       preferences: {
         smoking: false,
         drinking: false,
@@ -262,4 +267,4 @@ export async function ensureUserProfile(uid: string, email: string, name: string
     console.error("❌ Error ensuring user profile:", error);
     return false;
   }
-} 
+}

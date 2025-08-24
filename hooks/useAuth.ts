@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { User, createFallbackUser } from "@/types/user";
 import { getUserProfile, ensureUserProfile } from "@/services/supabase";
 import type { AuthChangeEvent, Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { normalizeAvatarUrl } from "@/lib/avatarUtils";
 
 interface AuthState {
   user: User | null;
@@ -70,13 +71,20 @@ export function useAuth() {
       const profile = await getUserProfile(supabaseUser.id);
       
       if (profile) {
+        const rawProfilePictureUrl = profile.profilepicture || supabaseUser.user_metadata?.avatar_url || "";
+        const profilePictureUrl = normalizeAvatarUrl(rawProfilePictureUrl);
+        console.log("🔍 Loading user profile picture:");
+        console.log("   - Raw URL:", rawProfilePictureUrl);
+        console.log("   - Normalized URL:", profilePictureUrl);
+        console.log("🔍 Raw profile data:", JSON.stringify(profile, null, 2));
+        
         return {
           id: supabaseUser.id,
           uid: supabaseUser.id,
           email: supabaseUser.email ?? null,
           name: profile.name || supabaseUser.user_metadata?.full_name || "",
           userType: profile.usertype,
-          profilePicture: profile.profilepicture || supabaseUser.user_metadata?.avatar_url || "",
+          profilePicture: profilePictureUrl,
           createdAt: profile.createdat ? new Date(profile.createdat) : undefined,
           updatedAt: profile.updatedat ? new Date(profile.updatedat) : undefined,
           age: profile.age,
@@ -110,7 +118,7 @@ export function useAuth() {
             email: supabaseUser.email ?? null,
             name: newProfile.name || supabaseUser.user_metadata?.full_name || "",
             userType: newProfile.usertype,
-            profilePicture: newProfile.profilepicture || supabaseUser.user_metadata?.avatar_url || "",
+            profilePicture: normalizeAvatarUrl(newProfile.profilepicture || supabaseUser.user_metadata?.avatar_url || ""),
             createdAt: newProfile.createdat ? new Date(newProfile.createdat) : undefined,
             updatedAt: newProfile.updatedat ? new Date(newProfile.updatedat) : undefined,
             age: newProfile.age,
@@ -466,27 +474,36 @@ export function useAuth() {
   // User refresh utility
   const refreshUser = useCallback(async () => {
     try {
-      console.log("Manually refreshing user data...");
+      console.log("🔄 Manually refreshing user data...");
       const { data: { user: authUser }, error } = await supabase.auth.getUser();
       
       if (error) throw error;
       if (!authUser) {
-        console.log("No authenticated user found");
+        console.log("❌ No authenticated user found");
         return false;
       }
 
       // Force reload the profile from database
+      console.log("🔄 Force reloading profile from database...");
       const loadedUser = await loadUserProfile(authUser);
       if (loadedUser) {
-        console.log("User data refreshed successfully");
+        console.log("✅ User data refreshed successfully");
+        console.log("🔍 Refreshed user profile picture:", loadedUser.profilePicture);
+        
+        // Update the state with fresh data
+        setState(prev => ({
+          ...prev,
+          user: loadedUser
+        }));
+        
         return true;
       }
       return false;
     } catch (error) {
-      console.error("User refresh failed:", error);
+      console.error("❌ User refresh failed:", error);
       return false;
     }
-  }, []);
+  }, [loadUserProfile]);
 
   return {
     user: state.user,

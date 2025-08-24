@@ -1,9 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx next lint:*)"
+      "Bash(npm run build:*)"
     ],
-    "deny": [],
-    "ask": []
+    "deny": []
   }
 }

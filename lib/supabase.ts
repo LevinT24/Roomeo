@@ -1,8 +1,8 @@
 // lib/supabase.ts - Enhanced client-side Supabase configuration with robust session management
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://pzolweuvoyzyrzeozsxq.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b2x3ZXV2b3l6eXJ6ZW96c3hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM3NTg5MjUsImV4cCI6MjA2OTMzNDkyNX0.rm8C9aqUAhq1wAE3BZuEERZ0Mz3bYRFWNSOEws07s70'
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 // Enhanced session storage wrapper
 class SupabaseStorage {
@@ -354,6 +354,57 @@ export const connectionMonitor = {
 
     return () => clearInterval(checkInterval)
   }
+}
+
+// Server-side Supabase client for API routes
+export function supabaseServer(serviceRoleKey?: string) {
+  // Import server-side dependencies dynamically to avoid client-side issues
+  const { createServerClient } = require('@supabase/ssr');
+  const { cookies } = require('next/headers');
+  
+  const cookieStore = cookies();
+  
+  // If service role key is provided, use it for admin operations
+  if (serviceRoleKey) {
+    return createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      serviceRoleKey,
+      {
+        cookies: {
+          getAll() {
+            return [];
+          },
+          setAll() {
+            // No-op for service role
+          },
+        },
+      }
+    );
+  }
+  
+  // Regular authenticated client
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {
+            // The `setAll` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+      },
+    }
+  );
 }
 
 // Test function to verify client setup
