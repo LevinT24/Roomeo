@@ -474,7 +474,7 @@ export default function CreateExpenseModal({
                           </span>
                           {invite.message && (
                             <p className="text-xs text-gray-600 truncate max-w-48">
-                              "{invite.message}"
+                              &quot;{invite.message}&quot;
                             </p>
                           )}
                         </div>

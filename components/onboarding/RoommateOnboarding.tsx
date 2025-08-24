@@ -1,21 +1,21 @@
-"use client"
+"[^"]*"
 
-import { useState, useCallback } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { CheckCircle } from "lucide-react"
-import RoleSelection from "./RoleSelection"
-import ProfileSetupForm from "./ProfileSetupForm"
-import { useToast } from "@/hooks/use-toast"
-import type { UserRole, ProfileFormData, RoomDetailsFormData, SeekerPreferencesFormData } from "@/types/roommate"
+import { useState, useCallback } from "[^"]*"
+import { motion, AnimatePresence } from "[^"]*"
+import { CheckCircle } from "[^"]*"
+import RoleSelection from "[^"]*"
+import ProfileSetupForm from "[^"]*"
+import { useToast } from "[^"]*"
+import type { UserRole, ProfileFormData, RoomDetailsFormData, SeekerPreferencesFormData } from "[^"]*"
 
-type OnboardingStep = 'role-selection' | 'profile-setup' | 'completed'
+type OnboardingStep = &apos;role-selection&apos; | &apos;profile-setup&apos; | &apos;completed&apos;
 
 interface RoommateOnboardingProps {
   onComplete?: () => void
 }
 
 export default function RoommateOnboarding({ onComplete }: RoommateOnboardingProps) {
-  const [currentStep, setCurrentStep] = useState<OnboardingStep>('role-selection')
+  const [currentStep, setCurrentStep] = useState<OnboardingStep>(&apos;role-selection&apos;)
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
@@ -27,30 +27,30 @@ export default function RoommateOnboarding({ onComplete }: RoommateOnboardingPro
       setSelectedRole(role)
 
       // Set user role via API
-      const response = await fetch('/api/roommate/role', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch(&apos;/api/roommate/role&apos;, {
+        method: &apos;POST&apos;,
+        headers: { &apos;Content-Type&apos;: &apos;application/json&apos; },
         body: JSON.stringify({ role })
       })
 
       const data = await response.json()
 
       if (!data.success) {
-        throw new Error(data.error || 'Failed to set user role')
+        throw new Error(data.error || &apos;Failed to set user role&apos;)
       }
 
       // Move to profile setup
-      setCurrentStep('profile-setup')
+      setCurrentStep(&apos;profile-setup&apos;)
       toast({
-        title: "Role Selected",
-        description: `You're now a ${role}! Let's set up your profile.`,
+        title: "[^"]*",
+        description: `You&apos;re now a ${role}! Let&apos;s set up your profile.`,
       })
     } catch (error) {
-      console.error('Error setting role:', error)
+      console.error(&apos;Error setting role:&apos;, error)
       toast({
-        title: "Error",
-        description: "Failed to set your role. Please try again.",
-        variant: "destructive",
+        title: "[^"]*",
+        description: "[^"]*",
+        variant: "[^"]*",
       })
       setSelectedRole(null)
     } finally {
@@ -70,14 +70,14 @@ export default function RoommateOnboarding({ onComplete }: RoommateOnboardingPro
 
       // Prepare form data for multipart upload
       const formData = new FormData()
-      formData.append('profileData', JSON.stringify(profileData))
+      formData.append(&apos;profileData&apos;, JSON.stringify(profileData))
       
       if (roomData) {
-        formData.append('roomData', JSON.stringify(roomData))
+        formData.append(&apos;roomData&apos;, JSON.stringify(roomData))
       }
       
       if (preferences) {
-        formData.append('preferencesData', JSON.stringify(preferences))
+        formData.append(&apos;preferencesData&apos;, JSON.stringify(preferences))
       }
 
       // Add room images
@@ -88,8 +88,8 @@ export default function RoommateOnboarding({ onComplete }: RoommateOnboardingPro
       }
 
       // Submit profile
-      const response = await fetch('/api/roommate/profile', {
-        method: 'POST',
+      const response = await fetch(&apos;/api/roommate/profile&apos;, {
+        method: &apos;POST&apos;,
         body: formData
       })
 
@@ -98,17 +98,17 @@ export default function RoommateOnboarding({ onComplete }: RoommateOnboardingPro
       if (!data.success) {
         if (data.validation_errors) {
           // Handle validation errors
-          const errorMessages = Object.values(data.validation_errors).join(', ')
+          const errorMessages = Object.values(data.validation_errors).join(&apos;, &apos;)
           throw new Error(`Validation errors: ${errorMessages}`)
         }
-        throw new Error(data.error || 'Failed to setup profile')
+        throw new Error(data.error || &apos;Failed to setup profile&apos;)
       }
 
       // Success!
-      setCurrentStep('completed')
+      setCurrentStep(&apos;completed&apos;)
       toast({
         title: "Profile Complete! 🎉",
-        description: data.message || "Your profile has been set up successfully!",
+        description: data.message || "[^"]*",
         duration: 5000,
       })
 
@@ -117,11 +117,11 @@ export default function RoommateOnboarding({ onComplete }: RoommateOnboardingPro
         onComplete?.()
       }, 3000)
     } catch (error) {
-      console.error('Error completing profile:', error)
+      console.error(&apos;Error completing profile:&apos;, error)
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to complete profile setup.",
-        variant: "destructive",
+        title: "[^"]*",
+        description: error instanceof Error ? error.message : "[^"]*",
+        variant: "[^"]*",
       })
     } finally {
       setLoading(false)
@@ -129,12 +129,12 @@ export default function RoommateOnboarding({ onComplete }: RoommateOnboardingPro
   }, [toast, onComplete])
 
   return (
-    <div className="min-h-screen">
-      <AnimatePresence mode="wait">
+    <div className="[^"]*">
+      <AnimatePresence mode="[^"]*">
         {/* Role Selection Step */}
-        {currentStep === 'role-selection' && (
+        {currentStep === &apos;role-selection&apos; && (
           <motion.div
-            key="role-selection"
+            key="[^"]*"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -147,9 +147,9 @@ export default function RoommateOnboarding({ onComplete }: RoommateOnboardingPro
         )}
 
         {/* Profile Setup Step */}
-        {currentStep === 'profile-setup' && selectedRole && (
+        {currentStep === &apos;profile-setup&apos; && selectedRole && (
           <motion.div
-            key="profile-setup"
+            key="[^"]*"
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
@@ -163,29 +163,29 @@ export default function RoommateOnboarding({ onComplete }: RoommateOnboardingPro
         )}
 
         {/* Completion Step */}
-        {currentStep === 'completed' && (
+        {currentStep === &apos;completed&apos; && (
           <motion.div
-            key="completed"
+            key="[^"]*"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.1 }}
-            className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-100 flex items-center justify-center p-4"
+            className="[^"]*"
           >
-            <div className="max-w-lg w-full text-center">
+            <div className="[^"]*">
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6"
+                transition={{ delay: 0.2, type: "[^"]*", stiffness: 200 }}
+                className="[^"]*"
               >
-                <CheckCircle className="w-12 h-12 text-white" />
+                <CheckCircle className="[^"]*" />
               </motion.div>
 
               <motion.h1
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="text-3xl font-bold text-gray-900 mb-4"
+                className="[^"]*"
               >
                 Welcome to Roomeo! 🎉
               </motion.h1>
@@ -194,49 +194,49 @@ export default function RoommateOnboarding({ onComplete }: RoommateOnboardingPro
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 }}
-                className="text-lg text-gray-600 mb-6"
+                className="[^"]*"
               >
-                Your profile is now complete and you're ready to{' '}
-                {selectedRole === 'provider' 
-                  ? 'find the perfect roommate for your space!' 
-                  : 'discover amazing rooms and roommates!'}
+                Your profile is now complete and you&apos;re ready to{&apos; &apos;}
+                {selectedRole === &apos;provider&apos; 
+                  ? &apos;find the perfect roommate for your space!&apos; 
+                  : &apos;discover amazing rooms and roommates!&apos;}
               </motion.p>
 
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8 }}
-                className="bg-white rounded-xl p-6 shadow-lg border border-gray-100"
+                className="[^"]*"
               >
-                <h3 className="font-semibold text-gray-900 mb-3">What's next?</h3>
-                <div className="space-y-2 text-sm text-gray-600">
-                  {selectedRole === 'provider' ? (
+                <h3 className="[^"]*">What&apos;s next?</h3>
+                <div className="[^"]*">
+                  {selectedRole === &apos;provider&apos; ? (
                     <>
-                      <div className="flex items-center">
-                        <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
+                      <div className="[^"]*">
+                        <div className="[^"]*"></div>
                         Your room photos are live and visible to seekers
                       </div>
-                      <div className="flex items-center">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                      <div className="[^"]*">
+                        <div className="[^"]*"></div>
                         Browse seekers who match your preferences
                       </div>
-                      <div className="flex items-center">
-                        <div className="w-2 h-2 bg-purple-500 rounded-full mr-3"></div>
+                      <div className="[^"]*">
+                        <div className="[^"]*"></div>
                         Like profiles to get matched and start chatting
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className="flex items-center">
-                        <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
+                      <div className="[^"]*">
+                        <div className="[^"]*"></div>
                         Browse available rooms from providers
                       </div>
-                      <div className="flex items-center">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-                        Like rooms and roommates you're interested in
+                      <div className="[^"]*">
+                        <div className="[^"]*"></div>
+                        Like rooms and roommates you&apos;re interested in
                       </div>
-                      <div className="flex items-center">
-                        <div className="w-2 h-2 bg-purple-500 rounded-full mr-3"></div>
+                      <div className="[^"]*">
+                        <div className="[^"]*"></div>
                         Get matched and start your roommate journey
                       </div>
                     </>
@@ -248,7 +248,7 @@ export default function RoommateOnboarding({ onComplete }: RoommateOnboardingPro
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1.0 }}
-                className="mt-6 text-sm text-gray-500"
+                className="[^"]*"
               >
                 Redirecting you to the app in a few seconds...
               </motion.div>
