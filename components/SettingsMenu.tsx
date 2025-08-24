@@ -134,14 +134,14 @@ export default function SettingsMenu({ user }: SettingsMenuProps) {
   if (showDeleteConfirm) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-md border-4 border-red-500 shadow-[8px_8px_0px_0px_red] bg-red-100">
+        <Card className="w-full max-w-md border-4 border-red-500 shadow-[8px_8px_0px_0px_red] bg-[#F2F5F1]">
           <CardContent className="p-6 text-center">
-            <div className="w-16 h-16 bg-red-500 border-4 border-red-700 flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-red-500 border-4 border-[#004D40] flex items-center justify-center mx-auto mb-4 shadow-[4px_4px_0px_0px_#004D40]">
               <Trash2 className="h-8 w-8 text-white" />
             </div>
             
-            <h2 className="text-2xl font-black text-red-700 mb-4">DELETE ACCOUNT</h2>
-            <p className="text-red-700 font-bold mb-6">
+            <h2 className="text-2xl font-black text-[#004D40] mb-4">DELETE ACCOUNT</h2>
+            <p className="text-[#004D40] font-bold mb-6">
               Are you sure you want to permanently delete your account? This action cannot be undone.
             </p>
             
@@ -149,14 +149,14 @@ export default function SettingsMenu({ user }: SettingsMenuProps) {
               <Button
                 onClick={handleDeleteAccount}
                 disabled={isDeleting}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black border-2 border-red-700 shadow-[4px_4px_0px_0px_red] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_red] transition-all"
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-black border-2 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all"
               >
                 {isDeleting ? "DELETING..." : "DELETE FOREVER"}
               </Button>
               <Button
                 onClick={() => setShowDeleteConfirm(false)}
                 variant="outline"
-                className="flex-1 border-2 border-red-700 text-red-700 hover:bg-red-700 hover:text-white font-black"
+                className="flex-1 border-2 border-[#004D40] text-[#004D40] hover:bg-[#004D40] hover:text-[#F2F5F1] font-black shadow-[2px_2px_0px_0px_#004D40] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#004D40] transition-all"
               >
                 CANCEL
               </Button>
@@ -185,7 +185,7 @@ export default function SettingsMenu({ user }: SettingsMenuProps) {
     <div className="relative">
       <Button
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-[#004D40] hover:bg-[#004D40]/80 text-[#F2F5F1] border-2 border-[#F2F5F1] shadow-[4px_4px_0px_0px_#F2F5F1] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#F2F5F1] transition-all p-3"
+        className="bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] border-2 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all p-3 font-black"
       >
         <Settings className="h-5 w-5" />
       </Button>
@@ -210,19 +210,18 @@ export default function SettingsMenu({ user }: SettingsMenuProps) {
                     setShowProfileView(true)
                     setIsOpen(false)
                   }}
-                  className="w-full justify-start bg-transparent hover:bg-[#44C76F]/20 text-[#004D40] font-black border-2 border-[#004D40] shadow-[2px_2px_0px_0px_#004D40] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#004D40] transition-all"
+                  className="w-full justify-start bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black border-2 border-[#004D40] shadow-[3px_3px_0px_0px_#004D40] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#004D40] transition-all"
                 >
                   <Eye className="h-4 w-4 mr-2" />
                   VIEW & EDIT PROFILE
                 </Button>
-
                 
                 <Button
                   onClick={() => {
                     setShowDeleteConfirm(true)
                     setIsOpen(false)
                   }}
-                  className="w-full justify-start bg-transparent hover:bg-red-100 text-red-600 font-black border-2 border-red-600 shadow-[2px_2px_0px_0px_red] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_red] transition-all"
+                  className="w-full justify-start bg-red-100 hover:bg-red-200 text-red-600 font-black border-2 border-red-500 shadow-[3px_3px_0px_0px_red] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_red] transition-all"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   DELETE ACCOUNT
@@ -230,7 +229,7 @@ export default function SettingsMenu({ user }: SettingsMenuProps) {
                 
                 <Button
                   onClick={handleSignOut}
-                  className="w-full justify-start bg-transparent hover:bg-[#004D40]/10 text-[#004D40] font-black border-2 border-[#004D40] shadow-[2px_2px_0px_0px_#004D40] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#004D40] transition-all"
+                  className="w-full justify-start bg-white hover:bg-gray-50 text-[#004D40] font-black border-2 border-[#004D40] shadow-[3px_3px_0px_0px_#004D40] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#004D40] transition-all"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
                   SIGN OUT
