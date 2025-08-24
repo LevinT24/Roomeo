@@ -206,7 +206,7 @@ function QuickStats({ balances, isVisible }: { balances: Balance[], isVisible: b
       <div className="bg-white rounded-2xl p-6 shadow-card border border-sage/20 hover:shadow-soft transition-all duration-300">
         <div className="flex items-center gap-3 mb-2">
           <span className="text-2xl">💰</span>
-          <h3 className="font-poppins font-semibold text-emerald-primary">You're Owed</h3>
+          <h3 className="font-poppins font-semibold text-emerald-primary">You&apos;re Owed</h3>
         </div>
         <p className="text-3xl font-bold text-moss-green">${totalToReceive.toFixed(2)}</p>
       </div>
@@ -474,7 +474,7 @@ function FriendsBalance({ balances, isVisible }: { balances: Balance[], isVisibl
       {/* You're Owed */}
       <div className="bg-white rounded-2xl p-6 shadow-card border border-sage/20">
         <h3 className="font-poppins font-semibold text-lg text-emerald-primary mb-4 flex items-center gap-2">
-          <span>💰</span> You're Owed
+          <span>💰</span> You&apos;re Owed
         </h3>
         {owedByFriends.length === 0 ? (
           <p className="text-emerald-primary/60 text-center py-6">All settled up! 🎉</p>

@@ -106,36 +106,35 @@ export default function ListingCard({
   if (showDeleteConfirm) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-md border-4 border-red-500 shadow-[8px_8px_0px_0px_red] bg-red-100">
-          <CardContent className="p-6 text-center">
-            <div className="w-16 h-16 bg-red-500 border-4 border-red-700 flex items-center justify-center mx-auto mb-4">
+        <div className="w-full max-w-md roomeo-card">
+          <div className="p-8 text-center">
+            <div className="w-16 h-16 bg-alert-red rounded-full flex items-center justify-center mx-auto mb-6">
               <Trash2 className="h-8 w-8 text-white" />
             </div>
             
-            <h2 className="text-2xl font-black text-red-700 mb-4">DELETE LISTING</h2>
-            <p className="text-red-700 font-bold mb-6">
+            <h2 className="roomeo-heading text-2xl mb-4">Delete Listing</h2>
+            <p className="roomeo-body text-emerald-primary/70 mb-8">
               Are you sure you want to delete &quot;{listing.title}&quot;? This action cannot be undone.
             </p>
             
             <div className="flex gap-3">
-              <Button
+              <button
                 onClick={handleDelete}
                 disabled={isUpdating}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black border-2 border-red-700 shadow-[4px_4px_0px_0px_red] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_red] transition-all"
+                className="flex-1 bg-alert-red hover:bg-alert-red/90 text-white roomeo-body font-semibold px-6 py-3 rounded-xl shadow-soft transition-all transform hover:scale-105"
               >
-                {isUpdating ? "DELETING..." : "DELETE FOREVER"}
-              </Button>
-              <Button
+                {isUpdating ? "Deleting..." : "Delete Forever"}
+              </button>
+              <button
                 onClick={() => setShowDeleteConfirm(false)}
-                variant="outline"
-                className="flex-1 border-2 border-red-700 text-red-700 hover:bg-red-700 hover:text-white font-black"
+                className="flex-1 roomeo-button-secondary"
                 disabled={isUpdating}
               >
-                CANCEL
-              </Button>
+                Cancel
+              </button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     )
   }
@@ -186,7 +185,7 @@ export default function ListingCard({
   }
 
   return (
-    <Card className="group cursor-pointer overflow-hidden bg-[#F2F5F1] border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40]">
+    <div className="roomeo-card group cursor-pointer overflow-hidden">
       <div className="relative">
         {/* Image Section */}
         <div className="relative aspect-square overflow-hidden">
@@ -251,14 +250,14 @@ export default function ListingCard({
 
         {/* Status Badge */}
         {listing.status === 'sold' && (
-          <Badge className="absolute top-2 left-2 bg-red-600 text-white font-black border-2 border-white shadow-[2px_2px_0px_0px_#000]">
+          <Badge className="absolute top-2 left-2 bg-alert-red text-white roomeo-body font-semibold px-3 py-1">
             SOLD
           </Badge>
         )}
 
         {/* Price Badge */}
-        <div className="absolute bottom-2 right-2 flex items-center justify-center rounded-full bg-[#44C76F] border-2 border-white p-2 shadow-[2px_2px_0px_0px_#000]">
-          <span className="text-sm font-black text-[#004D40]">{displayPrice}</span>
+        <div className="absolute bottom-2 right-2 flex items-center justify-center rounded-xl bg-emerald-primary border-2 border-white px-3 py-1 shadow-soft">
+          <span className="roomeo-body text-sm font-semibold text-gold-accent">{displayPrice}</span>
         </div>
 
         {/* Owner Actions Menu */}
@@ -281,49 +280,49 @@ export default function ListingCard({
                     className="fixed inset-0 z-10" 
                     onClick={() => setShowActionsMenu(false)}
                   />
-                  <Card className="absolute right-0 top-full mt-1 w-48 border-2 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] bg-[#F2F5F1] z-20">
-                    <CardContent className="p-2">
+                  <div className="absolute right-0 top-full mt-1 w-48 roomeo-card z-20">
+                    <div className="p-3">
                       <div className="space-y-1">
                         {listing.status === 'active' && (
-                          <Button
+                          <button
                             onClick={(e) => {
                               e.stopPropagation()
                               handleMarkAsSold()
                             }}
-                            className="w-full justify-start bg-transparent hover:bg-[#44C76F]/20 text-[#004D40] font-black border-none text-sm p-2"
+                            className="w-full flex items-center gap-2 px-3 py-2 roomeo-body text-emerald-primary hover:bg-moss-green/10 rounded-lg transition-colors"
                             disabled={isUpdating}
                           >
-                            <Check className="h-4 w-4 mr-2" />
-                            MARK AS SOLD
-                          </Button>
+                            <Check className="h-4 w-4" />
+                            Mark as Sold
+                          </button>
                         )}
                         
-                        <Button
+                        <button
                           onClick={(e) => {
                             e.stopPropagation()
                             onEdit?.(listing)
                             setShowActionsMenu(false)
                           }}
-                          className="w-full justify-start bg-transparent hover:bg-[#44C76F]/20 text-[#004D40] font-black border-none text-sm p-2"
+                          className="w-full flex items-center gap-2 px-3 py-2 roomeo-body text-emerald-primary hover:bg-moss-green/10 rounded-lg transition-colors"
                         >
-                          <Edit className="h-4 w-4 mr-2" />
-                          EDIT LISTING
-                        </Button>
+                          <Edit className="h-4 w-4" />
+                          Edit Listing
+                        </button>
                         
-                        <Button
+                        <button
                           onClick={(e) => {
                             e.stopPropagation()
                             setShowDeleteConfirm(true)
                             setShowActionsMenu(false)
                           }}
-                          className="w-full justify-start bg-transparent hover:bg-red-100 text-red-600 font-black border-none text-sm p-2"
+                          className="w-full flex items-center gap-2 px-3 py-2 roomeo-body text-alert-red hover:bg-alert-red/10 rounded-lg transition-colors"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          DELETE
-                        </Button>
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </button>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 </>
               )}
             </div>
@@ -332,16 +331,16 @@ export default function ListingCard({
       </div>
 
       {/* Content Section */}
-      <CardContent className="p-4">
-        <div className="space-y-3">
+      <div className="p-6">
+        <div className="space-y-4">
           {/* Title */}
-          <h3 className="font-black text-[#004D40] text-lg leading-tight transform -skew-x-1 line-clamp-2">
+          <h3 className="roomeo-heading text-lg leading-tight line-clamp-2">
             {listing.title}
           </h3>
 
           {/* Description */}
           {listing.description && (
-            <p className="text-sm font-bold text-gray-700 line-clamp-2">
+            <p className="roomeo-body text-emerald-primary/70 text-sm line-clamp-2">
               {listing.description}
             </p>
           )}
@@ -349,31 +348,26 @@ export default function ListingCard({
           {/* Location & Date */}
           <div className="flex items-center justify-between text-sm">
             {listing.location && (
-              <div className="flex items-center gap-1 text-gray-600 font-bold">
+              <div className="flex items-center gap-1 roomeo-body text-emerald-primary/60">
                 <MapPin className="h-3 w-3" />
                 <span>{listing.location}</span>
               </div>
             )}
-            <span className="text-gray-500 font-bold text-xs">
+            <span className="roomeo-body text-emerald-primary/50 text-xs">
               {formatDate(listing.created_at)}
             </span>
           </div>
 
           {/* Seller Info */}
           {listing.seller && (
-            <div className="flex items-center gap-2 py-2 border-t border-gray-200">
-              <div className="w-6 h-6 bg-[#44C76F] border-2 border-[#004D40] rounded-full flex items-center justify-center">
-                {listing.seller.profilePicture ? (
-                  <img
-                    src={listing.seller.profilePicture}
-                    alt={listing.seller.name}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  <UserIcon className="h-3 w-3 text-[#004D40]" />
-                )}
-              </div>
-              <span className="text-sm font-black text-[#004D40]">
+            <div className="flex items-center gap-3 py-3 border-t border-sage/30">
+              <div
+                className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 border-2 border-sage/30"
+                style={{
+                  backgroundImage: `url("${listing.seller.profilePicture || "/placeholder.svg?height=32&width=32"}")`,
+                }}
+              ></div>
+              <span className="roomeo-body font-semibold text-emerald-primary">
                 {isOwner ? 'You' : listing.seller.name}
               </span>
             </div>
@@ -381,19 +375,19 @@ export default function ListingCard({
 
           {/* Actions */}
           {!isOwner && listing.status === 'active' && (
-            <Button
+            <button
               onClick={(e) => {
                 e.stopPropagation()
                 onChatWithSeller?.(listing.created_by, listing.id)
               }}
-              className="w-full bg-[#004D40] hover:bg-[#004D40]/80 text-[#F2F5F1] font-black border-2 border-[#44C76F] shadow-[2px_2px_0px_0px_#44C76F] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#44C76F] transition-all"
+              className="w-full roomeo-button-primary flex items-center justify-center gap-2"
             >
-              <MessageCircle className="h-4 w-4 mr-2" />
-              CHAT WITH SELLER
-            </Button>
+              <MessageCircle className="h-4 w-4" />
+              <span>Chat with Seller</span>
+            </button>
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

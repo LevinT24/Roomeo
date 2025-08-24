@@ -1,4 +1,5 @@
-// services/chat.ts - Supabase Real-time Chat Service
+// services/chat.ts - DEPRECATED - Use enhanced-chat.ts instead
+// This file is kept for backward compatibility during migration
 import { supabase } from '@/lib/supabase'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 

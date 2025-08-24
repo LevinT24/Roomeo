@@ -193,7 +193,7 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
               )}
 
               {/* Balance Overview */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                 <div className="roomeo-card p-6 animate-slide-up">
                   <h2 className="roomeo-heading text-lg mb-4">💰 Your Balance</h2>
                   <div className="flex flex-col gap-4">
@@ -263,17 +263,102 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                 </div>
 
                 <div className="roomeo-card p-6 animate-slide-up">
-                  <h2 className="roomeo-heading text-lg mb-4">🎮 Quick Actions</h2>
-                  <div className="space-y-3">
-                    <button className="w-full roomeo-button-secondary text-sm py-2 flex items-center gap-2 justify-center">
-                      <span>🍕</span> Split Food Bill
-                    </button>
-                    <button className="w-full roomeo-button-secondary text-sm py-2 flex items-center gap-2 justify-center">
-                      <span>🏠</span> House Expenses
-                    </button>
-                    <button className="w-full roomeo-button-secondary text-sm py-2 flex items-center gap-2 justify-center">
-                      <span>🚕</span> Transportation
-                    </button>
+                  <h2 className="roomeo-heading text-lg mb-4">💰 You Owe</h2>
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
+                    {(() => {
+                      const friendDebts = new Map<string, { name: string, amount: number, profilePicture?: string }>()
+                      
+                      dashboardData.active_expenses.forEach(expense => {
+                        const userParticipant = expense.participants?.find(p => p.user_id === user.id)
+                        if (userParticipant && userParticipant.amount_owed > userParticipant.amount_paid) {
+                          const owedAmount = userParticipant.amount_owed - userParticipant.amount_paid
+                          const creatorName = expense.created_by_name || 'Unknown'
+                          const existing = friendDebts.get(expense.group_id)
+                          friendDebts.set(expense.group_id, {
+                            name: `${creatorName} (${expense.group_name})`,
+                            amount: owedAmount,
+                            profilePicture: undefined
+                          })
+                        }
+                      })
+
+                      const friendDebtArray = Array.from(friendDebts.entries()).map(([userId, data]) => ({ userId, ...data }))
+                      
+                      if (friendDebtArray.length === 0) {
+                        return (
+                          <div className="text-center py-4">
+                            <p className="roomeo-body text-emerald-primary/60">All settled up! 🎉</p>
+                          </div>
+                        )
+                      }
+
+                      return friendDebtArray.map(({ userId, name, amount, profilePicture }) => (
+                        <div key={userId} className="flex items-center justify-between p-3 bg-alert-red/10 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 border border-sage/30"
+                              style={{
+                                backgroundImage: `url("${profilePicture || "/placeholder.svg?height=32&width=32"}")`,
+                              }}
+                            ></div>
+                            <span className="roomeo-body text-sm font-medium">{name}</span>
+                          </div>
+                          <span className="roomeo-body text-sm font-bold text-alert-red">
+                            ${amount.toFixed(2)}
+                          </span>
+                        </div>
+                      ))
+                    })()}
+                  </div>
+                </div>
+
+                <div className="roomeo-card p-6 animate-slide-up">
+                  <h2 className="roomeo-heading text-lg mb-4">💸 Friends Owe You</h2>
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
+                    {(() => {
+                      const friendOwes = new Map<string, { name: string, amount: number, profilePicture?: string }>()
+                      
+                      dashboardData.active_expenses.forEach(expense => {
+                        expense.participants?.forEach(participant => {
+                          if (participant.user_id !== user.id && participant.amount_owed > participant.amount_paid) {
+                            const oweAmount = participant.amount_owed - participant.amount_paid
+                            const existing = friendOwes.get(participant.user_id)
+                            friendOwes.set(participant.user_id, {
+                              name: participant.name,
+                              amount: (existing?.amount || 0) + oweAmount,
+                              profilePicture: participant.profile_picture
+                            })
+                          }
+                        })
+                      })
+
+                      const friendOweArray = Array.from(friendOwes.entries()).map(([userId, data]) => ({ userId, ...data }))
+                      
+                      if (friendOweArray.length === 0) {
+                        return (
+                          <div className="text-center py-4">
+                            <p className="roomeo-body text-emerald-primary/60">No pending payments 💯</p>
+                          </div>
+                        )
+                      }
+
+                      return friendOweArray.map(({ userId, name, amount, profilePicture }) => (
+                        <div key={userId} className="flex items-center justify-between p-3 bg-roomeo-success/10 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 border border-sage/30"
+                              style={{
+                                backgroundImage: `url("${profilePicture || "/placeholder.svg?height=32&width=32"}")`,
+                              }}
+                            ></div>
+                            <span className="roomeo-body text-sm font-medium">{name}</span>
+                          </div>
+                          <span className="roomeo-body text-sm font-bold text-roomeo-success">
+                            ${amount.toFixed(2)}
+                          </span>
+                        </div>
+                      ))
+                    })()}
                   </div>
                 </div>
               </div>

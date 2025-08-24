@@ -5,16 +5,16 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { User } from "@/types/user"
 import { 
-  getUserChats, 
-  getChatMessages, 
-  sendMessage as sendChatMessage, 
-  createOrGetChat,
+  getUserEnhancedChats as getUserChats, 
+  getEnhancedMessages, 
+  sendEnhancedMessage as sendChatMessage, 
+  createOrGetEnhancedChat as createOrGetChat,
   subscribeToMessages,
   unsubscribeFromMessages,
   markMessagesAsRead,
-  type Chat,
-  type ChatMessage
-} from "@/services/chat"
+  type EnhancedChatMessage as ChatMessage,
+  type Chat
+} from "@/services/enhanced-chat"
 import { useAuth } from "@/hooks/useAuth"
 
 export function useChat(currentUser: User | null) {
@@ -69,7 +69,7 @@ export function useChat(currentUser: User | null) {
     try {
       console.log(`Loading messages for chat: ${chatId}`)
       
-      const result = await getChatMessages(chatId)
+      const result = await getEnhancedMessages(chatId)
       
       if (result.success && result.messages) {
         setMessages(prev => ({

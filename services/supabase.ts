@@ -82,6 +82,10 @@ export async function updateUserProfile(uid: string, updates: any): Promise<bool
       convertedUpdates.isverified = convertedUpdates.isVerified;
       delete convertedUpdates.isVerified;
     }
+    if (convertedUpdates.housingStatus !== undefined) {
+      convertedUpdates.housingstatus = convertedUpdates.housingStatus;
+      delete convertedUpdates.housingStatus;
+    }
     
     const updateData = {
       ...convertedUpdates,
