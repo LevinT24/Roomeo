@@ -56,10 +56,10 @@ export default function InvitePageContent({ invite, token }: InvitePageContentPr
             </svg>
           </div>
           
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">You're Invited!</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">You&apos;re Invited!</h1>
           
           <p className="text-gray-600 mb-6">
-            <strong>{invite.inviterName}</strong> invited you to join <strong>"{invite.groupName}"</strong> on Roomio.
+            <strong>{invite.inviterName}</strong> invited you to join <strong>&quot;{invite.groupName}&quot;</strong> on Roomio.
           </p>
           
           {error && (

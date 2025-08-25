@@ -117,7 +117,7 @@ export default function UserSearch({ user, onRequestUpdate }: UserSearchProps) {
             <Search className="w-12 h-12 text-[#004D40]/40 mx-auto mb-4" />
             <h3 className="font-black text-lg text-[#004D40] mb-2">NO RESULTS</h3>
             <p className="text-[#004D40]/60 font-bold text-sm">
-              No users found matching "{query.trim()}"
+              No users found matching &quot;{query.trim()}&quot;
             </p>
           </div>
         )}

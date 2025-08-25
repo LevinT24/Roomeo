@@ -164,3 +164,27 @@ export const getMutualMatches = async (userId: string): Promise<{ success: boole
     return { success: false, error: 'Failed to fetch mutual matches' }
   }
 }
+
+/**
+ * Remove a match (delete the like record) so the profile appears in discovery again
+ */
+export const removeMatch = async (userId: string, matchedUserId: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase
+      .from('matches')
+      .delete()
+      .eq('user_id', userId)
+      .eq('matched_user_id', matchedUserId)
+      .eq('liked', true)
+
+    if (error) {
+      console.error('Error removing match:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Unexpected error removing match:', error)
+    return { success: false, error: 'Failed to remove match' }
+  }
+}

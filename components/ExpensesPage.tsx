@@ -7,8 +7,6 @@ import ExpenseCard from "./expenses/ExpenseCard"
 import SettlementCard from "./expenses/SettlementCard"
 import CreateExpenseModal from "./expenses/CreateExpenseModal"
 import SettlementModal from "./expenses/SettlementModal"
-import SettlementHistory from "./expenses/SettlementHistory"
-import NotificationsDropdown from "./NotificationsDropdown"
 import { 
   ExpenseDashboardData, 
   ExpenseSummary, 
@@ -20,8 +18,7 @@ import {
   getExpenseDashboardData, 
   submitSettlement, 
   approveSettlement,
-  markParticipantPayment,
-  subscribeToExpenseUpdates
+  markParticipantPayment 
 } from "@/services/expenses"
 
 interface User {
@@ -45,11 +42,9 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false)
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [selectedExpense, setSelectedExpense] = useState<ExpenseSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string>('')
-  const [successMessage, setSuccessMessage] = useState<string>('')
 
   const { friends } = useFriends()
 
@@ -67,34 +62,10 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
     }
   }
 
-  // Load data on component mount and set up real-time subscriptions
+  // Load data on component mount
   useEffect(() => {
     fetchDashboardData()
-
-    // Set up real-time subscription for expense updates
-    const subscription = subscribeToExpenseUpdates(user.id, (payload) => {
-      console.log('Real-time expense update received:', payload)
-      // Refresh dashboard data when there's an update
-      fetchDashboardData()
-    })
-
-    // Cleanup subscription on unmount
-    return () => {
-      if (subscription && subscription.unsubscribe) {
-        subscription.unsubscribe()
-      }
-    }
-  }, [user.id])
-
-  // Auto-dismiss success message after 5 seconds
-  useEffect(() => {
-    if (successMessage) {
-      const timer = setTimeout(() => {
-        setSuccessMessage('')
-      }, 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [successMessage])
+  }, [])
 
   // Create expense group
   const handleCreateExpense = async (data: CreateExpenseGroupRequest) => {
@@ -103,7 +74,6 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
       if (result.success) {
         // Refresh dashboard data
         await fetchDashboardData()
-        setSuccessMessage('Expense room created successfully!')
       } else {
         throw new Error(result.message || 'Failed to create expense group')
       }
@@ -121,16 +91,13 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
     }
   }
 
-  // Submit settlement with improved feedback
+  // Submit settlement
   const handleSubmitSettlement = async (data: SubmitSettlementRequest) => {
     try {
       const result = await submitSettlement(data)
       if (result.success) {
         // Refresh dashboard data
         await fetchDashboardData()
-        setSuccessMessage('Payment submitted successfully! The expense creator will be notified.')
-        setIsSettlementModalOpen(false)
-        setSelectedExpense(null)
       } else {
         throw new Error(result.message || 'Failed to submit settlement')
       }
@@ -139,7 +106,7 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
     }
   }
 
-  // Approve/reject settlement with improved feedback
+  // Approve/reject settlement
   const handleApproveSettlement = async (settlementId: string, approved: boolean) => {
     try {
       const result = await approveSettlement({
@@ -149,7 +116,6 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
       if (result.success) {
         // Refresh dashboard data
         await fetchDashboardData()
-        setSuccessMessage(`Payment ${approved ? 'approved' : 'rejected'} successfully!`)
       } else {
         throw new Error(result.message || `Failed to ${approved ? 'approve' : 'reject'} settlement`)
       }
@@ -168,7 +134,6 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
       if (result.success) {
         // Refresh dashboard data to show updated payment status
         await fetchDashboardData()
-        setSuccessMessage(`Participant marked as ${paid ? 'paid' : 'unpaid'}`)
       } else {
         throw new Error(result.message || `Failed to mark participant as ${paid ? 'paid' : 'unpaid'}`)
       }
@@ -180,100 +145,46 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
 
   if (isLoading) {
     return (
-      <div className="bg-white text-black min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F05224] mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading expenses...</p>
+      <div className="bg-mint-cream min-h-screen flex items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-sage/30 border-t-emerald-primary mx-auto mb-6"></div>
+          <p className="roomeo-body text-emerald-primary/70 text-lg">Loading your expenses... 💸</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="bg-white text-black min-h-screen">
-      <div className="relative flex w-full min-h-screen flex-col overflow-x-hidden">
-        <div className="layout-container flex w-full grow flex-col">
-          <main className="flex-1 px-6 py-6 lg:px-12 xl:px-20 bg-white pb-20">
-            <div className="mx-auto max-w-6xl">
-              {/* Header with Notifications */}
+    <div className="bg-mint-cream min-h-screen">
+      <div className="relative flex size-full min-h-screen flex-col overflow-x-hidden">
+        <div className="layout-container flex h-full grow flex-col">
+          <main className="flex-1 px-6 py-6 lg:px-12 xl:px-20 bg-mint-cream min-h-screen overflow-y-auto">
+            <div className="mx-auto max-w-6xl animate-fade-in">
+              {/* Header */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-                <div>
-                  <h1 className="text-3xl font-black text-black tracking-tight mb-2 transform -skew-x-2">SPLITWISE</h1>
-                  <div className="w-20 h-2 bg-[#F05224] transform skew-x-12"></div>
+                <div className="animate-slide-up">
+                  <h1 className="roomeo-heading text-4xl mb-2">💸 Expense Tracker</h1>
+                  <p className="roomeo-body text-emerald-primary/70">Split bills with friends seamlessly</p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  {/* Notifications Dropdown */}
-                  <NotificationsDropdown userId={user.id} />
-                  <Button 
+                <div className="flex gap-3 animate-slide-up">
+                  <button 
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="flex w-full sm:w-auto min-w-[84px] items-center justify-center gap-2 rounded-md bg-[#F05224] px-4 sm:px-6 py-3 text-xs sm:text-sm font-black text-white border-2 sm:border-4 border-black shadow-[2px_2px_0px_0px_#000000] sm:shadow-[4px_4px_0px_0px_#000000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-[1px_1px_0px_0px_#000000] sm:hover:shadow-[2px_2px_0px_0px_#000000] hover:bg-[#D63E1A]"
+                    className="roomeo-button-primary flex items-center gap-2"
                   >
-                    <svg
-                      fill="currentColor"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      width="14"
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="sm:w-4 sm:h-4"
-                    >
-                      <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-                    </svg>
-                    CREATE ROOM
-                  </Button>
-                  
-                  <Button 
-                    onClick={() => setIsHistoryModalOpen(true)}
-                    className="flex w-full sm:w-auto min-w-[84px] items-center justify-center gap-2 rounded-md bg-black px-4 sm:px-6 py-3 text-xs sm:text-sm font-black text-white border-2 sm:border-4 border-[#F05224] shadow-[2px_2px_0px_0px_#F05224] sm:shadow-[4px_4px_0px_0px_#F05224] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-[1px_1px_0px_0px_#F05224] sm:hover:shadow-[2px_2px_0px_0px_#F05224] hover:bg-gray-800"
-                  >
-                    <svg
-                      fill="currentColor"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      width="14"
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="sm:w-4 sm:h-4"
-                    >
-                      <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
-                    </svg>
-                    HISTORY
-                  </Button>
+                    <span>➕</span>
+                    <span>Create Room</span>
+                  </button>
                 </div>
               </div>
 
-              {/* Success Message */}
-              {successMessage && (
-                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      <span>{successMessage}</span>
-                    </div>
-                    <button 
-                      onClick={() => setSuccessMessage('')}
-                      className="text-green-500 hover:text-green-700"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Error Message */}
               {error && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                <div className="mb-6 p-5 bg-alert-red/10 border border-alert-red/20 rounded-xl text-alert-red animate-slide-up">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                      </svg>
-                      <span>{error}</span>
-                    </div>
+                    <span className="roomeo-body font-medium">{error}</span>
                     <button 
                       onClick={() => setError('')}
-                      className="text-red-500 hover:text-red-700"
+                      className="roomeo-interactive text-alert-red hover:no-underline ml-4"
                     >
                       ✕
                     </button>
@@ -282,32 +193,32 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
               )}
 
               {/* Balance Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-                <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                  <h2 className="text-lg font-bold text-gray-900 mb-4">Your Balance</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                <div className="roomeo-card p-6 animate-slide-up">
+                  <h2 className="roomeo-heading text-lg mb-4">💰 Your Balance</h2>
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div
-                          className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-12"
+                          className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-12 border-2 border-sage/30"
                           style={{
                             backgroundImage: `url("${user?.profilePicture || "/placeholder.svg?height=48&width=48"}")`,
                           }}
                         ></div>
                         <div>
-                          <p className="font-semibold text-gray-800">Total</p>
-                          <p className={`text-sm font-medium ${
-                            dashboardData.total_owed > 0 ? 'text-orange-600' : 'text-emerald-500'
+                          <p className="roomeo-body font-semibold">Total</p>
+                          <p className={`roomeo-body text-sm font-medium ${
+                            dashboardData.total_owed > 0 ? 'text-roomeo-danger' : 'text-roomeo-success'
                           }`}>
                             {dashboardData.total_owed > 0 
                               ? `You owe $${dashboardData.total_owed.toFixed(2)}`
-                              : 'All settled up!'
+                              : 'All settled up! 🎉'
                             }
                           </p>
                         </div>
                       </div>
-                      <p className={`text-lg font-bold ${
-                        dashboardData.total_owed > 0 ? 'text-orange-600' : 'text-emerald-500'
+                      <p className={`text-xl font-bold ${
+                        dashboardData.total_owed > 0 ? 'text-roomeo-danger' : 'text-roomeo-success'
                       }`}>
                         {dashboardData.total_owed > 0 ? '-' : ''}$
                         {dashboardData.total_owed.toFixed(2)}
@@ -316,15 +227,15 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                     
                     {dashboardData.total_to_receive > 0 && (
                       <>
-                        <hr className="my-2 border-gray-200" />
+                        <hr className="my-2 border-sage/20" />
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-semibold text-gray-800">Pending Approvals</p>
-                            <p className="text-sm text-blue-600 font-medium">
+                            <p className="roomeo-body font-semibold">Pending Approvals</p>
+                            <p className="roomeo-body text-sm text-gold-accent font-medium">
                               ${dashboardData.total_to_receive.toFixed(2)} awaiting review
                             </p>
                           </div>
-                          <p className="text-lg font-bold text-blue-600">
+                          <p className="text-xl font-bold text-gold-accent">
                             +${dashboardData.total_to_receive.toFixed(2)}
                           </p>
                         </div>
@@ -333,21 +244,121 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                  <h2 className="text-lg font-bold text-gray-900 mb-4">Summary</h2>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Active Expenses</span>
-                      <span className="font-medium">{dashboardData.active_expenses.length}</span>
+                <div className="roomeo-card p-6 animate-slide-up">
+                  <h2 className="roomeo-heading text-lg mb-4">📊 Summary</h2>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-sage/10 rounded-lg">
+                      <span className="roomeo-body text-emerald-primary/70">🏠 Active Rooms</span>
+                      <span className="roomeo-body font-semibold text-emerald-primary">{dashboardData.active_expenses.length}</span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Pending Settlements</span>
-                      <span className="font-medium">{dashboardData.pending_settlements.length}</span>
+                    <div className="flex items-center justify-between p-3 bg-gold-accent/10 rounded-lg">
+                      <span className="roomeo-body text-emerald-primary/70">⏳ Pending Settlements</span>
+                      <span className="roomeo-body font-semibold text-emerald-primary">{dashboardData.pending_settlements.length}</span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Friends Available</span>
-                      <span className="font-medium">{friends.length}</span>
+                    <div className="flex items-center justify-between p-3 bg-moss-green/10 rounded-lg">
+                      <span className="roomeo-body text-emerald-primary/70">👥 Friends Available</span>
+                      <span className="roomeo-body font-semibold text-emerald-primary">{friends.length}</span>
                     </div>
+                  </div>
+                </div>
+
+                <div className="roomeo-card p-6 animate-slide-up">
+                  <h2 className="roomeo-heading text-lg mb-4">💰 You Owe</h2>
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
+                    {(() => {
+                      const friendDebts = new Map<string, { name: string, amount: number, profilePicture?: string }>()
+                      
+                      dashboardData.active_expenses.forEach(expense => {
+                        const userParticipant = expense.participants?.find(p => p.user_id === user.id)
+                        if (userParticipant && userParticipant.amount_owed > userParticipant.amount_paid) {
+                          const owedAmount = userParticipant.amount_owed - userParticipant.amount_paid
+                          const creatorName = expense.created_by_name || 'Unknown'
+                          const existing = friendDebts.get(expense.group_id)
+                          friendDebts.set(expense.group_id, {
+                            name: `${creatorName} (${expense.group_name})`,
+                            amount: owedAmount,
+                            profilePicture: undefined
+                          })
+                        }
+                      })
+
+                      const friendDebtArray = Array.from(friendDebts.entries()).map(([userId, data]) => ({ userId, ...data }))
+                      
+                      if (friendDebtArray.length === 0) {
+                        return (
+                          <div className="text-center py-4">
+                            <p className="roomeo-body text-emerald-primary/60">All settled up! 🎉</p>
+                          </div>
+                        )
+                      }
+
+                      return friendDebtArray.map(({ userId, name, amount, profilePicture }) => (
+                        <div key={userId} className="flex items-center justify-between p-3 bg-alert-red/10 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 border border-sage/30"
+                              style={{
+                                backgroundImage: `url("${profilePicture || "/placeholder.svg?height=32&width=32"}")`,
+                              }}
+                            ></div>
+                            <span className="roomeo-body text-sm font-medium">{name}</span>
+                          </div>
+                          <span className="roomeo-body text-sm font-bold text-alert-red">
+                            ${amount.toFixed(2)}
+                          </span>
+                        </div>
+                      ))
+                    })()}
+                  </div>
+                </div>
+
+                <div className="roomeo-card p-6 animate-slide-up">
+                  <h2 className="roomeo-heading text-lg mb-4">💸 Friends Owe You</h2>
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
+                    {(() => {
+                      const friendOwes = new Map<string, { name: string, amount: number, profilePicture?: string }>()
+                      
+                      dashboardData.active_expenses.forEach(expense => {
+                        expense.participants?.forEach(participant => {
+                          if (participant.user_id !== user.id && participant.amount_owed > participant.amount_paid) {
+                            const oweAmount = participant.amount_owed - participant.amount_paid
+                            const existing = friendOwes.get(participant.user_id)
+                            friendOwes.set(participant.user_id, {
+                              name: participant.name,
+                              amount: (existing?.amount || 0) + oweAmount,
+                              profilePicture: participant.profile_picture
+                            })
+                          }
+                        })
+                      })
+
+                      const friendOweArray = Array.from(friendOwes.entries()).map(([userId, data]) => ({ userId, ...data }))
+                      
+                      if (friendOweArray.length === 0) {
+                        return (
+                          <div className="text-center py-4">
+                            <p className="roomeo-body text-emerald-primary/60">No pending payments 💯</p>
+                          </div>
+                        )
+                      }
+
+                      return friendOweArray.map(({ userId, name, amount, profilePicture }) => (
+                        <div key={userId} className="flex items-center justify-between p-3 bg-roomeo-success/10 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 border border-sage/30"
+                              style={{
+                                backgroundImage: `url("${profilePicture || "/placeholder.svg?height=32&width=32"}")`,
+                              }}
+                            ></div>
+                            <span className="roomeo-body text-sm font-medium">{name}</span>
+                          </div>
+                          <span className="roomeo-body text-sm font-bold text-roomeo-success">
+                            ${amount.toFixed(2)}
+                          </span>
+                        </div>
+                      ))
+                    })()}
                   </div>
                 </div>
               </div>
@@ -355,54 +366,63 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
               {/* Active Expenses */}
               {dashboardData.active_expenses.length > 0 ? (
                 <section className="mb-10">
-                  <h2 className="text-2xl font-bold text-gray-900 tracking-tight mb-6">Active Expenses</h2>
+                  <div className="flex items-center gap-3 mb-6">
+                    <h2 className="roomeo-heading text-2xl">🏠 Active Rooms</h2>
+                    <div className="flex gap-2">
+                      <button className="text-xs px-3 py-1.5 rounded-full bg-emerald-primary text-gold-accent shadow-soft">🍕 All</button>
+                      <button className="text-xs px-3 py-1.5 rounded-full bg-sage/20 text-emerald-primary hover:bg-sage/30 transition-colors">🏠 House</button>
+                      <button className="text-xs px-3 py-1.5 rounded-full bg-sage/20 text-emerald-primary hover:bg-sage/30 transition-colors">🚕 Travel</button>
+                      <button className="text-xs px-3 py-1.5 rounded-full bg-sage/20 text-emerald-primary hover:bg-sage/30 transition-colors">🎮 Fun</button>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {dashboardData.active_expenses.map((expense) => (
-                      <ExpenseCard
-                        key={expense.group_id}
-                        expense={expense}
-                        onSettleUp={handleSettleUp}
-                        currentUserId={user.id}
-                        onMarkPaid={handleMarkPaid}
-                      />
+                    {dashboardData.active_expenses.map((expense, index) => (
+                      <div key={expense.group_id} className="animate-on-scroll" style={{animationDelay: `${index * 100}ms`}}>
+                        <ExpenseCard
+                          expense={expense}
+                          onSettleUp={handleSettleUp}
+                          currentUserId={user.id}
+                          onMarkPaid={handleMarkPaid}
+                        />
+                      </div>
                     ))}
                   </div>
                 </section>
               ) : (
-                <div className="text-center py-12 mb-10">
-                  <div className="text-gray-400 mb-4">
-                    <svg className="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No active expenses</h3>
-                  <p className="text-gray-600 mb-6">Start splitting expenses with your friends!</p>
-                  <Button 
+                <div className="roomeo-card text-center py-16 mb-10 animate-slide-up">
+                  <div className="text-6xl mb-4">💸</div>
+                  <h3 className="roomeo-heading text-xl mb-2">No active expenses</h3>
+                  <p className="roomeo-body text-emerald-primary/60 mb-8">Start splitting expenses with your friends!</p>
+                  <button 
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="bg-[#F05224] hover:bg-[#D63E1A] text-white font-semibold px-6 py-2 rounded-md border-2 border-black shadow-[2px_2px_0px_0px_#000000] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_#000000]"
+                    className="roomeo-button-primary"
                   >
-                    Create Your First Room
-                  </Button>
+                    <span>🚀</span> Create Your First Room
+                  </button>
                 </div>
               )}
 
               {/* Pending Settlements */}
               {dashboardData.pending_settlements.length > 0 && (
                 <section>
-                  <h2 className="text-2xl font-bold text-gray-900 tracking-tight mb-6">Pending Settlements</h2>
-                  <div className="flex justify-center">
-                    <div className="w-full max-w-2xl">
-                      <div className="grid grid-cols-1 gap-6">
-                    {dashboardData.pending_settlements.map((settlement) => (
-                      <SettlementCard
-                        key={settlement.settlement_id}
-                        settlement={settlement}
-                        onApprove={handleApproveSettlement}
-                        currentUserId={user.id}
-                      />
-                    ))}
+                  <div className="flex items-center gap-3 mb-6">
+                    <h2 className="roomeo-heading text-2xl">⏳ Pending Settlements</h2>
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs px-3 py-1.5 rounded-full bg-gold-accent/20 text-gold-accent font-medium">
+                        💳 Payment Required
                       </div>
                     </div>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {dashboardData.pending_settlements.map((settlement, index) => (
+                      <div key={settlement.settlement_id} className="animate-on-scroll" style={{animationDelay: `${index * 100}ms`}}>
+                        <SettlementCard
+                          settlement={settlement}
+                          onApprove={handleApproveSettlement}
+                          currentUserId={user.id}
+                        />
+                      </div>
+                    ))}
                   </div>
                 </section>
               )}
@@ -434,11 +454,6 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
           onSubmitSettlement={handleSubmitSettlement}
         />
       )}
-
-      <SettlementHistory
-        isOpen={isHistoryModalOpen}
-        onClose={() => setIsHistoryModalOpen(false)}
-      />
     </div>
   )
 }

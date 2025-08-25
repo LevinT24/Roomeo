@@ -87,7 +87,7 @@ export default function UserTypeSelection({ onComplete }: { onComplete: () => vo
             </h2>
             <div className="w-32 h-3 bg-[#44C76F] mx-auto transform skew-x-12 mb-4"></div>
             <h3 className="text-2xl font-black text-[#004D40] mb-4 transform -skew-x-1">
-              WHAT'S YOUR SITUATION?
+              WHAT&apos;S YOUR SITUATION?
             </h3>
             <p className="text-lg font-bold text-[#004D40]">
               Choose your housing situation to find the right matches
@@ -126,7 +126,7 @@ export default function UserTypeSelection({ onComplete }: { onComplete: () => vo
                 </div>
                 <h3 className="text-2xl font-black mb-4 transform -skew-x-1">I HAVE A PLACE</h3>
                 <p className="font-bold leading-tight">
-                  I own or rent a place and I'm looking for a roommate to share it with
+                  I own or rent a place and I&apos;m looking for a roommate to share it with
                 </p>
                 {selectedType === "provider" && (
                   <div className="mt-4 text-sm font-black text-[#004D40] bg-[#F2F5F1] p-2 border-2 border-[#004D40]">
@@ -158,7 +158,7 @@ export default function UserTypeSelection({ onComplete }: { onComplete: () => vo
                     />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-black mb-4 transform -skew-x-1">I'M LOOKING FOR A PLACE</h3>
+                <h3 className="text-2xl font-black mb-4 transform -skew-x-1">I&apos;M LOOKING FOR A PLACE</h3>
                 <p className="font-bold leading-tight">
                   I need to find a room or place to share with someone who already has one
                 </p>

@@ -9,6 +9,7 @@ import { UserPlus, Check, X, MessageCircle, Trash2, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { sendFriendRequest, acceptFriendRequest, declineFriendRequest, removeFriend } from '@/services/friends'
+import { authAPI } from '@/lib/api'
 import type { User } from '@/types/user'
 
 interface UserCardProps {

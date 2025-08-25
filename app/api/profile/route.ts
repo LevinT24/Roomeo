@@ -100,7 +100,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Validate required fields
-    if (!profileData.age || !profileData.preferences) {
+    if (profileData.age === null || profileData.age === undefined || !profileData.preferences) {
       return NextResponse.json(
         { success: false, message: "Age and preferences are required" },
         { status: 400 }

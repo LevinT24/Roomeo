@@ -19,8 +19,9 @@ const config: Config = {
       },
     },
     extend: {
-      // ✅ Added fontFamily config here
       fontFamily: {
+        'poppins': ['Poppins', 'sans-serif'],
+        'inter': ['Inter', 'sans-serif'],
         sans: ["var(--font-geist-sans)"],
         mono: ["var(--font-geist-mono)"],
       },
@@ -58,17 +59,27 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom Roomio colors
-        "emerald-green": "#004d40",
-        "moss-green": "#44c76f",
-        sage: "#b7c8b5",
-        "mint-cream": "#f2f5f1",
-        "gold-accent": "#d4af37",
+        // Roomeo Design System Colors
+        'emerald-primary': '#006D5B',
+        'gold-accent': '#D4AF37',
+        'sage': '#B7C8B5',
+        'mint-cream': '#F2F5F1',
+        'moss-green': '#44C76F',
+        'alert-red': '#FF5C5C',
+        'roomeo-success': '#44C76F',
+        'roomeo-danger': '#FF5C5C',
+        // Additional aliases for the new component
+        'emerald': '#006D5B',
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        'soft': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        'gold': '0 4px 14px 0 rgba(212, 175, 55, 0.4)',
       },
       keyframes: {
         "accordion-down": {
@@ -79,10 +90,21 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "slide-up": {
+          from: { opacity: "0", transform: "translateY(10px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fade-in": "fade-in 0.5s ease-out",
+        "slide-up": "slide-up 0.5s ease-out",
+        "on-scroll": "slide-up 0.6s ease-out",
       },
     },
   },

@@ -8,7 +8,7 @@ import { Search, SlidersHorizontal, Plus, Loader2, AlertCircle } from "lucide-re
 import ListingCard from "@/components/ListingCard"
 import AddListingPage from "@/components/AddListingPage"
 import { getListings } from "@/services/marketplace"
-import { createOrGetChat } from "@/services/chat"
+import { createOrGetEnhancedChat as createOrGetChat } from "@/services/enhanced-chat"
 import type { Listing, ListingFilters, ListingSortOptions } from "@/types/listing"
 import type { User } from "@/types/user"
 
@@ -124,203 +124,203 @@ export default function MarketplacePage({ user, onStartChat }: MarketplacePagePr
   }
 
   return (
-    <div className="min-h-screen bg-[#F2F5F1] pt-20 pb-20">
-      <div className="container mx-auto px-4 max-w-7xl">
-        
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-3xl font-black text-[#004D40] mb-2 transform -skew-x-2">
-                MARKETPLACE
-              </h1>
-              <div className="w-20 h-2 bg-[#44C76F] transform skew-x-12"></div>
-              {(activeListingsCount > 0 || soldListingsCount > 0) && (
-                <div className="flex gap-2 mt-3">
-                  <Badge className="bg-[#44C76F] text-[#004D40] font-black border-2 border-[#004D40]">
-                    {activeListingsCount} ACTIVE
-                  </Badge>
-                  {soldListingsCount > 0 && (
-                    <Badge className="bg-gray-500 text-white font-black border-2 border-gray-700">
-                      {soldListingsCount} SOLD
-                    </Badge>
+    <div className="bg-mint-cream min-h-screen">
+      <div className="relative flex size-full min-h-screen flex-col overflow-x-hidden">
+        <div className="layout-container flex h-full grow flex-col">
+          <main className="flex-1 px-6 py-6 lg:px-12 xl:px-20 bg-mint-cream min-h-screen overflow-y-auto">
+            <div className="mx-auto max-w-6xl animate-fade-in">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+                <div className="animate-slide-up">
+                  <h1 className="roomeo-heading text-4xl mb-2">🛍️ Marketplace</h1>
+                  <p className="roomeo-body text-emerald-primary/70">Buy and sell furniture for your new place</p>
+                  {(activeListingsCount > 0 || soldListingsCount > 0) && (
+                    <div className="flex gap-2 mt-3">
+                      <Badge className="bg-moss-green text-white roomeo-body font-semibold px-3 py-1">
+                        {activeListingsCount} ACTIVE
+                      </Badge>
+                      {soldListingsCount > 0 && (
+                        <Badge className="bg-sage text-emerald-primary roomeo-body font-semibold px-3 py-1">
+                          {soldListingsCount} SOLD
+                        </Badge>
+                      )}
+                    </div>
                   )}
                 </div>
+                
+                <div className="animate-slide-up">
+                  <button
+                    onClick={() => setCurrentView('add-listing')}
+                    className="roomeo-button-primary flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Sell Item</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Search and Filters */}
+              <div className="flex flex-col md:flex-row gap-4 mb-6">
+                {/* Search */}
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-primary/60" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search for items..."
+                    className="pl-10 roomeo-body border-2 border-sage/30 rounded-xl focus:border-moss-green bg-white"
+                  />
+                </div>
+
+                {/* Filter Button */}
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="roomeo-button-secondary flex items-center gap-2"
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  <span>Filters</span>
+                </button>
+
+                {/* Sort Dropdown */}
+                <select
+                  value={`${sortOption.field}-${sortOption.direction}`}
+                  onChange={(e) => {
+                    const [field, direction] = e.target.value.split('-') as [string, 'asc' | 'desc']
+                    setSortOption({ field: field as any, direction })
+                  }}
+                  className="roomeo-body border-2 border-sage/30 rounded-xl px-4 py-3 bg-white focus:border-moss-green focus:outline-none"
+                >
+                  <option value="created_at-desc">Newest First</option>
+                  <option value="created_at-asc">Oldest First</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="title-asc">Title: A to Z</option>
+                </select>
+              </div>
+
+              {/* Filters Panel */}
+              {showFilters && (
+                <div className="roomeo-card p-6 mb-6 animate-slide-up">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block roomeo-body font-semibold text-emerald-primary mb-2">Min Price</label>
+                      <Input
+                        type="number"
+                        placeholder="$0"
+                        value={filters.minPrice || ''}
+                        onChange={(e) => setFilters(prev => ({ 
+                          ...prev, 
+                          minPrice: e.target.value ? Number(e.target.value) : undefined 
+                        }))}
+                        className="roomeo-body border-2 border-sage/30 rounded-xl"
+                      />
+                    </div>
+                    <div>
+                      <label className="block roomeo-body font-semibold text-emerald-primary mb-2">Max Price</label>
+                      <Input
+                        type="number"
+                        placeholder="$1000"
+                        value={filters.maxPrice || ''}
+                        onChange={(e) => setFilters(prev => ({ 
+                          ...prev, 
+                          maxPrice: e.target.value ? Number(e.target.value) : undefined 
+                        }))}
+                        className="roomeo-body border-2 border-sage/30 rounded-xl"
+                      />
+                    </div>
+                    <div>
+                      <label className="block roomeo-body font-semibold text-emerald-primary mb-2">Location</label>
+                      <Input
+                        placeholder="City, State"
+                        value={filters.location || ''}
+                        onChange={(e) => setFilters(prev => ({ 
+                          ...prev, 
+                          location: e.target.value || undefined 
+                        }))}
+                        className="roomeo-body border-2 border-sage/30 rounded-xl"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => setFilters({})}
+                      className="roomeo-button-secondary"
+                    >
+                      Clear Filters
+                    </button>
+                  </div>
+                </div>
               )}
-            </div>
-            
-            <Button
-              onClick={() => setCurrentView('add-listing')}
-              className="bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black px-6 py-3 border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[2px_2px_0px_0px_#004D40] transition-all whitespace-nowrap"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              SELL ITEM
-            </Button>
-          </div>
 
-          {/* Search and Filters */}
-          <div className="flex flex-col md:flex-row gap-4">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#004D40]" />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search for items..."
-                className="pl-10 border-2 border-[#004D40] font-bold focus:border-[#44C76F]"
-              />
-            </div>
+              {/* Content */}
+              <div className="min-h-[400px]">
+                {/* Loading State */}
+                {loading && (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center animate-fade-in">
+                      <div className="animate-spin rounded-full h-16 w-16 border-4 border-sage/30 border-t-emerald-primary mx-auto mb-6"></div>
+                      <p className="roomeo-heading text-xl">Loading listings...</p>
+                      <p className="roomeo-body text-emerald-primary/70">Finding great deals for you 🛍️</p>
+                    </div>
+                  </div>
+                )}
 
-            {/* Filter Button */}
-            <Button
-              onClick={() => setShowFilters(!showFilters)}
-              variant="outline"
-              className="border-2 border-[#004D40] text-[#004D40] hover:bg-[#44C76F]/20 font-black px-4"
-            >
-              <SlidersHorizontal className="h-4 w-4 mr-2" />
-              FILTERS
-            </Button>
+                {/* Error State */}
+                {error && (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center max-w-md animate-fade-in">
+                      <AlertCircle className="h-16 w-16 text-alert-red mx-auto mb-4" />
+                      <h3 className="roomeo-heading text-xl mb-4">Something went wrong</h3>
+                      <p className="roomeo-body text-emerald-primary/70 mb-6">{error}</p>
+                      <button
+                        onClick={loadListings}
+                        className="roomeo-button-primary"
+                      >
+                        Try Again
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-            {/* Sort Dropdown */}
-            <select
-              value={`${sortOption.field}-${sortOption.direction}`}
-              onChange={(e) => {
-                const [field, direction] = e.target.value.split('-') as [string, 'asc' | 'desc']
-                setSortOption({ field: field as any, direction })
-              }}
-              className="border-2 border-[#004D40] rounded-lg px-3 py-2 font-bold bg-[#F2F5F1] focus:border-[#44C76F] focus:outline-none"
-            >
-              <option value="created_at-desc">NEWEST FIRST</option>
-              <option value="created_at-asc">OLDEST FIRST</option>
-              <option value="price-asc">PRICE: LOW TO HIGH</option>
-              <option value="price-desc">PRICE: HIGH TO LOW</option>
-              <option value="title-asc">TITLE: A TO Z</option>
-            </select>
-          </div>
+                {/* No Results */}
+                {!loading && !error && listings.length === 0 && (
+                  <div className="roomeo-card text-center py-16 animate-slide-up">
+                    <div className="text-6xl mb-4">🛍️</div>
+                    <h3 className="roomeo-heading text-xl mb-2">No listings found</h3>
+                    <p className="roomeo-body text-emerald-primary/60 mb-8">
+                      {searchQuery || Object.keys(filters).length > 0
+                        ? "Try adjusting your search or filters"
+                        : "Be the first to add a listing!"}
+                    </p>
+                    <button
+                      onClick={() => setCurrentView('add-listing')}
+                      className="roomeo-button-primary"
+                    >
+                      <span>🎆</span> Add First Listing
+                    </button>
+                  </div>
+                )}
 
-          {/* Filters Panel */}
-          {showFilters && (
-            <div className="mt-4 p-4 border-2 border-[#004D40] rounded-lg bg-white">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-black text-[#004D40] mb-1">MIN PRICE</label>
-                  <Input
-                    type="number"
-                    placeholder="$0"
-                    value={filters.minPrice || ''}
-                    onChange={(e) => setFilters(prev => ({ 
-                      ...prev, 
-                      minPrice: e.target.value ? Number(e.target.value) : undefined 
-                    }))}
-                    className="border-2 border-[#004D40] font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-black text-[#004D40] mb-1">MAX PRICE</label>
-                  <Input
-                    type="number"
-                    placeholder="$1000"
-                    value={filters.maxPrice || ''}
-                    onChange={(e) => setFilters(prev => ({ 
-                      ...prev, 
-                      maxPrice: e.target.value ? Number(e.target.value) : undefined 
-                    }))}
-                    className="border-2 border-[#004D40] font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-black text-[#004D40] mb-1">LOCATION</label>
-                  <Input
-                    placeholder="City, State"
-                    value={filters.location || ''}
-                    onChange={(e) => setFilters(prev => ({ 
-                      ...prev, 
-                      location: e.target.value || undefined 
-                    }))}
-                    className="border-2 border-[#004D40] font-bold"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2 mt-4">
-                <Button
-                  onClick={() => setFilters({})}
-                  variant="outline"
-                  className="border-2 border-[#004D40] text-[#004D40] font-black"
-                >
-                  CLEAR FILTERS
-                </Button>
+                {/* Listings Grid */}
+                {!loading && !error && listings.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                    {listings.map((listing, index) => (
+                      <div key={listing.id} className="animate-on-scroll" style={{animationDelay: `${index * 100}ms`}}>
+                        <ListingCard
+                          listing={listing}
+                          currentUser={user}
+                          onChatWithSeller={handleChatWithSeller}
+                          onUpdate={handleListingUpdate}
+                          onDelete={handleListingDelete}
+                          showOwnerActions={true}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="min-h-[400px]">
-          {/* Loading State */}
-          {loading && (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <Loader2 className="h-8 w-8 animate-spin text-[#44C76F] mx-auto mb-4" />
-                <p className="font-black text-[#004D40]">LOADING LISTINGS...</p>
-              </div>
-            </div>
-          )}
-
-          {/* Error State */}
-          {error && (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center max-w-md">
-                <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
-                <p className="font-black text-red-600 mb-4">{error}</p>
-                <Button
-                  onClick={loadListings}
-                  className="bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black border-2 border-[#004D40]"
-                >
-                  TRY AGAIN
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* No Results */}
-          {!loading && !error && listings.length === 0 && (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center max-w-md">
-                <div className="w-16 h-16 bg-gray-200 border-4 border-[#004D40] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Search className="h-8 w-8 text-gray-500" />
-                </div>
-                <h3 className="font-black text-[#004D40] text-xl mb-2">NO LISTINGS FOUND</h3>
-                <p className="text-gray-600 font-bold mb-4">
-                  {searchQuery || Object.keys(filters).length > 0
-                    ? "Try adjusting your search or filters"
-                    : "Be the first to add a listing!"}
-                </p>
-                <Button
-                  onClick={() => setCurrentView('add-listing')}
-                  className="bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black border-2 border-[#004D40]"
-                >
-                  ADD FIRST LISTING
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Listings Grid */}
-          {!loading && !error && listings.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-              {listings.map((listing) => (
-                <ListingCard
-                  key={listing.id}
-                  listing={listing}
-                  currentUser={user}
-                  onChatWithSeller={handleChatWithSeller}
-                  onUpdate={handleListingUpdate}
-                  onDelete={handleListingDelete}
-                  showOwnerActions={true}
-                />
-              ))}
-            </div>
-          )}
+          </main>
         </div>
       </div>
     </div>
