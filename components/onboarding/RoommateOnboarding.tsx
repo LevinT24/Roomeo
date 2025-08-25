@@ -1,12 +1,12 @@
-"[^"]*"
+"use client"
 
-import { useState, useCallback } from "[^"]*"
-import { motion, AnimatePresence } from "[^"]*"
-import { CheckCircle } from "[^"]*"
-import RoleSelection from "[^"]*"
-import ProfileSetupForm from "[^"]*"
-import { useToast } from "[^"]*"
-import type { UserRole, ProfileFormData, RoomDetailsFormData, SeekerPreferencesFormData } from "[^"]*"
+import { useState, useCallback } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { CheckCircle } from "lucide-react"
+import RoleSelection from "./RoleSelection"
+import ProfileSetupForm from "./ProfileSetupForm"
+import { useToast } from "@/hooks/use-toast"
+import type { UserRole, ProfileFormData, RoomDetailsFormData, SeekerPreferencesFormData } from "@/types/user"
 
 type OnboardingStep = &apos;role-selection&apos; | &apos;profile-setup&apos; | &apos;completed&apos;
 

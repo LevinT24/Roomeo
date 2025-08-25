@@ -1,10 +1,10 @@
-"[^"]*"
+"use client"
 
-import { useState } from "[^"]*"
-import { motion } from "[^"]*"
-import { Home, Search, Crown, Users } from "[^"]*"
-import { Button } from "[^"]*"
-import type { UserRole } from "[^"]*"
+import { useState } from "react"
+import { motion } from "framer-motion"
+import { Home, Search, Crown, Users } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import type { UserRole } from "@/types/user"
 
 interface RoleSelectionProps {
   onRoleSelect: (role: UserRole) => void
