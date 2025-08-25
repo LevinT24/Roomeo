@@ -16,7 +16,7 @@ import SwipePage from "@/components/SwipePage"
 import MatchesPage from "@/components/MatchesPage"
 import MarketplacePage from "@/components/MarketplacePage"
 import ExpensesPage from "@/components/ExpensesPage"  
-import EnhancedChatPage from "@/components/EnhancedChatPage"
+import RoommateChatPage from "@/components/RoommateChatPage"
 import SettingsMenu from "@/components/SettingsMenu"
 import ProfilePreview from "@/components/ProfilePreview"
 import SessionRecovery from "@/components/SessionRecovery"
@@ -537,14 +537,9 @@ export default function Home() {
             )}
             {currentPage === "expenses" && <ExpensesPage user={user as any} />}
             {currentPage === "chat" && (
-              <EnhancedChatPage 
+              <RoommateChatPage 
                 user={user as any} 
-                chatTarget={chatTarget}
-                onBack={() => {
-                  const wasFromMarketplace = chatTarget?.listingId
-                  setChatTarget(null)
-                  setCurrentPage(wasFromMarketplace ? "marketplace" : "matches")
-                }} 
+                onBack={() => setCurrentPage("matches")} 
               />
             )}
           </div>
