@@ -117,7 +117,6 @@ export default function DiscoverFeed({ currentUserRole, onStartChat }: DiscoverF
         toast({
           title: "🎉 It's a Match!",
           description: data.message || "You can now chat with each other!",
-          duration: 5000,
         })
 
         // Auto-start chat if it's a mutual match
