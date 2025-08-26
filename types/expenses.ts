@@ -65,6 +65,7 @@ export interface CreateExpenseGroupRequest {
   split_type: SplitType
   participants: string[] // user IDs
   custom_amounts?: number[]
+  create_group_chat?: boolean
   invites?: Array<{
     method: 'email' | 'whatsapp'
     contact: string

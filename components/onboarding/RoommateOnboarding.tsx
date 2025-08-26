@@ -8,254 +8,144 @@ import ProfileSetupForm from "./ProfileSetupForm"
 import { useToast } from "@/hooks/use-toast"
 import type { UserRole, ProfileFormData, RoomDetailsFormData, SeekerPreferencesFormData } from "@/types/user"
 
-type OnboardingStep = &apos;role-selection&apos; | &apos;profile-setup&apos; | &apos;completed&apos;
+type OnboardingStep = 'role-selection' | 'profile-setup' | 'completed'
 
 interface RoommateOnboardingProps {
-  onComplete?: () => void
+  onComplete: (data: {
+    role: UserRole
+    profile: ProfileFormData
+    roomDetails?: RoomDetailsFormData
+    preferences?: SeekerPreferencesFormData
+  }) => void
+  loading?: boolean
 }
 
-export default function RoommateOnboarding({ onComplete }: RoommateOnboardingProps) {
-  const [currentStep, setCurrentStep] = useState<OnboardingStep>(&apos;role-selection&apos;)
+export default function RoommateOnboarding({ onComplete, loading = false }: RoommateOnboardingProps) {
+  const [currentStep, setCurrentStep] = useState<OnboardingStep>('role-selection')
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
 
-  // Handle role selection
-  const handleRoleSelect = useCallback(async (role: UserRole) => {
-    try {
-      setLoading(true)
-      setSelectedRole(role)
-
-      // Set user role via API
-      const response = await fetch(&apos;/api/roommate/role&apos;, {
-        method: &apos;POST&apos;,
-        headers: { &apos;Content-Type&apos;: &apos;application/json&apos; },
-        body: JSON.stringify({ role })
-      })
-
-      const data = await response.json()
-
-      if (!data.success) {
-        throw new Error(data.error || &apos;Failed to set user role&apos;)
-      }
-
-      // Move to profile setup
-      setCurrentStep(&apos;profile-setup&apos;)
-      toast({
-        title: "[^"]*",
-        description: `You&apos;re now a ${role}! Let&apos;s set up your profile.`,
-      })
-    } catch (error) {
-      console.error(&apos;Error setting role:&apos;, error)
-      toast({
-        title: "[^"]*",
-        description: "[^"]*",
-        variant: "[^"]*",
-      })
-      setSelectedRole(null)
-    } finally {
-      setLoading(false)
-    }
+  const handleRoleSelect = useCallback((role: UserRole) => {
+    setSelectedRole(role)
+    setCurrentStep('profile-setup')
+    
+    toast({
+      title: "Role selected!",
+      description: `You've chosen to be a ${role === 'provider' ? 'Room Provider' : 'Room Seeker'}`,
+    })
   }, [toast])
 
-  // Handle profile completion
   const handleProfileComplete = useCallback(async (
-    profileData: ProfileFormData,
-    roomData?: RoomDetailsFormData,
-    preferences?: SeekerPreferencesFormData,
+    profileData: ProfileFormData, 
+    roomData?: RoomDetailsFormData, 
+    preferences?: SeekerPreferencesFormData, 
     roomImages?: File[]
   ) => {
+    if (!selectedRole) return
+
+    setIsSubmitting(true)
+    
     try {
-      setLoading(true)
-
-      // Prepare form data for multipart upload
-      const formData = new FormData()
-      formData.append(&apos;profileData&apos;, JSON.stringify(profileData))
-      
-      if (roomData) {
-        formData.append(&apos;roomData&apos;, JSON.stringify(roomData))
-      }
-      
-      if (preferences) {
-        formData.append(&apos;preferencesData&apos;, JSON.stringify(preferences))
-      }
-
-      // Add room images
-      if (roomImages && roomImages.length > 0) {
-        roomImages.forEach((image, index) => {
-          formData.append(`roomImage_${index}`, image)
-        })
-      }
-
-      // Submit profile
-      const response = await fetch(&apos;/api/roommate/profile&apos;, {
-        method: &apos;POST&apos;,
-        body: formData
+      await onComplete({
+        role: selectedRole,
+        profile: profileData,
+        roomDetails: roomData,
+        preferences: preferences
       })
-
-      const data = await response.json()
-
-      if (!data.success) {
-        if (data.validation_errors) {
-          // Handle validation errors
-          const errorMessages = Object.values(data.validation_errors).join(&apos;, &apos;)
-          throw new Error(`Validation errors: ${errorMessages}`)
-        }
-        throw new Error(data.error || &apos;Failed to setup profile&apos;)
-      }
-
-      // Success!
-      setCurrentStep(&apos;completed&apos;)
+      
+      setCurrentStep('completed')
+      
       toast({
-        title: "Profile Complete! 🎉",
-        description: data.message || "[^"]*",
-        duration: 5000,
+        title: "Welcome to Roomio! 🎉",
+        description: "Your profile has been created successfully!",
       })
-
-      // Auto-complete after showing success
-      setTimeout(() => {
-        onComplete?.()
-      }, 3000)
+      
     } catch (error) {
-      console.error(&apos;Error completing profile:&apos;, error)
+      console.error('Error completing onboarding:', error)
       toast({
-        title: "[^"]*",
-        description: error instanceof Error ? error.message : "[^"]*",
-        variant: "[^"]*",
+        title: "Something went wrong",
+        description: "Please try again or contact support if the issue persists.",
+        variant: "destructive"
       })
     } finally {
-      setLoading(false)
+      setIsSubmitting(false)
     }
-  }, [toast, onComplete])
+  }, [selectedRole, onComplete, toast])
 
-  return (
-    <div className="[^"]*">
-      <AnimatePresence mode="[^"]*">
-        {/* Role Selection Step */}
-        {currentStep === &apos;role-selection&apos; && (
-          <motion.div
-            key="[^"]*"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <RoleSelection
-              onRoleSelect={handleRoleSelect}
-              loading={loading}
-            />
-          </motion.div>
-        )}
-
-        {/* Profile Setup Step */}
-        {currentStep === &apos;profile-setup&apos; && selectedRole && (
-          <motion.div
-            key="[^"]*"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-          >
-            <ProfileSetupForm
-              userRole={selectedRole}
-              onComplete={handleProfileComplete}
-              loading={loading}
-            />
-          </motion.div>
-        )}
-
-        {/* Completion Step */}
-        {currentStep === &apos;completed&apos; && (
-          <motion.div
-            key="[^"]*"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.1 }}
-            className="[^"]*"
-          >
-            <div className="[^"]*">
+  const renderStep = () => {
+    switch (currentStep) {
+      case 'role-selection':
+        return (
+          <RoleSelection
+            onRoleSelect={handleRoleSelect}
+            loading={loading}
+          />
+        )
+      
+      case 'profile-setup':
+        return (
+          <ProfileSetupForm
+            userRole={selectedRole!}
+            onComplete={handleProfileComplete}
+            loading={isSubmitting || loading}
+          />
+        )
+      
+      case 'completed':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              className="text-center max-w-md"
+            >
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "[^"]*", stiffness: 200 }}
-                className="[^"]*"
+                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-8"
               >
-                <CheckCircle className="[^"]*" />
+                <CheckCircle className="w-12 h-12 text-white" />
               </motion.div>
-
-              <motion.h1
+              
+              <h1 className="text-3xl font-bold text-gray-800 mb-4">
+                Welcome to Roomio!
+              </h1>
+              
+              <p className="text-lg text-gray-600 mb-8">
+                Your profile is ready. Start connecting with potential roommates!
+              </p>
+              
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="[^"]*"
+                className="text-sm text-gray-500"
               >
-                Welcome to Roomeo! 🎉
-              </motion.h1>
-
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-                className="[^"]*"
-              >
-                Your profile is now complete and you&apos;re ready to{&apos; &apos;}
-                {selectedRole === &apos;provider&apos; 
-                  ? &apos;find the perfect roommate for your space!&apos; 
-                  : &apos;discover amazing rooms and roommates!&apos;}
-              </motion.p>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 }}
-                className="[^"]*"
-              >
-                <h3 className="[^"]*">What&apos;s next?</h3>
-                <div className="[^"]*">
-                  {selectedRole === &apos;provider&apos; ? (
-                    <>
-                      <div className="[^"]*">
-                        <div className="[^"]*"></div>
-                        Your room photos are live and visible to seekers
-                      </div>
-                      <div className="[^"]*">
-                        <div className="[^"]*"></div>
-                        Browse seekers who match your preferences
-                      </div>
-                      <div className="[^"]*">
-                        <div className="[^"]*"></div>
-                        Like profiles to get matched and start chatting
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="[^"]*">
-                        <div className="[^"]*"></div>
-                        Browse available rooms from providers
-                      </div>
-                      <div className="[^"]*">
-                        <div className="[^"]*"></div>
-                        Like rooms and roommates you&apos;re interested in
-                      </div>
-                      <div className="[^"]*">
-                        <div className="[^"]*"></div>
-                        Get matched and start your roommate journey
-                      </div>
-                    </>
-                  )}
-                </div>
+                Redirecting to your dashboard...
               </motion.div>
+            </motion.div>
+          </div>
+        )
+      
+      default:
+        return null
+    }
+  }
 
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1.0 }}
-                className="[^"]*"
-              >
-                Redirecting you to the app in a few seconds...
-              </motion.div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={currentStep}
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -20 }}
+        transition={{ duration: 0.3 }}
+      >
+        {renderStep()}
+      </motion.div>
+    </AnimatePresence>
   )
 }

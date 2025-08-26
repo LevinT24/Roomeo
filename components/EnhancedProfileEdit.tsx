@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { 
   Edit3, Save, X, Camera, Upload, Check, Plus, Minus,
-  User, MapPin, Briefcase, Heart, Home, Users, Volume2, 
+  User as UserIcon, MapPin, Briefcase, Heart, Home, Users, Volume2, 
   VolumeX, BookOpen, Calendar, Sparkles, Coffee, Music,
   Gamepad2, Dumbbell, Palette, Plane, Book
 } from "lucide-react"

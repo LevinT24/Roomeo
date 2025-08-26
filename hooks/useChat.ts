@@ -12,9 +12,9 @@ import {
   subscribeToMessages,
   unsubscribeFromMessages,
   markMessagesAsRead,
-  type EnhancedChatMessage as ChatMessage,
   type Chat
 } from "@/services/enhanced-chat"
+import type { EnhancedChatMessage as ChatMessage } from "@/types/enhanced-chat"
 import { useAuth } from "@/hooks/useAuth"
 
 export function useChat(currentUser: User | null) {

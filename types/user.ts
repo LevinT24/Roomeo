@@ -33,6 +33,41 @@ export interface UserPreferences {
   studious: boolean;
 }
 
+// User role types
+export type UserRole = 'seeker' | 'provider'
+
+// Profile form data types
+export interface ProfileFormData {
+  name: string;
+  age: number;
+  bio: string;
+  location: string;
+  budget: number;
+  preferences: UserPreferences;
+  profilePicture?: string;
+  profession?: string;
+  hobbies?: string[];
+}
+
+export interface RoomDetailsFormData {
+  roomType: 'private' | 'shared' | 'studio' | 'apartment';
+  amenities: string[];
+  description: string;
+  images?: string[];
+  availableFrom: Date;
+  leaseDuration: string;
+  utilities: string[];
+}
+
+export interface SeekerPreferencesFormData {
+  preferredRoomType: 'private' | 'shared' | 'studio' | 'apartment' | 'any';
+  maxBudget: number;
+  preferredAmenities: string[];
+  moveInDate: Date;
+  maxCommute: number;
+  roommatePreferences: UserPreferences;
+}
+
 export interface ProfileData {
   age: number;
   bio: string;

@@ -20,6 +20,7 @@ export default function SettingsMenu({ user }: SettingsMenuProps) {
   const [showProfileEdit, setShowProfileEdit] = useState(false)
   const [showProfileView, setShowProfileView] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
   
   const [profileData, setProfileData] = useState({
     role: user?.role || "seeker",
