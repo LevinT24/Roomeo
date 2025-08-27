@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -31,7 +31,7 @@ export default function MarketplacePage({ user, onStartChat }: MarketplacePagePr
   })
 
   // Load listings
-  const loadListings = async () => {
+  const loadListings = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -52,12 +52,12 @@ export default function MarketplacePage({ user, onStartChat }: MarketplacePagePr
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters, searchQuery, sortOption])
 
   // Load listings on mount and when filters/sort change
   useEffect(() => {
     loadListings()
-  }, [filters, sortOption])
+  }, [filters, sortOption, loadListings])
 
   // Handle search with debounce
   useEffect(() => {
@@ -66,7 +66,7 @@ export default function MarketplacePage({ user, onStartChat }: MarketplacePagePr
     }, 500)
     
     return () => clearTimeout(timer)
-  }, [searchQuery])
+  }, [searchQuery, loadListings])
 
   const handleChatWithSeller = async (sellerId: string, listingId: string) => {
     // Safety check: prevent user from chatting with themselves

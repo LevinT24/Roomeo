@@ -70,7 +70,7 @@ export default function GroupMembersWithInvites({
     // Refresh data every 30 seconds to show real-time updates
     const interval = setInterval(fetchGroupData, 30000);
     return () => clearInterval(interval);
-  }, [groupId]);
+  }, [groupId, fetchGroupData]);
 
   const formatDisplayName = (invite: PendingInvite) => {
     if (invite.invited_email && invite.invited_phone) {

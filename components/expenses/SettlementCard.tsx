@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { SettlementCardProps } from "@/types/expenses"
@@ -129,10 +130,12 @@ export default function SettlementCard({ settlement, onApprove, currentUserId }:
             <span>🖼️</span> Payment Proof:
           </p>
           <div className="relative">
-            <img 
+            <Image 
               src={settlement.proof_image} 
               alt="Payment proof" 
               className="w-full max-w-sm rounded-xl border border-sage/30 shadow-card cursor-pointer hover:shadow-soft transition-all duration-300 transform hover:scale-105"
+              width={384}
+              height={300}
               onClick={() => window.open(settlement.proof_image, '_blank')}
             />
             <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-soft">

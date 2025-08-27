@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   Heart, 
@@ -195,10 +196,12 @@ export default function ProfileCard({
               {/* Profile Picture */}
               <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                 {profile.profilepicture ? (
-                  <img
+                  <Image
                     src={profile.profilepicture}
                     alt={profile.name}
                     className="w-full h-full object-cover"
+                    width={400}
+                    height={500}
                   />
                 ) : (
                   <User className="w-6 h-6 text-gray-400" />

@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import { normalizeAvatarUrl, getFallbackAvatarUrl } from "@/lib/avatarUtils"
@@ -63,7 +64,7 @@ export default function ProfilePreview({ user, onBack }: ProfilePreviewProps) {
             <div className="relative mb-8">
               <div className="bg-[#B7C8B5] rounded-2xl border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] overflow-hidden transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#004D40] transition-all">
                 <div className="relative">
-                  <img
+                  <Image
                     alt={user.name}
                     className="w-full h-80 object-cover"
                     src={normalizeAvatarUrl(user.profilePicture) || getFallbackAvatarUrl()}
@@ -71,6 +72,8 @@ export default function ProfilePreview({ user, onBack }: ProfilePreviewProps) {
                       console.log("🖼️ Profile preview avatar failed to load, falling back:", user.profilePicture);
                       e.currentTarget.src = getFallbackAvatarUrl();
                     }}
+                    width={400}
+                    height={320}
                   />
                   <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent text-white">
                     <h2 className="text-2xl font-black transform -skew-x-1">

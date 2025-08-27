@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef } from 'react';
+import Image from 'next/image';
 import { uploadImage, UploadResult } from '@/lib/storage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -147,10 +148,12 @@ export default function ImageUpload({
       {previewUrl && (
         <div className="flex flex-col items-center space-y-4">
           <div className="relative">
-            <img
+            <Image
               src={previewUrl}
               alt="Profile preview"
               className="w-32 h-32 object-cover rounded-full border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40]"
+              width={128}
+              height={128}
             />
             {isUploading && (
               <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">

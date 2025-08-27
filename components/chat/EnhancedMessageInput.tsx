@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import type { MessageInputProps, MentionSuggestion } from "@/types/enhanced-chat"
 
@@ -119,7 +120,7 @@ export default function EnhancedMessageInput({
                 >
                   <div className="w-6 h-6 rounded-full bg-sage/20 flex items-center justify-center text-xs flex-shrink-0">
                     {user.avatar ? (
-                      <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full object-cover" />
+                      <Image src={user.avatar} alt={user.name} className="w-full h-full rounded-full object-cover" width={24} height={24} />
                     ) : (
                       user.name.charAt(0).toUpperCase()
                     )}

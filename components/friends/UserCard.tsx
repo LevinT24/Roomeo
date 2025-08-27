@@ -5,6 +5,7 @@
 "use client"
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { UserPlus, Check, X, MessageCircle, Trash2, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -185,10 +186,12 @@ export default function UserCard({
           {/* Profile Picture */}
           <div className="w-12 h-12 bg-[#44C76F] border-2 border-[#004D40] rounded-lg flex items-center justify-center overflow-hidden">
             {user.profilePicture ? (
-              <img 
+              <Image 
                 src={user.profilePicture} 
                 alt={user.name}
                 className="w-full h-full object-cover"
+                width={48}
+                height={48}
               />
             ) : (
               <span className="text-[#004D40] font-black text-lg">

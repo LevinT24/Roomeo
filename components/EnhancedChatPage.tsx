@@ -6,6 +6,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
+import Image from "next/image"
 import { useEnhancedChat } from "@/hooks/useEnhancedChat"
 import { uploadChatImage } from "@/services/chatMedia"
 import type { User } from "@/types/user"
@@ -263,10 +264,12 @@ export default function EnhancedChatPage({
         <div className="flex items-center gap-3 flex-1">
           {selectedChat && (
             <>
-              <img
+              <Image
                 src={selectedChat.other_user_avatar || "/placeholder.svg"}
                 alt={selectedChat.other_user_name}
                 className="w-10 h-10 rounded-full border border-gray-200"
+                width={40}
+                height={40}
               />
               <div className="flex-1">
                 <h1 className="font-semibold text-lg">
@@ -334,10 +337,12 @@ export default function EnhancedChatPage({
                     >
                       <div className="flex items-center gap-3">
                         <div className="relative">
-                          <img
+                          <Image
                             src={chat.other_user_avatar || "/placeholder.svg"}
                             alt={chat.other_user_name}
                             className="w-12 h-12 rounded-full border border-gray-200"
+                            width={48}
+                            height={48}
                           />
                           {unreadCount > 0 && (
                             <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
@@ -500,10 +505,12 @@ export default function EnhancedChatPage({
           onClick={() => setImageModalUrl(null)}
         >
           <div className="relative max-w-4xl max-h-4xl p-4">
-            <img
+            <Image
               src={imageModalUrl}
               alt="Full size image"
               className="max-w-full max-h-full object-contain"
+              width={800}
+              height={600}
             />
             <button
               onClick={() => setImageModalUrl(null)}

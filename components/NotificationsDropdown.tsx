@@ -52,7 +52,7 @@ export default function NotificationsDropdown({ userId }: NotificationsDropdownP
         }
       }
     }
-  }, [userId])
+  }, [userId, fetchNotifications, subscribeToNotifications])
 
   // Fetch notifications from database
   const fetchNotifications = async () => {

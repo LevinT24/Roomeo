@@ -32,7 +32,7 @@ export default function SessionRecovery({ onRecovered, className = "" }: Session
       setShowRecovery(false)
       setRecoveryError(null)
     }
-  }, [user, sessionValid, isRecovering, autoRecoveryAttempted])
+  }, [user, sessionValid, isRecovering, autoRecoveryAttempted, handleAutoRecovery])
 
   const handleAutoRecovery = async () => {
     console.log('🔄 Attempting automatic session recovery...')

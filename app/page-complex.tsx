@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Zap, Users, Rocket, CheckCircle, Mail, Clock, Target, Flame, Instagram, X } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { useAuth } from "@/hooks/useAuth"
 import { updateUserProfile } from "@/services/supabase"
 import AuthPage from "@/components/AuthPage"
@@ -382,10 +383,12 @@ export default function Home() {
                 
                 {/* Profile Picture with Settings Dropdown */}
                 <div className="relative">
-                  <img
+                  <Image
                     alt="User Profile"
                     className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border-2 border-[#44C76F] cursor-pointer hover:border-[#004D40] transition-colors"
                     src={normalizeAvatarUrl(user?.profilePicture) || getFallbackAvatarUrl()}
+                    width={40}
+                    height={40}
                     title="Profile Menu"
                     onClick={() => setShowUserSettings(!showUserSettings)}
                     onError={(e) => {

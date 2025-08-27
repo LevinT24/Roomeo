@@ -40,32 +40,44 @@ export type UserRole = 'seeker' | 'provider'
 export interface ProfileFormData {
   name: string;
   age: number;
+  gender: string;
+  profession: string;
   bio: string;
+  hobbies: string[];
+  religion?: string;
+  ethnicity?: string;
+  smoking: "yes" | "no" | "occasionally";
+  drinking: "yes" | "no" | "occasionally";
+  pets: "yes" | "no" | "negotiable";
+  budget_min?: number;
+  budget_max?: number;
   location: string;
-  budget: number;
-  preferences: UserPreferences;
   profilePicture?: string;
-  profession?: string;
-  hobbies?: string[];
 }
 
 export interface RoomDetailsFormData {
-  roomType: 'private' | 'shared' | 'studio' | 'apartment';
+  room_type: 'private' | 'shared' | 'studio' | 'apartment';
+  rent_amount: number;
+  deposit_amount?: number;
+  available_from?: string;
+  lease_duration?: '6_months' | '1_year' | 'month_to_month' | 'flexible';
+  furnished: boolean;
+  utilities_included: boolean;
   amenities: string[];
-  description: string;
-  images?: string[];
-  availableFrom: Date;
-  leaseDuration: string;
-  utilities: string[];
+  house_rules: string[];
+  description?: string;
+  address: string;
+  neighborhood?: string;
 }
 
 export interface SeekerPreferencesFormData {
-  preferredRoomType: 'private' | 'shared' | 'studio' | 'apartment' | 'any';
-  maxBudget: number;
-  preferredAmenities: string[];
-  moveInDate: Date;
-  maxCommute: number;
-  roommatePreferences: UserPreferences;
+  preferred_gender?: string;
+  age_range_min?: number;
+  age_range_max?: number;
+  preferred_location?: string;
+  max_budget?: number;
+  preferred_room_type?: 'private' | 'shared' | 'studio' | 'apartment';
+  deal_breakers: string[];
 }
 
 export interface ProfileData {

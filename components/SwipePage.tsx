@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
+import Image from "next/image"
 import { useAuth } from "@/hooks/useAuth"
 import { supabase } from "@/lib/supabase"
 
@@ -35,13 +36,7 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
   // Use the user from props or auth
   const currentUser = propUser || authUser
 
-  useEffect(() => {
-    if (currentUser?.id) {
-      fetchOppositeTypeUsers()
-    }
-  }, [currentUser])
-
-  const fetchOppositeTypeUsers = async () => {
+  const fetchOppositeTypeUsers = useCallback(async () => {
     if (!currentUser?.id) {
       setError("User not found")
       setLoading(false)
@@ -145,7 +140,13 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentUser])
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      fetchOppositeTypeUsers()
+    }
+  }, [currentUser, fetchOppositeTypeUsers])
 
   const handleSwipe = async (liked: boolean) => {
     const currentProfile = profiles[currentIndex]
@@ -328,10 +329,12 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
                   <div className="relative mb-8">
                     <div className="roomeo-card overflow-hidden animate-slide-up">
                       <div className="relative">
-                        <img
+                        <Image
                           alt={currentProfile.name}
                           className="w-full h-80 object-cover"
                           src={currentProfile.profilePicture || "/placeholder.svg"}
+                          width={400}
+                          height={320}
                         />
                         <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent text-white">
                           <h2 className="roomeo-heading text-2xl text-white mb-1">

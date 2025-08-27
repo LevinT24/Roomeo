@@ -6,6 +6,7 @@
 "use client"
 
 import React from 'react'
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
 interface TypingIndicatorProps {
@@ -169,10 +170,12 @@ export function MultiUserTypingIndicator({
             className="relative"
             style={{ zIndex: 3 - index }}
           >
-            <img
+            <Image
               src={getUserAvatar?.(user.id) || '/placeholder.svg'}
               alt={user.name}
               className="w-6 h-6 rounded-full border-2 border-white shadow-sm"
+              width={24}
+              height={24}
             />
             {/* Typing animation pulse */}
             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white">

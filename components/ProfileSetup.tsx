@@ -3,6 +3,7 @@
 
   import type React from "react"
   import { useState } from "react"
+  import Image from "next/image"
   import { useAuth } from "@/hooks/useAuth"
   import { Button } from "@/components/ui/button"
   import { Input } from "@/components/ui/input"
@@ -218,10 +219,12 @@
                 {/* Selected Avatar Preview */}
                 <div className="flex flex-col items-center">
                   {imagePreview ? (
-                    <img
+                    <Image
                       src={imagePreview || "/placeholder.svg"}
                       alt="Profile preview"
                       className="w-32 h-32 rounded-full object-cover border-4 border-[#44C76F] shadow-[4px_4px_0px_0px_#004D40]"
+                      width={128}
+                      height={128}
                     />
                   ) : (
                     <div className="w-32 h-32 rounded-full bg-[#F2F5F1] border-4 border-[#004D40] flex items-center justify-center shadow-[4px_4px_0px_0px_#004D40]">
@@ -252,10 +255,12 @@
                             : "border-[#004D40] hover:border-[#44C76F]"
                         }`}
                       >
-                        <img
+                        <Image
                           src={avatar}
                           alt={`Avatar ${index + 1}`}
                           className="w-full h-full rounded-full object-cover"
+                          width={64}
+                          height={64}
                         />
                       </button>
                     ))}

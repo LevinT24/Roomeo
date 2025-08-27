@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from 'react';
+import Image from 'next/image';
 import ImageUpload from '@/components/ui/ImageUpload';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -84,10 +85,12 @@ export default function UploadDemo() {
                   <p>Status: ✅ Success</p>
                   <p>URL: {uploadedUrl}</p>
                   <div className="mt-4">
-                    <img 
+                    <Image 
                       src={uploadedUrl} 
                       alt="Uploaded image" 
                       className="w-24 h-24 object-cover rounded-full border-2 border-green-500"
+                      width={96}
+                      height={96}
                     />
                   </div>
                 </div>

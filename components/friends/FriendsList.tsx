@@ -5,6 +5,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { Users, UserX, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -138,10 +139,12 @@ export default function FriendsList({ user, onRequestUpdate }: FriendsListProps)
                   {/* Profile Picture */}
                   <div className="w-12 h-12 bg-[#44C76F] border-2 border-[#004D40] rounded-lg flex items-center justify-center overflow-hidden">
                     {friend.profilePicture ? (
-                      <img 
+                      <Image 
                         src={friend.profilePicture} 
                         alt={friend.name}
                         className="w-full h-full object-cover"
+                        width={48}
+                        height={48}
                       />
                     ) : (
                       <span className="text-[#004D40] font-black text-lg">

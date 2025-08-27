@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   X, 
@@ -99,10 +100,12 @@ export default function ProfileModal({
               <div className="flex items-center">
                 <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden mr-4">
                   {profile.profilepicture ? (
-                    <img
+                    <Image
                       src={profile.profilepicture}
                       alt={profile.name}
                       className="w-full h-full object-cover"
+                      width={64}
+                      height={64}
                     />
                   ) : (
                     <User className="w-6 h-6 text-gray-400" />
@@ -155,16 +158,22 @@ export default function ProfileModal({
               {isProvider && images.length > 0 && (
                 <div className="relative h-80 bg-gray-100 rounded-lg overflow-hidden">
                   <AnimatePresence mode="wait">
-                    <motion.img
+                    <motion.div
                       key={currentImageIndex}
-                      src={images[currentImageIndex]?.image_url}
-                      alt={`Room ${currentImageIndex + 1}`}
-                      className="w-full h-full object-cover"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.3 }}
-                    />
+                      className="w-full h-full"
+                    >
+                      <Image
+                        src={images[currentImageIndex]?.image_url}
+                        alt={`Room ${currentImageIndex + 1}`}
+                        className="w-full h-full object-cover"
+                        width={800}
+                        height={320}
+                      />
+                    </motion.div>
                   </AnimatePresence>
 
                   {/* Navigation */}

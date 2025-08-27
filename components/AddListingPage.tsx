@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -369,10 +370,12 @@ export default function AddListingPage({ user, onSuccess, onCancel }: AddListing
                     {formData.imageUrls.map((url, index) => (
                       <div key={index} className="relative group">
                         <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-[#004D40]">
-                          <img
+                          <Image
                             src={url}
                             alt={`Preview ${index + 1}`}
                             className="w-full h-full object-cover"
+                            width={200}
+                            height={200}
                           />
                         </div>
                         <Button

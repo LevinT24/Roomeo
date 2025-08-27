@@ -5,6 +5,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { Check, X, Clock, Send, Inbox } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -182,10 +183,12 @@ export default function PendingRequests({ user, onRequestUpdate }: PendingReques
                     {/* Profile Picture */}
                     <div className="w-10 h-10 bg-[#44C76F] border-2 border-[#004D40] rounded-lg flex items-center justify-center overflow-hidden">
                       {request.profilePicture ? (
-                        <img 
+                        <Image 
                           src={request.profilePicture} 
                           alt={request.name}
                           className="w-full h-full object-cover"
+                          width={40}
+                          height={40}
                         />
                       ) : (
                         <span className="text-[#004D40] font-black text-sm">
@@ -248,10 +251,12 @@ export default function PendingRequests({ user, onRequestUpdate }: PendingReques
                     {/* Profile Picture */}
                     <div className="w-10 h-10 bg-gray-300 border-2 border-[#004D40] rounded-lg flex items-center justify-center overflow-hidden">
                       {request.profilePicture ? (
-                        <img 
+                        <Image 
                           src={request.profilePicture} 
                           alt={request.name}
                           className="w-full h-full object-cover"
+                          width={40}
+                          height={40}
                         />
                       ) : (
                         <span className="text-[#004D40] font-black text-sm">

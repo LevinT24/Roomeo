@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { uploadRoomPhotos } from '@/services/roomPhotos';
@@ -302,10 +303,12 @@ export default function RoomPhotoUpload({
                 }`}
               >
                 <div className="relative">
-                  <img
+                  <Image
                     src={fileWithPreview.preview}
                     alt={`Selected ${index + 1}`}
                     className="w-full h-48 object-cover"
+                    width={400}
+                    height={192}
                   />
                   
                   {/* Primary Badge */}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import Image from "next/image"
 import { motion } from "framer-motion"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -536,10 +537,12 @@ export default function ProfileSetupForm({ userRole, onComplete, loading = false
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
                       {imagePreviewUrls.map((url, index) => (
                         <div key={index} className="relative">
-                          <img
+                          <Image
                             src={url}
                             alt={`Room ${index + 1}`}
                             className="w-full h-32 object-cover rounded-lg"
+                            width={300}
+                            height={128}
                           />
                           <button
                             type="button"

@@ -46,7 +46,7 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
     if (user?.id) {
       fetchMutualMatches()
     }
-  }, [user])
+  }, [user, fetchMutualMatches])
 
   const fetchMutualMatches = async () => {
     try {

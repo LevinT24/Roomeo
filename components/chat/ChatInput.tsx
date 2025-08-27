@@ -5,6 +5,7 @@
 "use client"
 
 import React, { useState, useRef, useCallback, useEffect } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -222,10 +223,12 @@ export function ChatInput({
       {imagePreview && (
         <div className="mb-3 relative inline-block">
           <div className="relative">
-            <img
+            <Image
               src={imagePreview}
               alt="Preview"
               className="max-w-32 max-h-32 rounded-lg border border-gray-200"
+              width={128}
+              height={128}
             />
             {isUploading && (
               <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">

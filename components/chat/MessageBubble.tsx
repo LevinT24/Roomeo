@@ -6,6 +6,7 @@
 "use client"
 
 import React, { useState } from 'react'
+import Image from 'next/image'
 import type { ChatMessage, OptimisticMessage } from '@/types/chat'
 import { cn } from '@/lib/utils'
 
@@ -135,13 +136,15 @@ export function MessageBubble({
             </div>
           </div>
         ) : (
-          <img
+          <Image
             src={message.image_url}
             alt="Shared image"
             className={cn(
               "max-w-48 max-h-64 rounded-lg cursor-pointer transition-all",
               imageLoading && "invisible"
             )}
+            width={192}
+            height={256}
             onLoad={() => setImageLoading(false)}
             onError={() => {
               setImageError(true)
@@ -170,10 +173,12 @@ export function MessageBubble({
       {/* Avatar */}
       {showAvatar && !isOwn && (
         <div className="flex-shrink-0 w-8 h-8">
-          <img
+          <Image
             src={message.sender_avatar || '/placeholder.svg'}
             alt={message.sender_name || 'User'}
             className="w-8 h-8 rounded-full border-2 border-white shadow-sm"
+            width={32}
+            height={32}
           />
         </div>
       )}

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -32,7 +33,7 @@ export default function RoomPhotoManager({ userId, onClose }: RoomPhotoManagerPr
   // Fetch photos on component mount
   useEffect(() => {
     fetchPhotos();
-  }, [userId]);
+  }, [userId, fetchPhotos]);
 
   const fetchPhotos = async () => {
     try {
@@ -295,10 +296,12 @@ export default function RoomPhotoManager({ userId, onClose }: RoomPhotoManagerPr
                   onDrop={(e) => handleDrop(e, index)}
                 >
                   <div className="relative">
-                    <img
+                    <Image
                       src={photo.photo_url}
                       alt={photo.caption || `Room photo ${index + 1}`}
                       className="w-full h-48 object-cover"
+                      width={400}
+                      height={192}
                     />
                     
                     {/* Primary Badge */}

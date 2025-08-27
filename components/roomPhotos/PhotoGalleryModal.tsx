@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { RoomPhoto } from '@/types/roomPhotos';
 
 interface PhotoGalleryModalProps {
@@ -63,7 +64,7 @@ export default function PhotoGalleryModal({
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
+  }, [handleKeyDown, goToNext, goToPrevious]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -180,12 +181,14 @@ export default function PhotoGalleryModal({
           )}
 
           {/* Current Photo */}
-          <img
+          <Image
             src={currentPhoto.photo_url}
             alt={currentPhoto.caption || `Room photo ${currentIndex + 1}`}
             className="max-w-full max-h-full object-contain"
             onLoad={() => setIsLoading(false)}
             onError={() => setIsLoading(false)}
+            width={800}
+            height={600}
           />
 
           {/* Navigation Arrows */}
@@ -234,10 +237,12 @@ export default function PhotoGalleryModal({
                     : 'border-white/30 hover:border-white/60'
                 }`}
               >
-                <img
+                <Image
                   src={photo.photo_url}
                   alt={`Thumbnail ${index + 1}`}
                   className="w-full h-full object-cover"
+                  width={64}
+                  height={64}
                 />
               </button>
             ))}

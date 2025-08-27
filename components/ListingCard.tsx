@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -152,10 +153,12 @@ export default function ListingCard({
           </Button>
           
           <div className="relative">
-            <img
+            <Image
               src={listing.images[currentImageIndex]}
               alt={`${listing.title} - Image ${currentImageIndex + 1}`}
               className="max-w-full max-h-[80vh] object-contain"
+              width={800}
+              height={600}
             />
             
             {listing.images.length > 1 && (
@@ -191,10 +194,12 @@ export default function ListingCard({
         <div className="relative aspect-square overflow-hidden">
           {hasImages ? (
             <>
-              <img
+              <Image
                 src={listing.images[currentImageIndex]}
                 alt={listing.title}
                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                width={400}
+                height={400}
                 onClick={() => setShowImageModal(true)}
               />
               

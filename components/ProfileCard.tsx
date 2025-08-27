@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { Card } from '@/components/ui/card';
 
 interface ProfileCardProps {
@@ -92,10 +93,12 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
         <div className="p-6 space-y-4">
           {/* Profile Picture */}
           <div className="flex justify-center">
-            <img
+            <Image
               src={profilePicture}
               alt={`${name}'s profile`}
               className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md"
+              width={96}
+              height={96}
             />
           </div>
 

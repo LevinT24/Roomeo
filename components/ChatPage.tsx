@@ -31,7 +31,7 @@ export default function ChatPage({ user, onBack, chatTarget }: ChatPageProps) {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages[selectedChatId || ""]])
+  }, [messages, selectedChatId])
 
   // Auto-initialize chat when coming from marketplace
   useEffect(() => {
@@ -140,7 +140,7 @@ export default function ChatPage({ user, onBack, chatTarget }: ChatPageProps) {
         clearTimeout(debounceTimerRef.current)
       }
     }
-  }, [chatTarget?.sellerId]) // Only depend on sellerId, not the whole chatTarget or chats
+  }, [chatTarget?.sellerId, chats, createOrGetChatWith]) // Include dependencies used in initializeMarketplaceChat
 
   // Cleanup effect for component unmount
   useEffect(() => {

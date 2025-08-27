@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -109,10 +110,12 @@ export default function ProfileViewEdit({ user, onClose, onUpdate }: ProfileView
         <div className="bg-[#B7C8B5] rounded-2xl border-4 border-[#004D40] shadow-[8px_8px_0px_0px_#004D40] overflow-hidden">
           {/* Profile Image Section */}
           <div className="relative">
-            <img
+            <Image
               alt={displayData.name}
               className="w-full h-80 object-cover"
               src={user.profilePicture || "/placeholder.svg"}
+              width={400}
+              height={320}
             />
             <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent text-white">
               {isEditing ? (

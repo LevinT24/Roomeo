@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SettleUpModalProps, PaymentMethod } from "@/types/expenses"
@@ -228,10 +229,12 @@ export default function SettlementModal({
                 <label htmlFor="proof-upload" className="cursor-pointer">
                   {imagePreview ? (
                     <div className="space-y-3">
-                      <img 
+                      <Image 
                         src={imagePreview} 
                         alt="Payment proof preview" 
                         className="max-w-full max-h-32 mx-auto rounded-xl shadow-card border border-sage/30"
+                        width={200}
+                        height={128}
                       />
                       <p className="roomeo-body text-emerald-primary/60 text-sm">
                         🔄 Click to change image
