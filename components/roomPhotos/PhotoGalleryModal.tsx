@@ -64,7 +64,7 @@ export default function PhotoGalleryModal({
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown, goToNext, goToPrevious]);
+  }, [handleKeyDown]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -79,15 +79,15 @@ export default function PhotoGalleryModal({
     };
   }, [isOpen]);
 
-  const goToNext = () => {
+  const goToNext = useCallback(() => {
     setCurrentIndex(prev => (prev + 1) % photos.length);
     setIsLoading(true);
-  };
+  }, [photos.length]);
 
-  const goToPrevious = () => {
+  const goToPrevious = useCallback(() => {
     setCurrentIndex(prev => (prev - 1 + photos.length) % photos.length);
     setIsLoading(true);
-  };
+  }, [photos.length]);
 
   const goToPhoto = (index: number) => {
     setCurrentIndex(index);

@@ -2,7 +2,7 @@
 
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Bell, X, Check, DollarSign, Users, AlertCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
@@ -37,25 +37,9 @@ export default function NotificationsDropdown({ userId }: NotificationsDropdownP
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Fetch notifications on mount
-  useEffect(() => {
-    if (userId) {
-      fetchNotifications()
-      
-      // Set up real-time subscription
-      const subscription = subscribeToNotifications()
-      
-      return () => {
-        // Cleanup subscription on unmount
-        if (subscription) {
-          supabase.removeChannel(subscription)
-        }
-      }
-    }
-  }, [userId, fetchNotifications, subscribeToNotifications])
 
   // Fetch notifications from database
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -79,10 +63,63 @@ export default function NotificationsDropdown({ userId }: NotificationsDropdownP
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId])
+
+  // Mark notification as read
+  const markAsRead = useCallback(async (notificationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', notificationId)
+      
+      if (error) throw error
+      
+      setNotifications(prev =>
+        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      )
+      setUnreadCount(prev => Math.max(0, prev - 1))
+    } catch (err) {
+      console.error('Error marking notification as read:', err)
+    }
+  }, [])
+
+  // Show browser notification
+  const showBrowserNotification = useCallback((notification: Notification) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      const browserNotif = new Notification(notification.title, {
+        body: notification.message,
+        icon: '/favicon.ico',
+        tag: notification.id,
+        requireInteraction: false
+      })
+
+      // Auto-close after 5 seconds
+      setTimeout(() => browserNotif.close(), 5000)
+
+      // Handle click on notification
+      browserNotif.onclick = () => {
+        window.focus()
+        setIsOpen(true)
+        markAsRead(notification.id)
+        browserNotif.close()
+      }
+    }
+  }, [markAsRead])
+
+  // Play notification sound
+  const playNotificationSound = useCallback(() => {
+    try {
+      const audio = new Audio('/notification-sound.mp3')
+      audio.volume = 0.5
+      audio.play().catch(e => console.log('Could not play notification sound:', e))
+    } catch (e) {
+      console.log('Notification sound not available')
+    }
+  }, [])
 
   // Subscribe to real-time notifications
-  const subscribeToNotifications = () => {
+  const subscribeToNotifications = useCallback(() => {
     console.log('Setting up real-time notification subscription for user:', userId)
     
     const subscription = supabase
@@ -113,41 +150,25 @@ export default function NotificationsDropdown({ userId }: NotificationsDropdownP
       .subscribe()
     
     return subscription
-  }
+  }, [userId, showBrowserNotification, playNotificationSound])
 
-  // Show browser notification
-  const showBrowserNotification = (notification: Notification) => {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      const browserNotif = new Notification(notification.title, {
-        body: notification.message,
-        icon: '/favicon.ico',
-        tag: notification.id,
-        requireInteraction: false
-      })
-
-      // Auto-close after 5 seconds
-      setTimeout(() => browserNotif.close(), 5000)
-
-      // Handle click on notification
-      browserNotif.onclick = () => {
-        window.focus()
-        setIsOpen(true)
-        markAsRead(notification.id)
-        browserNotif.close()
+  // Fetch notifications on mount
+  useEffect(() => {
+    if (userId) {
+      fetchNotifications()
+      
+      // Set up real-time subscription
+      const subscription = subscribeToNotifications()
+      
+      return () => {
+        // Cleanup subscription on unmount
+        if (subscription) {
+          supabase.removeChannel(subscription)
+        }
       }
     }
-  }
+  }, [userId, fetchNotifications, subscribeToNotifications])
 
-  // Play notification sound
-  const playNotificationSound = () => {
-    try {
-      const audio = new Audio('/notification-sound.mp3')
-      audio.volume = 0.5
-      audio.play().catch(e => console.log('Could not play notification sound:', e))
-    } catch (e) {
-      console.log('Notification sound not available')
-    }
-  }
 
   // Request notification permission
   const requestNotificationPermission = async () => {
@@ -157,24 +178,6 @@ export default function NotificationsDropdown({ userId }: NotificationsDropdownP
     }
   }
 
-  // Mark notification as read
-  const markAsRead = async (notificationId: string) => {
-    try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', notificationId)
-      
-      if (error) throw error
-      
-      setNotifications(prev =>
-        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
-      )
-      setUnreadCount(prev => Math.max(0, prev - 1))
-    } catch (err) {
-      console.error('Error marking notification as read:', err)
-    }
-  }
 
   // Mark all as read
   const markAllAsRead = async () => {

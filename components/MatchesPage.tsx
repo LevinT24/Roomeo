@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import { removeMatch } from "@/services/matches"
 
@@ -42,13 +42,7 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchMutualMatches()
-    }
-  }, [user, fetchMutualMatches])
-
-  const fetchMutualMatches = async () => {
+  const fetchMutualMatches = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -137,7 +131,13 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchMutualMatches()
+    }
+  }, [user, fetchMutualMatches])
 
   const handleStartChat = async (matchUser: Match) => {
     if (!matchUser.chatId) {

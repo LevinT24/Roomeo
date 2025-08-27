@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,12 +30,7 @@ export default function RoomPhotoManager({ userId, onClose }: RoomPhotoManagerPr
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  // Fetch photos on component mount
-  useEffect(() => {
-    fetchPhotos();
-  }, [userId, fetchPhotos]);
-
-  const fetchPhotos = async () => {
+  const fetchPhotos = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -46,7 +41,12 @@ export default function RoomPhotoManager({ userId, onClose }: RoomPhotoManagerPr
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  // Fetch photos on component mount
+  useEffect(() => {
+    fetchPhotos();
+  }, [fetchPhotos]);
 
   // Handle photo deletion
   const handleDeletePhoto = async (photoId: string) => {

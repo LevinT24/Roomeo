@@ -1,7 +1,7 @@
 // components/SessionRecovery.tsx - Handle session interruptions gracefully
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -18,23 +18,7 @@ export default function SessionRecovery({ onRecovered, className = "" }: Session
   const [showRecovery, setShowRecovery] = useState(false)
   const [autoRecoveryAttempted, setAutoRecoveryAttempted] = useState(false)
 
-  // Show recovery UI when session is invalid but user exists
-  useEffect(() => {
-    if (user && !sessionValid && !isRecovering) {
-      setShowRecovery(true)
-      
-      // Try automatic recovery once
-      if (!autoRecoveryAttempted) {
-        setAutoRecoveryAttempted(true)
-        handleAutoRecovery()
-      }
-    } else {
-      setShowRecovery(false)
-      setRecoveryError(null)
-    }
-  }, [user, sessionValid, isRecovering, autoRecoveryAttempted, handleAutoRecovery])
-
-  const handleAutoRecovery = async () => {
+  const handleAutoRecovery = useCallback(async () => {
     console.log('🔄 Attempting automatic session recovery...')
     
     try {
@@ -50,7 +34,23 @@ export default function SessionRecovery({ onRecovered, className = "" }: Session
     } catch (error) {
       console.error('❌ Auto recovery error:', error)
     }
-  }
+  }, [validateSession, onRecovered])
+
+  // Show recovery UI when session is invalid but user exists
+  useEffect(() => {
+    if (user && !sessionValid && !isRecovering) {
+      setShowRecovery(true)
+      
+      // Try automatic recovery once
+      if (!autoRecoveryAttempted) {
+        setAutoRecoveryAttempted(true)
+        handleAutoRecovery()
+      }
+    } else {
+      setShowRecovery(false)
+      setRecoveryError(null)
+    }
+  }, [user, sessionValid, isRecovering, autoRecoveryAttempted, handleAutoRecovery])
 
   const handleManualRecovery = async () => {
     setIsRecovering(true)

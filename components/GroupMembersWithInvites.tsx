@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Users, Clock, CheckCircle, XCircle, Mail, MessageCircle, UserPlus } from "lucide-react";
 import InviteModal from "./InviteModal";
@@ -37,7 +37,7 @@ export default function GroupMembersWithInvites({
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
 
-  const fetchGroupData = async () => {
+  const fetchGroupData = useCallback(async () => {
     try {
       // Fetch current members
       const membersResponse = await fetch(`/api/groups/${groupId}/members`);
@@ -62,7 +62,7 @@ export default function GroupMembersWithInvites({
     } finally {
       setLoading(false);
     }
-  };
+  }, [groupId]);
 
   useEffect(() => {
     fetchGroupData();
