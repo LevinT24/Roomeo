@@ -247,7 +247,15 @@ export const deleteRoomImage = async (imageId: string, userId: string): Promise<
 export const getDiscoverProfiles = async (
   currentUserId: string,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
+  filters?: {
+    ageMin?: number;
+    ageMax?: number;
+    gender?: string;
+    location?: string;
+    budgetMax?: number;
+    roomType?: string;
+  }
 ): Promise<DiscoverProfilesResponse> => {
   try {
     const offset = (page - 1) * limit
@@ -280,14 +288,17 @@ export const getDiscoverProfiles = async (
     // Build query for opposite role
     const targetRole = currentUser.user_role === 'seeker' ? 'provider' : 'seeker'
     
+    // Determine if we need to join room_details based on filters
+    const needsRoomDetailsJoin = targetRole === 'provider' && filters && 
+      (filters.budgetMax || (filters.roomType && filters.roomType !== ''))
+    
+    const selectClause = needsRoomDetailsJoin 
+      ? `*,room_images (*),room_details!inner (*),seeker_preferences (*)`
+      : `*,room_images (*),room_details (*),seeker_preferences (*)`
+    
     let query = supabase
       .from('users')
-      .select(`
-        *,
-        room_images (*),
-        room_details (*),
-        seeker_preferences (*)
-      `)
+      .select(selectClause)
       .eq('user_role', targetRole)
       .eq('profile_completed', true)
       .not('id', 'in', `(${excludeIds.join(',')})`)
@@ -307,6 +318,32 @@ export const getDiscoverProfiles = async (
       }
       if (preferences.preferred_location) {
         query = query.ilike('location', `%${preferences.preferred_location}%`)
+      }
+    }
+
+    // Apply UI filters (these override preferences if provided)
+    if (filters) {
+      if (filters.ageMin) {
+        query = query.gte('age', filters.ageMin)
+      }
+      if (filters.ageMax) {
+        query = query.lte('age', filters.ageMax)
+      }
+      if (filters.gender && filters.gender !== '') {
+        query = query.eq('gender', filters.gender)
+      }
+      if (filters.location && filters.location !== '') {
+        query = query.ilike('location', `%${filters.location}%`)
+      }
+      
+      // Budget filter - only applies for seekers looking at providers
+      if (filters.budgetMax && targetRole === 'provider') {
+        query = query.lte('room_details.rent_amount', filters.budgetMax)
+      }
+      
+      // Room type filter - only applies for seekers looking at providers
+      if (filters.roomType && filters.roomType !== '' && targetRole === 'provider') {
+        query = query.eq('room_details.room_type', filters.roomType)
       }
     }
 

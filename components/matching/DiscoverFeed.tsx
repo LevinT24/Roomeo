@@ -39,6 +39,9 @@ export default function DiscoverFeed({ currentUserRole, onStartChat }: DiscoverF
   const [filters, setFilters] = useState<FilterOptions>({})
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+
+  // Debug logging
+  console.log('DiscoverFeed render:', { showFilters, filters })
   const { toast } = useToast()
 
   const targetRole = currentUserRole === 'seeker' ? 'provider' : 'seeker'
@@ -212,15 +215,36 @@ export default function DiscoverFeed({ currentUserRole, onStartChat }: DiscoverF
         </div>
 
         <div className="flex items-center space-x-2">
+          {/* Debug: Simple filter button */}
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => {
+              console.log('Direct button clicked, setting showFilters to true')
+              setShowFilters(true)
+            }}
+            className="mr-2"
+          >
+            🔧 Test Filter
+          </Button>
+          
           {/* Filters */}
           <Dialog open={showFilters} onOpenChange={setShowFilters}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={(e) => {
+                  console.log('Filter button clicked', { showFilters })
+                  e.preventDefault()
+                  setShowFilters(true)
+                }}
+              >
                 <Filter className="w-4 h-4 mr-2" />
                 Filters
-                {Object.keys(filters).length > 0 && (
+                {Object.values(filters).some(value => value !== undefined && value !== '') && (
                   <Badge variant="secondary" className="ml-2">
-                    {Object.keys(filters).length}
+                    {Object.values(filters).filter(value => value !== undefined && value !== '').length}
                   </Badge>
                 )}
               </Button>
@@ -332,10 +356,10 @@ export default function DiscoverFeed({ currentUserRole, onStartChat }: DiscoverF
       </div>
 
       {/* Active Filters */}
-      {Object.keys(filters).length > 0 && (
+      {Object.values(filters).some(value => value !== undefined && value !== '') && (
         <div className="flex flex-wrap gap-2 mb-6">
           {Object.entries(filters).map(([key, value]) => {
-            if (!value) return null
+            if (!value || value === '') return null
             return (
               <Badge key={key} variant="secondary" className="flex items-center">
                 <span className="capitalize">{key}:</span>

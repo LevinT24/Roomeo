@@ -4,6 +4,11 @@ import { useState, useEffect, useCallback } from "react"
 import Image from "next/image"
 import { useAuth } from "@/hooks/useAuth"
 import { supabase } from "@/lib/supabase"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { X } from "lucide-react"
 
 interface User {
   id: string
@@ -26,12 +31,20 @@ interface SwipePageProps {
   user?: User // Make it optional since we'll fetch from useAuth
 }
 
+interface FilterOptions {
+  ageMin?: number
+  ageMax?: number
+  location?: string
+}
+
 export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
   const { user: authUser, logout } = useAuth()
   const [profiles, setProfiles] = useState<User[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState<FilterOptions>({})
 
   // Use the user from props or auth
   const currentUser = propUser || authUser
@@ -68,8 +81,8 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
       // Determine the opposite type to fetch
       const targetUserType = currentUserProfile.usertype === 'seeker' ? 'provider' : 'seeker'
 
-      // Fetch users with the opposite type (restore original functionality first)
-      const { data: oppositeUsers, error: usersError } = await supabase
+      // Build query with filters
+      let query = supabase
         .from('users')
         .select(`
           id,
@@ -85,6 +98,19 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
         .eq('usertype', targetUserType)
         .neq('id', currentUser.id) // Exclude current user
         .not('age', 'is', null) // Only include users who have completed their profile
+
+      // Apply filters
+      if (filters.ageMin) {
+        query = query.gte('age', filters.ageMin)
+      }
+      if (filters.ageMax) {
+        query = query.lte('age', filters.ageMax)
+      }
+      if (filters.location && filters.location !== '') {
+        query = query.ilike('location', `%${filters.location}%`)
+      }
+
+      const { data: oppositeUsers, error: usersError } = await query
 
       if (usersError) {
         console.error('Error fetching opposite type users:', usersError)
@@ -140,13 +166,24 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
     } finally {
       setLoading(false)
     }
-  }, [currentUser])
+  }, [currentUser, filters])
 
   useEffect(() => {
     if (currentUser?.id) {
       fetchOppositeTypeUsers()
     }
   }, [currentUser, fetchOppositeTypeUsers])
+
+  // Listen for filter events from header button
+  useEffect(() => {
+    const handleOpenFilters = () => {
+      console.log('Opening filters via custom event');
+      setShowFilters(true);
+    };
+
+    window.addEventListener('openFilters', handleOpenFilters);
+    return () => window.removeEventListener('openFilters', handleOpenFilters);
+  }, [])
 
   const handleSwipe = async (liked: boolean) => {
     const currentProfile = profiles[currentIndex]
@@ -307,10 +344,36 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
     )
   }
 
+  // Filter functions
+  const applyFilters = () => {
+    setCurrentIndex(0) // Reset to first profile
+    fetchOppositeTypeUsers()
+    setShowFilters(false)
+  }
+
+  const resetFilters = () => {
+    setFilters({})
+    setCurrentIndex(0) // Reset to first profile
+    fetchOppositeTypeUsers()
+    setShowFilters(false)
+  }
+
   const currentProfile = profiles[currentIndex]
 
   return (
     <div className="bg-mint-cream min-h-screen">
+      {/* Hidden filter trigger for header button */}
+      <button
+        data-filter-trigger
+        onClick={() => {
+          console.log('Hidden filter trigger clicked');
+          setShowFilters(true);
+        }}
+        style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }}
+        tabIndex={-1}
+        aria-hidden="true"
+      />
+      
       <div className="relative flex size-full min-h-screen flex-col overflow-x-hidden">
         <div className="layout-container flex h-full grow flex-col">
           <main className="flex-1 px-6 py-6 lg:px-12 xl:px-20 bg-mint-cream min-h-screen overflow-y-auto">
@@ -446,6 +509,74 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
           </main>
         </div>
       </div>
+
+      {/* Filter Dialog */}
+      <Dialog open={showFilters} onOpenChange={setShowFilters}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              Filter Profiles
+              <Button
+                variant="ghost" 
+                size="sm"
+                onClick={() => setShowFilters(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Min Age</label>
+                <Input
+                  type="number"
+                  placeholder="18"
+                  value={filters.ageMin || ''}
+                  onChange={(e) => setFilters(prev => ({ 
+                    ...prev, 
+                    ageMin: e.target.value ? parseInt(e.target.value) : undefined 
+                  }))}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Max Age</label>
+                <Input
+                  type="number"
+                  placeholder="65"
+                  value={filters.ageMax || ''}
+                  onChange={(e) => setFilters(prev => ({ 
+                    ...prev, 
+                    ageMax: e.target.value ? parseInt(e.target.value) : undefined 
+                  }))}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1 block">Location</label>
+              <Input
+                placeholder="City or area"
+                value={filters.location || ''}
+                onChange={(e) => setFilters(prev => ({ 
+                  ...prev, 
+                  location: e.target.value || undefined 
+                }))}
+              />
+            </div>
+
+            <div className="flex space-x-2 pt-4">
+              <Button variant="outline" onClick={resetFilters} className="flex-1">
+                Reset
+              </Button>
+              <Button onClick={applyFilters} className="flex-1">
+                Apply
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

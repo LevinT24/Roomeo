@@ -23,6 +23,16 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
 
+    // Get filter parameters
+    const filters = {
+      ageMin: searchParams.get('ageMin') ? parseInt(searchParams.get('ageMin')!) : undefined,
+      ageMax: searchParams.get('ageMax') ? parseInt(searchParams.get('ageMax')!) : undefined,
+      gender: searchParams.get('gender') || undefined,
+      location: searchParams.get('location') || undefined,
+      budgetMax: searchParams.get('budgetMax') ? parseInt(searchParams.get('budgetMax')!) : undefined,
+      roomType: searchParams.get('roomType') || undefined,
+    }
+
     // Validate parameters
     if (page < 1 || limit < 1 || limit > 50) {
       return NextResponse.json(
@@ -31,7 +41,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const result = await getDiscoverProfiles(user.id, page, limit)
+    const result = await getDiscoverProfiles(user.id, page, limit, filters)
 
     if (!result.success) {
       return NextResponse.json(

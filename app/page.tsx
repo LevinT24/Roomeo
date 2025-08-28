@@ -366,8 +366,17 @@ export default function Home() {
                     className="text-[#004D40] hover:text-[#44C76F] focus:outline-none" 
                     title="Filter matches"
                     onClick={() => {
+                      console.log('Filter icon clicked!');
                       const filterButton = document.querySelector('[data-filter-trigger]') as HTMLButtonElement;
-                      if (filterButton) filterButton.click();
+                      console.log('Found filter button:', filterButton);
+                      if (filterButton) {
+                        console.log('Clicking filter button...');
+                        filterButton.click();
+                      } else {
+                        console.error('Filter trigger button not found!');
+                        // Fallback: dispatch a custom event that SwipePage can listen for
+                        window.dispatchEvent(new CustomEvent('openFilters'));
+                      }
                     }}
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
