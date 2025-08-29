@@ -270,7 +270,78 @@ export async function sendFriendRequest(receiverId: string): Promise<{ success: 
     if (functionError) {
       console.log('Function not available, using direct insert:', functionError.message)
       
-      // Fallback to direct insert
+      // Check if users are already friends
+      const { data: existingFriendship, error: friendshipError } = await supabase
+        .from('friendships')
+        .select('id')
+        .or(`and(user1_id.eq.${user.id},user2_id.eq.${receiverId}),and(user1_id.eq.${receiverId},user2_id.eq.${user.id})`)
+        .single()
+
+      if (friendshipError && friendshipError.code !== 'PGRST116') {
+        console.error('❌ Error checking existing friendship:', friendshipError)
+        return { success: false, error: 'Failed to check friendship status' }
+      }
+
+      if (existingFriendship) {
+        console.log('Users are already friends')
+        return { success: false, error: 'You are already friends with this user' }
+      }
+
+      // Check if friend request already exists
+      const { data: existingRequest, error: checkError } = await supabase
+        .from('friend_requests')
+        .select('id, status, sender_id, receiver_id')
+        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user.id})`)
+        .single()
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('❌ Error checking existing friend request:', checkError)
+        return { success: false, error: 'Failed to check existing friend request' }
+      }
+
+      if (existingRequest) {
+        console.log('Existing friend request found:', existingRequest)
+        
+        // Handle different scenarios
+        if (existingRequest.status === 'pending') {
+          if (existingRequest.sender_id === user.id) {
+            return { success: false, error: 'Friend request already sent and pending' }
+          } else {
+            return { success: false, error: 'This user has already sent you a friend request. Please check your requests.' }
+          }
+        } else if (existingRequest.status === 'declined') {
+          // Allow re-sending after decline, update the existing record
+          const { error: updateError } = await supabase
+            .from('friend_requests')
+            .update({
+              sender_id: user.id,
+              receiver_id: receiverId,
+              status: 'pending',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingRequest.id)
+
+          if (updateError) {
+            console.error('❌ Error updating declined friend request:', updateError)
+            return { success: false, error: 'Failed to resend friend request' }
+          }
+          
+          console.log('✅ Friend request resent after decline')
+          return { success: true }
+        } else if (existingRequest.status === 'accepted') {
+          // This shouldn't happen if friendship exists, but clean up orphaned records
+          const { error: deleteError } = await supabase
+            .from('friend_requests')
+            .delete()
+            .eq('id', existingRequest.id)
+
+          if (deleteError) {
+            console.error('❌ Error cleaning up old friend request:', deleteError)
+          }
+        }
+      }
+      
+      // No existing request or cleaned up, proceed with insert
       const { error: insertError } = await supabase
         .from('friend_requests')
         .insert({
@@ -394,17 +465,43 @@ export async function removeFriend(friendshipId: string): Promise<{ success: boo
     console.log('🔄 Removing friend:', friendshipId)
     
     // Ensure user is authenticated
-    await ensureAuthenticated()
+    const user = await ensureAuthenticated()
+
+    // First, get the friendship details to find both users
+    const { data: friendship, error: getFriendshipError } = await supabase
+      .from('friendships')
+      .select('user1_id, user2_id')
+      .eq('id', friendshipId)
+      .single()
+
+    if (getFriendshipError || !friendship) {
+      console.error('❌ Error getting friendship details:', getFriendshipError)
+      return { success: false, error: 'Friendship not found' }
+    }
 
     // Delete friendship record
-    const { error } = await supabase
+    const { error: deleteFriendshipError } = await supabase
       .from('friendships')
       .delete()
       .eq('id', friendshipId)
 
-    if (error) {
-      console.error('❌ Error removing friend:', error)
-      return { success: false, error: error.message || 'Failed to remove friend' }
+    if (deleteFriendshipError) {
+      console.error('❌ Error removing friend:', deleteFriendshipError)
+      return { success: false, error: deleteFriendshipError.message || 'Failed to remove friend' }
+    }
+
+    // Clean up any old accepted friend requests between these users
+    // This allows them to send new requests in the future
+    const { error: cleanupError } = await supabase
+      .from('friend_requests')
+      .delete()
+      .or(`and(sender_id.eq.${friendship.user1_id},receiver_id.eq.${friendship.user2_id}),and(sender_id.eq.${friendship.user2_id},receiver_id.eq.${friendship.user1_id})`)
+
+    if (cleanupError) {
+      console.error('❌ Error cleaning up old friend requests:', cleanupError)
+      // Don't fail the operation, just log the error
+    } else {
+      console.log('✅ Cleaned up old friend requests')
     }
 
     console.log('✅ Friend removed successfully')

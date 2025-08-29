@@ -188,10 +188,18 @@ export default function ListingCard({
   }
 
   return (
-    <div className="roomeo-card group cursor-pointer overflow-hidden">
+    <div className={`roomeo-card group cursor-pointer overflow-hidden ${listing.status === 'sold' ? 'opacity-70' : ''}`}>
       <div className="relative">
         {/* Image Section */}
-        <div className="relative aspect-square overflow-hidden">
+        <div className="relative aspect-[4/3] overflow-hidden">
+          {/* Sold Overlay */}
+          {listing.status === 'sold' && (
+            <div className="absolute inset-0 bg-gray-600/50 z-[5] flex items-center justify-center pointer-events-none">
+              <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg">
+                <span className="text-gray-800 font-bold text-lg">SOLD</span>
+              </div>
+            </div>
+          )}
           {hasImages ? (
             <>
               <Image
@@ -255,26 +263,26 @@ export default function ListingCard({
 
         {/* Status Badge */}
         {listing.status === 'sold' && (
-          <Badge className="absolute top-2 left-2 bg-alert-red text-white roomeo-body font-semibold px-3 py-1">
+          <Badge className="absolute top-2 left-2 bg-alert-red text-white roomeo-body font-semibold px-3 py-1 z-20">
             SOLD
           </Badge>
         )}
 
         {/* Price Badge */}
-        <div className="absolute bottom-2 right-2 flex items-center justify-center rounded-xl bg-emerald-primary border-2 border-white px-3 py-1 shadow-soft">
-          <span className="roomeo-body text-sm font-semibold text-gold-accent">{displayPrice}</span>
+        <div className="absolute bottom-3 right-3 flex items-center justify-center rounded-xl bg-emerald-primary border-2 border-white px-4 py-2 shadow-soft">
+          <span className="roomeo-body text-base font-bold text-gold-accent">{displayPrice}</span>
         </div>
 
         {/* Owner Actions Menu */}
         {isOwner && showOwnerActions && (
-          <div className="absolute top-2 right-2">
+          <div className="absolute top-2 right-2 z-10">
             <div className="relative">
               <Button
                 onClick={(e) => {
                   e.stopPropagation()
                   setShowActionsMenu(!showActionsMenu)
                 }}
-                className="w-8 h-8 p-0 bg-black/50 hover:bg-black/70 text-white border-none"
+                className="w-8 h-8 p-0 bg-black/50 hover:bg-black/70 text-white border-none z-10"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -336,16 +344,16 @@ export default function ListingCard({
       </div>
 
       {/* Content Section */}
-      <div className="p-6">
+      <div className={`p-5 md:p-6 ${listing.status === 'sold' ? 'text-gray-500' : ''}`}>
         <div className="space-y-4">
           {/* Title */}
-          <h3 className="roomeo-heading text-lg leading-tight line-clamp-2">
+          <h3 className="roomeo-heading text-xl leading-tight line-clamp-2 min-h-[3.5rem] flex items-start">
             {listing.title}
           </h3>
 
           {/* Description */}
           {listing.description && (
-            <p className="roomeo-body text-emerald-primary/70 text-sm line-clamp-2">
+            <p className="roomeo-body text-emerald-primary/70 text-base line-clamp-3 min-h-[4.5rem]">
               {listing.description}
             </p>
           )}
@@ -379,17 +387,27 @@ export default function ListingCard({
           )}
 
           {/* Actions */}
-          {!isOwner && listing.status === 'active' && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onChatWithSeller?.(listing.created_by, listing.id)
-              }}
-              className="w-full roomeo-button-primary flex items-center justify-center gap-2"
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span>Chat with Seller</span>
-            </button>
+          {!isOwner && (
+            <>
+              {listing.status === 'active' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onChatWithSeller?.(listing.created_by, listing.id)
+                  }}
+                  className="w-full roomeo-button-primary flex items-center justify-center gap-2"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  <span>Chat with Seller</span>
+                </button>
+              )}
+              {listing.status === 'sold' && (
+                <div className="w-full bg-gray-300 text-gray-500 flex items-center justify-center gap-2 px-4 py-3 rounded-xl cursor-not-allowed">
+                  <Check className="h-4 w-4" />
+                  <span>Item Sold</span>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -2,13 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Image from "next/image"
+import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/useAuth"
 import { supabase } from "@/lib/supabase"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { X } from "lucide-react"
 
 interface User {
   id: string
@@ -31,11 +27,6 @@ interface SwipePageProps {
   user?: User // Make it optional since we'll fetch from useAuth
 }
 
-interface FilterOptions {
-  ageMin?: number
-  ageMax?: number
-  location?: string
-}
 
 export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
   const { user: authUser, logout } = useAuth()
@@ -43,8 +34,7 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showFilters, setShowFilters] = useState(false)
-  const [filters, setFilters] = useState<FilterOptions>({})
+
 
   // Use the user from props or auth
   const currentUser = propUser || authUser
@@ -99,16 +89,6 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
         .neq('id', currentUser.id) // Exclude current user
         .not('age', 'is', null) // Only include users who have completed their profile
 
-      // Apply filters
-      if (filters.ageMin) {
-        query = query.gte('age', filters.ageMin)
-      }
-      if (filters.ageMax) {
-        query = query.lte('age', filters.ageMax)
-      }
-      if (filters.location && filters.location !== '') {
-        query = query.ilike('location', `%${filters.location}%`)
-      }
 
       const { data: oppositeUsers, error: usersError } = await query
 
@@ -166,7 +146,7 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
     } finally {
       setLoading(false)
     }
-  }, [currentUser, filters])
+  }, [currentUser])
 
   useEffect(() => {
     if (currentUser?.id) {
@@ -174,16 +154,6 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
     }
   }, [currentUser, fetchOppositeTypeUsers])
 
-  // Listen for filter events from header button
-  useEffect(() => {
-    const handleOpenFilters = () => {
-      console.log('Opening filters via custom event');
-      setShowFilters(true);
-    };
-
-    window.addEventListener('openFilters', handleOpenFilters);
-    return () => window.removeEventListener('openFilters', handleOpenFilters);
-  }, [])
 
   const handleSwipe = async (liked: boolean) => {
     const currentProfile = profiles[currentIndex]
@@ -379,15 +349,43 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
           <main className="flex-1 px-6 py-6 lg:px-12 xl:px-20 bg-mint-cream min-h-screen overflow-y-auto">
             <div className="mx-auto max-w-4xl animate-fade-in">
               {/* Header */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+              <div className="text-center mb-8">
                 <div className="animate-slide-up">
-                  <h1 className="roomeo-heading text-4xl mb-2">💕 Find Your Roommate</h1>
-                  <p className="roomeo-body text-emerald-primary/70">Swipe to discover compatible living partners</p>
+                  <h1 className="roomeo-heading text-3xl sm:text-4xl mb-3 bg-gradient-to-r from-emerald-primary to-moss-green bg-clip-text text-transparent font-bold">💕 Find Your Roommate</h1>
+                  <p className="roomeo-body text-emerald-primary/80 text-lg font-medium max-w-md mx-auto leading-relaxed">Swipe to discover compatible living partners</p>
                 </div>
               </div>
 
               {/* Main Swipe Content */}
-              <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+              <div className="flex items-center justify-center min-h-[calc(100vh-200px)] relative">
+                {/* Left Reject Button */}
+                <button
+                  className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 size-20 bg-white border-3 border-sage text-alert-red hover:bg-alert-red/10 flex items-center justify-center rounded-full shadow-lg transform hover:scale-110 transition-all group"
+                  onClick={() => handleSwipe(false)}
+                >
+                  <svg
+                    className="w-10 h-10 group-hover:scale-110 transition-transform"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                  </svg>
+                </button>
+                
+                {/* Right Accept Button */}
+                <button
+                  className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 size-24 bg-moss-green hover:bg-moss-green/90 text-white flex items-center justify-center rounded-full shadow-lg transform hover:scale-110 transition-all group"
+                  onClick={() => handleSwipe(true)}
+                >
+                  <svg
+                    className="w-12 h-12 group-hover:scale-110 transition-transform"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                  </svg>
+                </button>
+                
                 <div className="w-full max-w-sm mx-auto flex flex-col justify-center">
                   <div className="relative mb-8">
                     <div className="roomeo-card overflow-hidden animate-slide-up">
@@ -468,40 +466,26 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
                   </div>
                   
                   {/* Profile counter */}
-                  <div className="text-center mb-6">
+                  <div className="text-center mb-4">
                     <p className="roomeo-body text-emerald-primary/70 font-semibold text-sm">
                       {currentIndex + 1} OF {profiles.length}
                     </p>
                   </div>
-
-                  <div className="flex justify-between items-center gap-8">
-                    {/* Cross/Pass Button - Left Side */}
-                    <button
-                      className="size-20 bg-white border-3 border-sage text-alert-red hover:bg-alert-red/10 flex items-center justify-center rounded-full shadow-soft transform hover:scale-105 transition-all group"
-                      onClick={() => handleSwipe(false)}
-                    >
-                      <svg
-                        className="w-10 h-10 group-hover:scale-110 transition-transform"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
+                  
+                  {/* Bottom Action Hints */}
+                  <div className="flex justify-center gap-8 mt-4 opacity-60">
+                    <div className="flex items-center gap-2 text-sm roomeo-body text-emerald-primary">
+                      <svg className="h-4 w-4 text-alert-red" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                       </svg>
-                    </button>
-
-                    {/* Tick/Like Button - Right Side */}
-                    <button
-                      className="size-24 roomeo-button-primary flex items-center justify-center rounded-full group"
-                      onClick={() => handleSwipe(true)}
-                    >
-                      <svg
-                        className="w-12 h-12 group-hover:scale-110 transition-transform"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
+                      <span>Pass</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm roomeo-body text-emerald-primary">
+                      <svg className="h-4 w-4 text-moss-green" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                       </svg>
-                    </button>
+                      <span>Like</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -510,73 +494,6 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
         </div>
       </div>
 
-      {/* Filter Dialog */}
-      <Dialog open={showFilters} onOpenChange={setShowFilters}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              Filter Profiles
-              <Button
-                variant="ghost" 
-                size="sm"
-                onClick={() => setShowFilters(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1 block">Min Age</label>
-                <Input
-                  type="number"
-                  placeholder="18"
-                  value={filters.ageMin || ''}
-                  onChange={(e) => setFilters(prev => ({ 
-                    ...prev, 
-                    ageMin: e.target.value ? parseInt(e.target.value) : undefined 
-                  }))}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Max Age</label>
-                <Input
-                  type="number"
-                  placeholder="65"
-                  value={filters.ageMax || ''}
-                  onChange={(e) => setFilters(prev => ({ 
-                    ...prev, 
-                    ageMax: e.target.value ? parseInt(e.target.value) : undefined 
-                  }))}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-1 block">Location</label>
-              <Input
-                placeholder="City or area"
-                value={filters.location || ''}
-                onChange={(e) => setFilters(prev => ({ 
-                  ...prev, 
-                  location: e.target.value || undefined 
-                }))}
-              />
-            </div>
-
-            <div className="flex space-x-2 pt-4">
-              <Button variant="outline" onClick={resetFilters} className="flex-1">
-                Reset
-              </Button>
-              <Button onClick={applyFilters} className="flex-1">
-                Apply
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

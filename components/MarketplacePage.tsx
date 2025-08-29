@@ -163,19 +163,19 @@ export default function MarketplacePage({ user, onStartChat }: MarketplacePagePr
               <div className="flex flex-col md:flex-row gap-4 mb-6">
                 {/* Search */}
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-primary/60" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-primary/60" />
                   <Input
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search for items..."
-                    className="pl-10 roomeo-body border-2 border-sage/30 rounded-xl focus:border-moss-green bg-white"
+                    className="pl-12 pr-4 py-3 roomeo-body border-2 border-sage/30 rounded-xl focus:border-moss-green bg-white h-12"
                   />
                 </div>
 
                 {/* Filter Button */}
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className="roomeo-button-secondary flex items-center gap-2"
+                  className="roomeo-button-secondary flex items-center justify-center gap-2 h-12 px-6 min-w-[120px]"
                 >
                   <SlidersHorizontal className="h-4 w-4" />
                   <span>Filters</span>
@@ -188,7 +188,7 @@ export default function MarketplacePage({ user, onStartChat }: MarketplacePagePr
                     const [field, direction] = e.target.value.split('-') as [string, 'asc' | 'desc']
                     setSortOption({ field: field as any, direction })
                   }}
-                  className="roomeo-body border-2 border-sage/30 rounded-xl px-4 py-3 bg-white focus:border-moss-green focus:outline-none"
+                  className="roomeo-body border-2 border-sage/30 rounded-xl px-4 py-3 bg-white focus:border-moss-green focus:outline-none h-12 min-w-[180px]"
                 >
                   <option value="created_at-desc">Newest First</option>
                   <option value="created_at-asc">Oldest First</option>
@@ -303,7 +303,7 @@ export default function MarketplacePage({ user, onStartChat }: MarketplacePagePr
 
                 {/* Listings Grid */}
                 {!loading && !error && listings.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {listings.map((listing, index) => (
                       <div key={listing.id} className="animate-on-scroll" style={{animationDelay: `${index * 100}ms`}}>
                         <ListingCard

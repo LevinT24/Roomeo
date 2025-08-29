@@ -356,38 +356,6 @@ export default function Home() {
                 <span className="font-black text-sm md:text-lg tracking-tight transform -skew-x-6 text-[#004D40]">ROOMIO</span>
               </div>
               <div className="flex items-center space-x-3">
-                {/* Session status indicator */}
-                <div className={`w-3 h-3 rounded-full ${sessionValid ? 'bg-green-500' : 'bg-orange-500'}`} 
-                     title={sessionValid ? 'Session active' : 'Session recovering'} />
-                
-                {/* Filter Button - Only show on swipe page */}
-                {currentPage === "swipe" && (
-                  <button 
-                    className="text-[#004D40] hover:text-[#44C76F] focus:outline-none" 
-                    title="Filter matches"
-                    onClick={() => {
-                      console.log('Filter icon clicked!');
-                      const filterButton = document.querySelector('[data-filter-trigger]') as HTMLButtonElement;
-                      console.log('Found filter button:', filterButton);
-                      if (filterButton) {
-                        console.log('Clicking filter button...');
-                        filterButton.click();
-                      } else {
-                        console.error('Filter trigger button not found!');
-                        // Fallback: dispatch a custom event that SwipePage can listen for
-                        window.dispatchEvent(new CustomEvent('openFilters'));
-                      }
-                    }}
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"
-                      />
-                    </svg>
-                  </button>
-                )}
                 
                 {/* Profile Picture with Settings Dropdown */}
                 <div className="relative">

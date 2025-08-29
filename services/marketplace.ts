@@ -46,12 +46,12 @@ export async function getListings(
       if (filters.status) {
         query = query.eq('status', filters.status);
       } else {
-        // Default to only active listings
-        query = query.eq('status', 'active');
+        // Default to show active and sold listings
+        query = query.in('status', ['active', 'sold']);
       }
     } else {
-      // Default to only active listings
-      query = query.eq('status', 'active');
+      // Default to show active and sold listings
+      query = query.in('status', ['active', 'sold']);
     }
 
     // Apply sorting
