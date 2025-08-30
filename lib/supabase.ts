@@ -11,18 +11,23 @@ class SupabaseStorage {
 
   getItem(key: string): string | null {
     try {
+      console.log('🔍 CustomStorage.getItem called for key:', key)
+      
       // Try localStorage first (primary storage)
       if (typeof window !== 'undefined' && window.localStorage) {
         const item = window.localStorage.getItem(key)
+        console.log('🔍 localStorage item:', item ? 'found' : 'not found')
         if (item) {
           // Validate the stored data
           try {
             const parsed = JSON.parse(item)
             if (parsed && parsed.access_token && parsed.refresh_token) {
+              console.log('✅ Valid session found in localStorage')
               return item
             }
           } catch {
             // Invalid JSON, remove it
+            console.warn('⚠️ Invalid session JSON in localStorage, removing...')
             window.localStorage.removeItem(key)
           }
         }
@@ -43,15 +48,18 @@ class SupabaseStorage {
 
   setItem(key: string, value: string): void {
     try {
+      console.log('💾 CustomStorage.setItem called for key:', key)
+      
       // Validate the value before storing
       try {
         const parsed = JSON.parse(value)
         if (!parsed || !parsed.access_token) {
-          console.warn('Invalid session data, not storing')
+          console.warn('⚠️ Invalid session data, not storing')
           return
         }
+        console.log('✅ Valid session data, storing...')
       } catch {
-        console.warn('Invalid JSON session data')
+        console.warn('⚠️ Invalid JSON session data')
         return
       }
 
@@ -123,8 +131,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     // Enable session persistence across browser restarts
     persistSession: true,
     
-    // Use custom storage wrapper for better reliability
-    storage: customStorage,
+    // Use default storage for better session persistence
+    // storage: customStorage, // Disabled - causing issues
     
     // Enable automatic token refresh to prevent session expiration
     autoRefreshToken: true,
@@ -132,8 +140,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     // Detect session in URL (for OAuth callbacks)
     detectSessionInUrl: true,
     
-    // Flow type for PKCE (more secure)
-    flowType: 'pkce',
+    // Use implicit flow for better compatibility with Next.js SSR
+    flowType: 'implicit',
     
     // Debug logging in development
     debug: process.env.NODE_ENV === 'development'
@@ -387,6 +395,12 @@ export function supabaseServer(serviceRoleKey?: string) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      auth: {
+        flowType: 'implicit',
+        detectSessionInUrl: true,
+        persistSession: true,
+        autoRefreshToken: true,
+      },
       cookies: {
         getAll() {
           return cookieStore.getAll();

@@ -65,6 +65,10 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
 
       if (!currentUserProfile?.usertype) {
         setError('User type not set. Please complete your profile setup.')
+        // Redirect to profile setup after a short delay
+        setTimeout(() => {
+          window.location.href = '/'
+        }, 2000)
         return
       }
 
@@ -275,18 +279,29 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
 
   // Error state
   if (error) {
+    const isProfileSetupError = error.includes('User type not set')
+    
     return (
       <div className="bg-mint-cream min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6 animate-fade-in">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="roomeo-heading text-3xl mb-4">Oops!</h2>
+          <div className="text-6xl mb-4">{isProfileSetupError ? '👤' : '⚠️'}</div>
+          <h2 className="roomeo-heading text-3xl mb-4">
+            {isProfileSetupError ? 'Profile Setup Needed' : 'Oops!'}
+          </h2>
           <p className="roomeo-body text-emerald-primary mb-6">{error}</p>
-          <button
-            onClick={fetchOppositeTypeUsers}
-            className="roomeo-button-primary"
-          >
-            Try Again
-          </button>
+          {isProfileSetupError ? (
+            <div>
+              <p className="text-sm text-emerald-primary/70 mb-4">Redirecting to profile setup...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-primary/30 border-t-emerald-primary mx-auto"></div>
+            </div>
+          ) : (
+            <button
+              onClick={fetchOppositeTypeUsers}
+              className="roomeo-button-primary"
+            >
+              Try Again
+            </button>
+          )}
         </div>
       </div>
     )
