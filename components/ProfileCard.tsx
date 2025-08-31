@@ -8,8 +8,6 @@ interface ProfileCardProps {
   age: number;
   profession: string;
   location: string;
-  ethnicity?: string;
-  religion?: string;
   housingStatus: 'Has a place' | 'Needs a place';
   budget?: string;
   preferences: {
@@ -33,8 +31,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
   age,
   profession,
   location,
-  ethnicity,
-  religion,
   housingStatus,
   budget,
   preferences,
@@ -109,13 +105,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
             <p className="text-gray-500 text-sm">{location}</p>
           </div>
 
-          {/* Optional Demographics */}
-          {(ethnicity || religion) && (
-            <div className="text-center text-sm text-gray-600 space-y-1">
-              {ethnicity && <p>{ethnicity}</p>}
-              {religion && <p>{religion}</p>}
-            </div>
-          )}
 
           {/* Housing Status */}
           <div className="text-center">

@@ -10,8 +10,6 @@ export interface User {
   profession?: string;
   bio?: string;
   location?: string;
-  ethnicity?: string;
-  religion?: string;
   budget?: number;
   preferences?: UserPreferences;
   hobbies?: string[];
@@ -44,8 +42,6 @@ export interface ProfileFormData {
   profession: string;
   bio: string;
   hobbies: string[];
-  religion?: string;
-  ethnicity?: string;
   smoking: "yes" | "no" | "occasionally";
   drinking: "yes" | "no" | "occasionally";
   pets: "yes" | "no" | "negotiable";
@@ -99,8 +95,6 @@ export const createFallbackUser = (supabaseUser: SupabaseUser): User => ({
   profession: "",
   bio: "",
   location: "",
-  ethnicity: "",
-  religion: "",
   budget: undefined,
   hobbies: [],
   preferences: {

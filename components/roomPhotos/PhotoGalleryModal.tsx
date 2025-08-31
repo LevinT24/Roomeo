@@ -44,6 +44,16 @@ export default function PhotoGalleryModal({
     }
   }, [isOpen, initialPhotoIndex, photos.length]);
 
+  const goToNext = useCallback(() => {
+    setCurrentIndex(prev => (prev + 1) % photos.length);
+    setIsLoading(true);
+  }, [photos.length]);
+
+  const goToPrevious = useCallback(() => {
+    setCurrentIndex(prev => (prev - 1 + photos.length) % photos.length);
+    setIsLoading(true);
+  }, [photos.length]);
+
   // Handle keyboard navigation
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!isOpen) return;
@@ -78,16 +88,6 @@ export default function PhotoGalleryModal({
       document.body.style.overflow = '';
     };
   }, [isOpen]);
-
-  const goToNext = useCallback(() => {
-    setCurrentIndex(prev => (prev + 1) % photos.length);
-    setIsLoading(true);
-  }, [photos.length]);
-
-  const goToPrevious = useCallback(() => {
-    setCurrentIndex(prev => (prev - 1 + photos.length) % photos.length);
-    setIsLoading(true);
-  }, [photos.length]);
 
   const goToPhoto = (index: number) => {
     setCurrentIndex(index);

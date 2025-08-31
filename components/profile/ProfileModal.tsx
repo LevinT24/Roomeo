@@ -237,17 +237,6 @@ export default function ProfileModal({
                   </div>
                 )}
 
-                {(profile.religion || profile.ethnicity) && (
-                  <div className="flex items-center text-gray-600">
-                    <User className="w-4 h-4 mr-3" />
-                    <div>
-                      <p className="font-medium">Background</p>
-                      <p className="text-sm">
-                        {[profile.religion, profile.ethnicity].filter(Boolean).join(', ')}
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Bio */}

@@ -319,7 +319,7 @@ export const getDiscoverProfiles = async (
       .order('created_at', { ascending: false })
 
     // Apply filters based on preferences
-    const preferences = currentUser.seeker_preferences?.[0]
+    const preferences = currentUser.preferences
     if (preferences) {
       if (preferences.preferred_gender && preferences.preferred_gender !== 'any') {
         query = query.eq('gender', preferences.preferred_gender)

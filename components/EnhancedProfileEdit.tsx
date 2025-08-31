@@ -56,8 +56,6 @@ export default function EnhancedProfileEdit({ user, onClose, onUpdate }: Enhance
     profession: user?.profession || "",
     bio: user?.bio || "",
     location: user?.location || "",
-    ethnicity: user?.ethnicity || "",
-    religion: user?.religion || "",
     budget: user?.budget || "",
     hobbies: user?.hobbies || [],
     housingStatus: user?.housingStatus || 'looking',
@@ -80,8 +78,6 @@ export default function EnhancedProfileEdit({ user, onClose, onUpdate }: Enhance
       profession: user?.profession || "",
       bio: user?.bio || "",
       location: user?.location || "",
-      ethnicity: user?.ethnicity || "",
-      religion: user?.religion || "",
       budget: user?.budget || "",
       hobbies: user?.hobbies || [],
       housingStatus: user?.housingStatus || 'looking',
@@ -128,8 +124,6 @@ export default function EnhancedProfileEdit({ user, onClose, onUpdate }: Enhance
         profession: editData.profession?.trim() || "",
         bio: editData.bio?.trim() || "",
         location: editData.location?.trim() || "",
-        ethnicity: editData.ethnicity?.trim() || "",
-        religion: editData.religion?.trim() || "",
         budget: budgetValue,
         hobbies: editData.hobbies,
         housingStatus: editData.housingStatus,
@@ -188,8 +182,6 @@ export default function EnhancedProfileEdit({ user, onClose, onUpdate }: Enhance
       profession: user.profession,
       bio: user.bio,
       location: user.location,
-      ethnicity: user.ethnicity,
-      religion: user.religion,
       budget: user.budget,
       hobbies: user.hobbies,
       housingStatus: user.housingStatus,
@@ -264,21 +256,6 @@ export default function EnhancedProfileEdit({ user, onClose, onUpdate }: Enhance
 
           {/* Profile Details */}
           <div className="p-4 space-y-4">
-            {/* Optional Fields */}
-            {(displayData.ethnicity || displayData.religion) && (
-              <div className="flex gap-2 flex-wrap">
-                {displayData.ethnicity && (
-                  <Badge className="bg-[#F2F5F1] text-[#004D40] border-2 border-[#004D40] font-bold">
-                    🌍 {displayData.ethnicity}
-                  </Badge>
-                )}
-                {displayData.religion && (
-                  <Badge className="bg-[#F2F5F1] text-[#004D40] border-2 border-[#004D40] font-bold">
-                    🕊️ {displayData.religion}
-                  </Badge>
-                )}
-              </div>
-            )}
 
             {/* Budget */}
             {displayData.budget && (
@@ -481,32 +458,6 @@ export default function EnhancedProfileEdit({ user, onClose, onUpdate }: Enhance
                   </div>
                 </div>
 
-                {/* Optional Fields */}
-                <div className="space-y-4 p-4 border-2 border-[#004D40] rounded-lg bg-white">
-                  <h4 className="font-black text-[#004D40]">OPTIONAL INFORMATION</h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-black text-[#004D40] mb-2">ETHNICITY</label>
-                      <Input
-                        value={editData.ethnicity}
-                        onChange={(e) => setEditData(prev => ({ ...prev, ethnicity: e.target.value }))}
-                        className="border-2 border-[#004D40] font-bold"
-                        placeholder="Your ethnicity (optional)"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-black text-[#004D40] mb-2">RELIGION</label>
-                      <Input
-                        value={editData.religion}
-                        onChange={(e) => setEditData(prev => ({ ...prev, religion: e.target.value }))}
-                        className="border-2 border-[#004D40] font-bold"
-                        placeholder="Your religion (optional)"
-                      />
-                    </div>
-                  </div>
-                </div>
 
                 {/* Preferences */}
                 <div className="space-y-4 p-4 border-2 border-[#004D40] rounded-lg bg-white">
