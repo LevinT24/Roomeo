@@ -79,6 +79,12 @@ export default function Home() {
       sessionValid 
     });
 
+    // Don't make routing decisions while still loading
+    if (loading) {
+      console.log("⏳ Still loading, skipping routing decisions");
+      return;
+    }
+
     if (user && sessionValid) {
       console.log("✅ User is authenticated with valid session");
       
@@ -100,7 +106,8 @@ export default function Home() {
         console.log("✅ User fully set up - redirecting to main app");
         setCurrentPage("swipe");
       }
-    } else if (!loading && !authError && !user) {
+      
+    } else if (!authError && !user) {
       console.log("❌ No user and not loading - checking if we need to redirect to landing");
       // If user logs out or is not authenticated, go back to landing
       if (currentPage !== "landing" && currentPage !== "auth") {

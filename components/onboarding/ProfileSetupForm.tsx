@@ -28,7 +28,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import RoomPhotoUpload from "@/components/roomPhotos/RoomPhotoUpload"
 import type { UserRole, ProfileFormData, RoomDetailsFormData, SeekerPreferencesFormData } from "@/types/user"
+import type { RoomPhoto } from "@/types/roomPhotos"
 import { 
   ROOM_TYPES, 
   LEASE_DURATIONS, 
@@ -89,8 +91,7 @@ interface ProfileSetupFormProps {
 
 export default function ProfileSetupForm({ userRole, onComplete, loading = false }: ProfileSetupFormProps) {
   const [currentStep, setCurrentStep] = useState(1)
-  const [roomImages, setRoomImages] = useState<File[]>([])
-  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([])
+  const [uploadedPhotos, setUploadedPhotos] = useState<RoomPhoto[]>([])
   const [customHobbies, setCustomHobbies] = useState<string[]>([])
   const [customAmenities, setCustomAmenities] = useState<string[]>([])
   const [houseRules, setHouseRules] = useState<string[]>([])
@@ -126,30 +127,10 @@ export default function ProfileSetupForm({ userRole, onComplete, loading = false
     }
   })
 
-  // Image upload handling
-  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    const validFiles = files.filter(file => {
-      const isValidType = file.type.startsWith('image/')
-      const isValidSize = file.size <= 5 * 1024 * 1024 // 5MB
-      return isValidType && isValidSize
-    })
-
-    if (validFiles.length + roomImages.length > 10) {
-      alert('Maximum 10 images allowed')
-      return
-    }
-
-    const newPreviewUrls = validFiles.map(file => URL.createObjectURL(file))
-    setRoomImages(prev => [...prev, ...validFiles])
-    setImagePreviewUrls(prev => [...prev, ...newPreviewUrls])
-  }, [roomImages])
-
-  const removeImage = (index: number) => {
-    URL.revokeObjectURL(imagePreviewUrls[index])
-    setRoomImages(prev => prev.filter((_, i) => i !== index))
-    setImagePreviewUrls(prev => prev.filter((_, i) => i !== index))
-  }
+  // Handle room photo uploads
+  const handlePhotosUploaded = useCallback((photos: RoomPhoto[]) => {
+    setUploadedPhotos(prev => [...prev, ...photos])
+  }, [])
 
   // Form submission
   const handleSubmit = async () => {
@@ -170,12 +151,12 @@ export default function ProfileSetupForm({ userRole, onComplete, loading = false
     }
 
     // Validate provider images
-    if (userRole === 'provider' && roomImages.length < 5) {
+    if (userRole === 'provider' && uploadedPhotos.length < 5) {
       alert('Providers must upload at least 5 room images')
       return
     }
 
-    onComplete(profileData, roomData, preferences, userRole === 'provider' ? roomImages : undefined)
+    onComplete(profileData, roomData, preferences)
   }
 
   const nextStep = async () => {
@@ -185,7 +166,7 @@ export default function ProfileSetupForm({ userRole, onComplete, loading = false
       isValid = await profileForm.trigger()
     } else if (currentStep === 2 && userRole === 'provider') {
       isValid = await roomForm.trigger()
-      if (isValid && roomImages.length < 5) {
+      if (isValid && uploadedPhotos.length < 5) {
         alert('Please upload at least 5 room images')
         isValid = false
       }
@@ -506,60 +487,21 @@ export default function ProfileSetupForm({ userRole, onComplete, loading = false
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Room Images */}
+                {/* Room Photos Upload */}
                 <div>
-                  <Label className="flex items-center mb-2">
+                  <Label className="flex items-center mb-4">
                     <Camera className="w-4 h-4 mr-2" />
                     Room Photos * (Minimum 5 required)
                   </Label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      id="room-images"
-                    />
-                    <label
-                      htmlFor="room-images"
-                      className="cursor-pointer flex flex-col items-center"
-                    >
-                      <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                      <span className="text-gray-600">Click to upload room photos</span>
-                      <span className="text-sm text-gray-400 mt-1">
-                        Max 10 images, 5MB each
-                      </span>
-                    </label>
-                  </div>
-                  
-                  {imagePreviewUrls.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                      {imagePreviewUrls.map((url, index) => (
-                        <div key={index} className="relative">
-                          <Image
-                            src={url}
-                            alt={`Room ${index + 1}`}
-                            className="w-full h-32 object-cover rounded-lg"
-                            width={300}
-                            height={128}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
+                  <RoomPhotoUpload 
+                    onPhotosUploaded={handlePhotosUploaded}
+                    maxPhotos={15}
+                    disabled={loading}
+                  />
                   <div className="flex items-center mt-2">
                     <AlertCircle className="w-4 h-4 text-amber-500 mr-2" />
-                    <span className={`text-sm ${roomImages.length >= 5 ? 'text-green-600' : 'text-amber-600'}`}>
-                      {roomImages.length}/5 minimum photos uploaded
+                    <span className={`text-sm ${uploadedPhotos.length >= 5 ? 'text-green-600' : 'text-amber-600'}`}>
+                      {uploadedPhotos.length}/5 minimum photos uploaded
                     </span>
                   </div>
                 </div>

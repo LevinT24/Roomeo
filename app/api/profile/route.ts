@@ -51,13 +51,14 @@ export async function GET(request: NextRequest) {
         id: user.id,
         email: user.email,
         name: profile?.name || "",
-        profilePicture: profile?.profilePicture || "",
+        profilePicture: profile?.profilepicture || "",
         age: profile?.age || null,
         bio: profile?.bio || "",
         location: profile?.location || "",
         budget: profile?.budget || null,
         preferences: profile?.preferences || {},
-        userType: profile?.userType || null
+        lifestyle: profile?.lifestyle || {},
+        userType: profile?.usertype || null
       }
     })
   } catch (error) {
@@ -107,12 +108,20 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Update user in database
+    // Update user in database with correct column names
     const { error: updateError } = await supabase
       .from("users")
       .update({
-        ...profileData,
-        updatedAt: new Date().toISOString()
+        name: profileData.name,
+        age: profileData.age,
+        bio: profileData.bio,
+        location: profileData.location,
+        budget: profileData.budget,
+        preferences: profileData.preferences,
+        lifestyle: profileData.lifestyle,
+        usertype: profileData.userType,
+        profilepicture: profileData.profilePicture,
+        updatedat: new Date().toISOString()
       })
       .eq("id", user.id)
 

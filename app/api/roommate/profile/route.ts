@@ -19,16 +19,34 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const result = await getFullProfile(user.id)
+    // Get user profile directly from database
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single()
 
-    if (!result.success) {
+    if (profileError || !profile) {
       return NextResponse.json(
-        { success: false, error: result.error },
-        { status: 500 }
+        { success: false, error: 'Profile not found' },
+        { status: 404 }
       )
     }
 
-    return NextResponse.json({ success: true, profile: result.profile })
+    // Get room photos
+    const { data: roomPhotos } = await supabase
+      .from('room_photos')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('display_order', { ascending: true })
+
+    return NextResponse.json({ 
+      success: true, 
+      profile: {
+        ...profile,
+        room_photos: roomPhotos || []
+      }
+    })
   } catch (error) {
     console.error('Error getting profile:', error)
     return NextResponse.json(

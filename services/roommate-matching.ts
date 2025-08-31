@@ -24,8 +24,8 @@ export const setUserRole = async (userId: string, role: UserRole): Promise<{ suc
     const { error } = await supabase
       .from('users')
       .update({ 
-        user_role: role,
-        updated_at: new Date().toISOString()
+        usertype: role,
+        updatedat: new Date().toISOString()
       })
       .eq('id', userId)
 
@@ -48,30 +48,49 @@ export const setupUserProfile = async (
   preferences?: SeekerPreferencesFormData
 ): Promise<ProfileSetupResponse> => {
   try {
-    // Start transaction-like operations
-    const updates: any[] = []
+    // Prepare lifestyle and preferences data to match existing schema
+    const lifestyleData = {
+      smoking: profileData.smoking,
+      drinking: profileData.drinking,
+      pets: profileData.pets,
+      profession: profileData.profession,
+      religion: profileData.religion,
+      ethnicity: profileData.ethnicity
+    }
 
-    // Update user profile
+    const preferencesData = {
+      hobbies: profileData.hobbies,
+      budget_min: profileData.budget_min,
+      budget_max: profileData.budget_max,
+      gender_preference: preferences?.preferred_gender,
+      age_range_min: preferences?.age_range_min,
+      age_range_max: preferences?.age_range_max,
+      preferred_location: preferences?.preferred_location,
+      max_budget: preferences?.max_budget,
+      preferred_room_type: preferences?.preferred_room_type,
+      deal_breakers: preferences?.deal_breakers
+    }
+
+    // First get current user to determine role
+    const { data: currentUser } = await supabase
+      .from('users')
+      .select('usertype')
+      .eq('id', userId)
+      .single()
+
+    // Update user profile using existing schema
     const { data: updatedUser, error: userError } = await supabase
       .from('users')
       .update({
         name: profileData.name,
         age: profileData.age,
-        gender: profileData.gender,
-        profession: profileData.profession,
         bio: profileData.bio,
-        hobbies: profileData.hobbies,
-        religion: profileData.religion || null,
-        ethnicity: profileData.ethnicity || null,
-        smoking: profileData.smoking,
-        drinking: profileData.drinking,
-        pets: profileData.pets,
-        budget_min: profileData.budget_min || null,
-        budget_max: profileData.budget_max || null,
         location: profileData.location,
-        preferences: profileData.preferences || null,
-        profile_completed: true, // Will be validated by trigger for providers
-        updated_at: new Date().toISOString()
+        budget: profileData.budget_max || profileData.budget_min || null,
+        usertype: currentUser?.usertype || 'seeker', // Use existing usertype
+        lifestyle: lifestyleData,
+        preferences: preferencesData,
+        updatedat: new Date().toISOString()
       })
       .eq('id', userId)
       .select()
@@ -82,53 +101,37 @@ export const setupUserProfile = async (
       return { success: false, error: userError.message }
     }
 
-    // Handle room details for providers
-    if (roomData && updatedUser.user_role === 'provider') {
+    // For providers, store room details in the lifestyle/preferences field
+    const userRole = updatedUser?.usertype || currentUser?.usertype || 'seeker'
+    if (roomData && userRole === 'provider') {
+      const roomDetailsData = {
+        ...lifestyleData,
+        room_type: roomData.room_type,
+        rent_amount: roomData.rent_amount,
+        deposit_amount: roomData.deposit_amount,
+        available_from: roomData.available_from,
+        lease_duration: roomData.lease_duration,
+        furnished: roomData.furnished,
+        utilities_included: roomData.utilities_included,
+        amenities: roomData.amenities,
+        house_rules: roomData.house_rules,
+        description: roomData.description,
+        address: roomData.address,
+        neighborhood: roomData.neighborhood
+      }
+
+      // Update with room details in lifestyle field
       const { error: roomError } = await supabase
-        .from('room_details')
-        .upsert({
-          user_id: userId,
-          room_type: roomData.room_type,
-          rent_amount: roomData.rent_amount,
-          deposit_amount: roomData.deposit_amount || null,
-          available_from: roomData.available_from || null,
-          lease_duration: roomData.lease_duration || null,
-          furnished: roomData.furnished,
-          utilities_included: roomData.utilities_included,
-          amenities: roomData.amenities,
-          house_rules: roomData.house_rules,
-          description: roomData.description || null,
-          address: roomData.address,
-          neighborhood: roomData.neighborhood || null,
-          updated_at: new Date().toISOString()
+        .from('users')
+        .update({
+          lifestyle: roomDetailsData,
+          updatedat: new Date().toISOString()
         })
+        .eq('id', userId)
 
       if (roomError) {
         console.error('Error saving room details:', roomError)
         return { success: false, error: roomError.message }
-      }
-    }
-
-    // Handle seeker preferences
-    if (preferences && updatedUser.user_role === 'seeker') {
-      const { error: preferencesError } = await supabase
-        .from('seeker_preferences')
-        .upsert({
-          user_id: userId,
-          preferred_gender: preferences.preferred_gender || null,
-          age_range_min: preferences.age_range_min || null,
-          age_range_max: preferences.age_range_max || null,
-          preferred_location: preferences.preferred_location || null,
-          max_budget: preferences.max_budget || null,
-          preferred_room_type: preferences.preferred_room_type || null,
-          lifestyle_preferences: preferences.lifestyle_preferences || null,
-          deal_breakers: preferences.deal_breakers,
-          updated_at: new Date().toISOString()
-        })
-
-      if (preferencesError) {
-        console.error('Error saving seeker preferences:', preferencesError)
-        return { success: false, error: preferencesError.message }
       }
     }
 
@@ -153,11 +156,11 @@ export const uploadRoomImages = async (
       const file = images[i]
       const fileExt = file.name.split('.').pop()
       const fileName = `${userId}_${Date.now()}_${i}.${fileExt}`
-      const filePath = `room-images/${userId}/${fileName}`
+      const filePath = `${userId}/${fileName}`
 
-      // Upload to Supabase Storage
+      // Upload to Supabase Storage (using existing room-photos bucket)
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('roommate-images')
+        .from('room-photos')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false
@@ -170,23 +173,30 @@ export const uploadRoomImages = async (
 
       // Get public URL
       const { data: urlData } = supabase.storage
-        .from('roommate-images')
+        .from('room-photos')
         .getPublicUrl(filePath)
 
-      // Save to database
+      // Save to database using existing room_photos table
       const { data: imageRecord, error: dbError } = await supabase
-        .from('room_images')
+        .from('room_photos')
         .insert({
           user_id: userId,
-          image_url: urlData.publicUrl,
-          image_order: i,
+          photo_url: urlData.publicUrl,
+          display_order: i + 1,
+          is_primary: i === 0, // First image is primary
           uploaded_at: new Date().toISOString()
         })
         .select()
         .single()
 
       if (!dbError && imageRecord) {
-        uploadedImages.push(imageRecord as RoomImage)
+        uploadedImages.push({
+          id: imageRecord.id,
+          user_id: imageRecord.user_id,
+          image_url: imageRecord.photo_url,
+          image_order: imageRecord.display_order,
+          uploaded_at: imageRecord.uploaded_at
+        } as RoomImage)
       }
     }
 
@@ -264,10 +274,9 @@ export const getDiscoverProfiles = async (
     const { data: currentUser, error: userError } = await supabase
       .from('users')
       .select(`
-        user_role,
-        seeker_preferences (*),
+        usertype,
+        preferences,
         age,
-        gender,
         location
       `)
       .eq('id', currentUserId)
@@ -286,20 +295,12 @@ export const getDiscoverProfiles = async (
     const excludeIds = [currentUserId, ...(existingMatches?.map(m => m.target_user_id) || [])]
 
     // Build query for opposite role
-    const targetRole = currentUser.user_role === 'seeker' ? 'provider' : 'seeker'
-    
-    // Determine if we need to join room_details based on filters
-    const needsRoomDetailsJoin = targetRole === 'provider' && filters && 
-      (filters.budgetMax || (filters.roomType && filters.roomType !== ''))
-    
-    const selectClause = needsRoomDetailsJoin 
-      ? `*,room_images (*),room_details!inner (*),seeker_preferences (*)`
-      : `*,room_images (*),room_details (*),seeker_preferences (*)`
+    const targetRole = currentUser.usertype === 'seeker' ? 'provider' : 'seeker'
     
     let query = supabase
       .from('users')
-      .select(selectClause)
-      .eq('user_role', targetRole)
+      .select(`*, room_photos (*)`)
+      .eq('usertype', targetRole)
       .eq('profile_completed', true)
       .not('id', 'in', `(${excludeIds.join(',')})`)
       .order('created_at', { ascending: false })

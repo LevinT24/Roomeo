@@ -50,30 +50,16 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
       setLoading(true)
       setError(null)
 
-      // First, get the current user's profile to determine their type
-      const { data: currentUserProfile, error: profileError } = await supabase
-        .from('users')
-        .select('usertype')
-        .eq('id', currentUser.id)
-        .single()
-
-      if (profileError) {
-        console.error('Error fetching user profile:', profileError)
-        setError('Failed to fetch user profile')
-        return
-      }
-
-      if (!currentUserProfile?.usertype) {
-        setError('User type not set. Please complete your profile setup.')
-        // Redirect to profile setup after a short delay
-        setTimeout(() => {
-          window.location.href = '/'
-        }, 2000)
-        return
+      // Use the userType from the authenticated user (already validated by main app)
+      if (!currentUser.userType) {
+        console.warn('UserType not available, but main app should have handled this. Continuing with fallback.');
+        setError('Unable to determine user type. Please try refreshing the page.');
+        setLoading(false)
+        return;
       }
 
       // Determine the opposite type to fetch
-      const targetUserType = currentUserProfile.usertype === 'seeker' ? 'provider' : 'seeker'
+      const targetUserType = currentUser.userType === 'seeker' ? 'provider' : 'seeker'
 
       // Build query with filters
       let query = supabase
@@ -329,35 +315,10 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
     )
   }
 
-  // Filter functions
-  const applyFilters = () => {
-    setCurrentIndex(0) // Reset to first profile
-    fetchOppositeTypeUsers()
-    setShowFilters(false)
-  }
-
-  const resetFilters = () => {
-    setFilters({})
-    setCurrentIndex(0) // Reset to first profile
-    fetchOppositeTypeUsers()
-    setShowFilters(false)
-  }
-
   const currentProfile = profiles[currentIndex]
 
   return (
     <div className="bg-mint-cream min-h-screen">
-      {/* Hidden filter trigger for header button */}
-      <button
-        data-filter-trigger
-        onClick={() => {
-          console.log('Hidden filter trigger clicked');
-          setShowFilters(true);
-        }}
-        style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }}
-        tabIndex={-1}
-        aria-hidden="true"
-      />
       
       <div className="relative flex size-full min-h-screen flex-col overflow-x-hidden">
         <div className="layout-container flex h-full grow flex-col">

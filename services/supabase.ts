@@ -236,8 +236,8 @@ export async function ensureUserProfile(uid: string, email: string, name: string
       location: "",
       area: "",
       budget: null,
-      universityaffiliation: "",
-      professionalstatus: "",
+      universityaffiliation: null, // Use null for optional fields to avoid any potential constraints
+      professionalstatus: null, // Use null instead of empty string to avoid constraint violation
       preferences: {
         smoking: false,
         drinking: false,
