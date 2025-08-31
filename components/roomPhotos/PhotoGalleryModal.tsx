@@ -59,7 +59,7 @@ export default function PhotoGalleryModal({
         goToNext();
         break;
     }
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, goToPrevious, goToNext]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);

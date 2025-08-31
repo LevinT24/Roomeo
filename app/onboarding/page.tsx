@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import RoommateOnboarding from "@/components/onboarding/RoommateOnboarding";
 import { setupUserProfile, setUserRole } from "@/services/roommate-matching";
 import { useAuth } from "@/hooks/useAuth";
-import type { UserRole, ProfileFormData, RoomDetailsFormData, SeekerPreferencesFormData } from "@/types/user";
+import type { UserRole, ProfileFormData, RoomDetailsFormData, SeekerPreferencesFormData } from "@/types/roommate";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -23,16 +23,23 @@ export default function OnboardingPage() {
       return;
     }
 
+    console.log('🚀 Starting onboarding completion for role:', data.role);
+    console.log('📋 Onboarding data:', data);
+    
     setIsLoading(true);
     
     try {
       // Set user role first
+      console.log('🔄 Setting user role to:', data.role);
       const roleResult = await setUserRole(user.uid, data.role);
       if (!roleResult.success) {
+        console.error('❌ Role setting failed:', roleResult.error);
         throw new Error(roleResult.error || 'Failed to set user role');
       }
+      console.log('✅ User role set successfully');
 
       // Setup the complete profile
+      console.log('🔄 Setting up complete profile...');
       const profileResult = await setupUserProfile(
         user.uid,
         data.profile,
@@ -41,10 +48,11 @@ export default function OnboardingPage() {
       );
 
       if (!profileResult.success) {
+        console.error('❌ Profile setup failed:', profileResult.error);
         throw new Error(profileResult.error || 'Failed to setup profile');
       }
 
-      console.log('✅ Onboarding completed successfully');
+      console.log('✅ Onboarding completed successfully for', data.role);
       
       // Redirect based on user role
       setTimeout(() => {

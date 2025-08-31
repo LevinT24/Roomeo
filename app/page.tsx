@@ -39,6 +39,7 @@ export default function Home() {
   const [showUserSettings, setShowUserSettings] = useState(false)
   const [showUpdateAccount, setShowUpdateAccount] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [swipeRefreshTrigger, setSwipeRefreshTrigger] = useState(0) // Add refresh trigger for SwipePage
   const [updateData, setUpdateData] = useState({
     name: "",
     age: "",
@@ -498,7 +499,7 @@ export default function Home() {
             friendsPanelOpen && ['chat', 'marketplace', 'expenses'].includes(currentPage) 
               ? 'pr-0 lg:pr-80' : ''
           }`}>
-            {currentPage === "swipe" && <SwipePage user={user as any} />}
+            {currentPage === "swipe" && <SwipePage user={user as any} refreshTrigger={swipeRefreshTrigger} />}
             {currentPage === "matches" && (
               <MatchesPage 
                 user={user as any} 
@@ -506,6 +507,11 @@ export default function Home() {
                   console.log(`Starting chat with ${matchUserName} (${matchUserId})`)
                   setChatTarget({ sellerId: matchUserId })
                   setCurrentPage("chat")
+                }}
+                onMatchRemoved={() => {
+                  // Refresh swipe page when a match is removed
+                  setSwipeRefreshTrigger(prev => prev + 1)
+                  console.log('🔄 Triggering swipe page refresh due to match removal')
                 }}
               />
             )}

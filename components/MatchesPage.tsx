@@ -35,9 +35,10 @@ interface Match {
 interface MatchesPageProps {
   user: User
   onStartChat?: (matchUserId: string, matchUserName: string) => void
+  onMatchRemoved?: () => void // Add callback for when a match is removed
 }
 
-export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
+export default function MatchesPage({ user, onStartChat, onMatchRemoved }: MatchesPageProps) {
   const [matches, setMatches] = useState<Match[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -185,6 +186,13 @@ export default function MatchesPage({ user, onStartChat }: MatchesPageProps) {
       if (result.success) {
         // Remove the match from local state
         setMatches(prev => prev.filter(m => m.id !== matchUser.id))
+        
+        // Notify parent component that a match was removed (to refresh swipe page data)
+        if (onMatchRemoved) {
+          onMatchRemoved()
+        }
+        
+        console.log('✅ Match removed and swipe page will be refreshed')
       } else {
         console.error('Failed to remove match:', result.error)
         alert('Failed to remove match. Please try again.')

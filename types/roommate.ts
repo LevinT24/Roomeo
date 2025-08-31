@@ -26,8 +26,6 @@ export interface RoommateUser {
   profession?: string
   bio?: string
   hobbies?: string[]
-  religion?: string
-  ethnicity?: string
   smoking?: YesNoOccasionally
   drinking?: YesNoOccasionally
   pets?: YesNoNegotiable
@@ -108,8 +106,6 @@ export interface ProfileFormData {
   profession: string
   bio: string
   hobbies: string[]
-  religion: string
-  ethnicity: string
   smoking: YesNoOccasionally
   drinking: YesNoOccasionally
   pets: YesNoNegotiable

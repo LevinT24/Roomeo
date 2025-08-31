@@ -170,6 +170,7 @@ export const getMutualMatches = async (userId: string): Promise<{ success: boole
  */
 export const removeMatch = async (userId: string, matchedUserId: string): Promise<{ success: boolean; error?: string }> => {
   try {
+    // Delete the current user's like record
     const { error } = await supabase
       .from('matches')
       .delete()
@@ -182,6 +183,7 @@ export const removeMatch = async (userId: string, matchedUserId: string): Promis
       return { success: false, error: error.message }
     }
 
+    console.log('✅ Match removed successfully - user will appear in discovery again')
     return { success: true }
   } catch (error) {
     console.error('Unexpected error removing match:', error)

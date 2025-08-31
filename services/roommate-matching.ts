@@ -48,14 +48,17 @@ export const setupUserProfile = async (
   preferences?: SeekerPreferencesFormData
 ): Promise<ProfileSetupResponse> => {
   try {
+    console.log('🔄 Setting up user profile for:', userId)
+    console.log('📋 Profile data:', profileData)
+    console.log('📋 Room data:', roomData)
+    console.log('📋 Preferences data:', preferences)
+    
     // Prepare lifestyle and preferences data to match existing schema
     const lifestyleData = {
       smoking: profileData.smoking,
       drinking: profileData.drinking,
       pets: profileData.pets,
-      profession: profileData.profession,
-      religion: profileData.religion,
-      ethnicity: profileData.ethnicity
+      profession: profileData.profession
     }
 
     const preferencesData = {
@@ -70,6 +73,9 @@ export const setupUserProfile = async (
       preferred_room_type: preferences?.preferred_room_type,
       deal_breakers: preferences?.deal_breakers
     }
+    
+    console.log('🔍 Processed lifestyle data:', lifestyleData)
+    console.log('🔍 Processed preferences data:', preferencesData)
 
     // First get current user to determine role
     const { data: currentUser } = await supabase
@@ -97,9 +103,16 @@ export const setupUserProfile = async (
       .single()
 
     if (userError) {
-      console.error('Error updating user profile:', userError)
+      console.error('❌ Error updating user profile:', userError)
+      console.error('❌ Error details:', {
+        message: userError.message,
+        code: userError.code,
+        details: userError.details
+      })
       return { success: false, error: userError.message }
     }
+    
+    console.log('✅ User profile updated successfully:', updatedUser)
 
     // For providers, store room details in the lifestyle/preferences field
     const userRole = updatedUser?.usertype || currentUser?.usertype || 'seeker'

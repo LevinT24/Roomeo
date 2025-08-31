@@ -48,8 +48,6 @@ const baseProfileSchema = z.object({
   profession: z.string().min(2, "Please enter your profession"),
   bio: z.string().min(10, "Bio must be at least 10 characters").max(500, "Bio must be less than 500 characters"),
   hobbies: z.array(z.string()).min(1, "Please select at least one hobby"),
-  religion: z.string().optional(),
-  ethnicity: z.string().optional(),
   smoking: z.enum(["yes", "no", "occasionally"]),
   drinking: z.enum(["yes", "no", "occasionally"]),
   pets: z.enum(["yes", "no", "negotiable"]),
@@ -447,26 +445,6 @@ export default function ProfileSetupForm({ userRole, onComplete, loading = false
                   </div>
                 </div>
 
-                {/* Optional fields */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="religion">Religion (Optional)</Label>
-                    <Input
-                      id="religion"
-                      {...profileForm.register("religion")}
-                      placeholder="Your religion"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="ethnicity">Ethnicity (Optional)</Label>
-                    <Input
-                      id="ethnicity"
-                      {...profileForm.register("ethnicity")}
-                      placeholder="Your ethnicity"
-                    />
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </motion.div>

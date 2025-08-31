@@ -25,10 +25,11 @@ interface User {
 
 interface SwipePageProps {
   user?: User // Make it optional since we'll fetch from useAuth
+  refreshTrigger?: number // Add a trigger to force refresh when matches are removed
 }
 
 
-export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
+export default function SwipePage({ user: propUser, refreshTrigger }: SwipePageProps = {}) {
   const { user: authUser, logout } = useAuth()
   const [profiles, setProfiles] = useState<User[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -142,7 +143,7 @@ export default function SwipePage({ user: propUser }: SwipePageProps = {}) {
     if (currentUser?.id) {
       fetchOppositeTypeUsers()
     }
-  }, [currentUser, fetchOppositeTypeUsers])
+  }, [currentUser, fetchOppositeTypeUsers, refreshTrigger]) // Add refreshTrigger to dependencies
 
 
   const handleSwipe = async (liked: boolean) => {
