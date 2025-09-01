@@ -19,6 +19,7 @@ import ExpensesPage from "@/components/ExpensesPage"
 import RoommateChatPage from "@/components/RoommateChatPage"
 import SettingsMenu from "@/components/SettingsMenu"
 import ProfilePreview from "@/components/ProfilePreview"
+import SettingsPage from "@/components/SettingsPage"
 import SessionRecovery from "@/components/SessionRecovery"
 import { useState, useEffect } from "react"
 import LoadingSpinner from "@/components/LoadingSpinner"
@@ -31,7 +32,7 @@ export default function Home() {
   const { user, loading, logout, error: authError, sessionValid } = useAuth()
   const [currentPage, setCurrentPage] = useState<
     "landing" | "auth" | "swipe" | "matches" | "marketplace" | 
-    "expenses" | "chat" | "profile-setup" | "user-type" | "profile-preview"
+    "expenses" | "chat" | "profile-setup" | "user-type" | "profile-preview" | "settings"
   >("landing")
   const [authMode, setAuthMode] = useState<"signup" | "signin">("signup")
   const [friendsPanelOpen, setFriendsPanelOpen] = useState(false)
@@ -317,6 +318,19 @@ export default function Home() {
     );
   }
 
+  // Show settings page
+  if (currentPage === "settings") {
+    return (
+      <>
+        <SettingsPage 
+          user={user as any}
+          onBack={() => setCurrentPage("swipe")}
+        />
+        <SessionRecoveryOverlay />
+      </>
+    );
+  }
+
   // Show app pages for authenticated users
   if (user && currentPage !== "landing") {
     console.log("📱 Showing app page:", currentPage);
@@ -429,7 +443,7 @@ export default function Home() {
                           
                           <button
                             onClick={() => {
-                              // Add account settings functionality here
+                              setCurrentPage("settings")
                               setShowUserSettings(false)
                             }}
                             className="w-full px-4 py-2 text-left font-black text-[#004D40] hover:bg-[#44C76F] hover:text-[#004D40] transition-colors flex items-center gap-3 whitespace-nowrap"
