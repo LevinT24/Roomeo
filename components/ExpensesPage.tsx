@@ -7,6 +7,7 @@ import ExpenseCard from "./expenses/ExpenseCard"
 import SettlementCard from "./expenses/SettlementCard"
 import CreateExpenseModal from "./expenses/CreateExpenseModal"
 import SettlementModal from "./expenses/SettlementModal"
+import NotificationsDropdown from "./NotificationsDropdown"
 import { 
   ExpenseDashboardData, 
   ExpenseSummary, 
@@ -167,7 +168,8 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                   <p className="roomeo-body text-emerald-primary/70">Split bills with friends seamlessly</p>
                 </div>
 
-                <div className="flex gap-3 animate-slide-up">
+                <div className="flex items-center gap-3 animate-slide-up">
+                  <NotificationsDropdown userId={user.id} />
                   <button 
                     onClick={() => setIsCreateModalOpen(true)}
                     className="roomeo-button-primary flex items-center gap-2"
