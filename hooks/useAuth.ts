@@ -366,9 +366,25 @@ export function useAuth() {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.log("Signup error details:", error);
+        
+        // Handle specific signup errors
+        if (error.message.includes('already registered') || error.message.includes('already exists')) {
+          throw new Error('An account with this email already exists. Please try signing in instead.');
+        }
+        
+        throw error;
+      }
 
       console.log("Signup successful:", data.user?.id);
+      
+      // Always show email verification message after successful signup
+      setState(prev => ({ 
+        ...prev, 
+        loading: false,
+        error: null 
+      }));
       
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -388,12 +404,31 @@ export function useAuth() {
       });
 
       if (error) {
+        console.log("SignIn error details:", error);
+        
+        // Handle various authentication errors with user-friendly messages
         if (error.message.includes('Invalid login credentials')) {
           throw new Error('Invalid email or password. Please check your credentials and try again.');
         }
-        if (error.message.includes('Email not confirmed')) {
-          throw new Error('Please check your email and click the confirmation link before signing in.');
+        
+        if (error.message.includes('Email not confirmed') || 
+            error.message.includes('email_not_confirmed') ||
+            error.message.includes('signup_disabled')) {
+          throw new Error('Please check your email and click the verification link to activate your account, then try signing in again.');
         }
+        
+        if (error.message.includes('API key') || 
+            error.message.includes('invalid_api_key') ||
+            error.message.includes('authentication failed') ||
+            error.message.includes('unauthorized')) {
+          throw new Error('Please check your email for a verification link and activate your account before signing in.');
+        }
+        
+        // Generic fallback for other auth-related errors
+        if (error.message.includes('auth') || error.message.includes('token')) {
+          throw new Error('Please verify your email address by clicking the link we sent you, then try signing in again.');
+        }
+        
         throw error;
       }
 

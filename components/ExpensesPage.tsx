@@ -7,6 +7,7 @@ import ExpenseCard from "./expenses/ExpenseCard"
 import SettlementCard from "./expenses/SettlementCard"
 import CreateExpenseModal from "./expenses/CreateExpenseModal"
 import SettlementModal from "./expenses/SettlementModal"
+import SettlementHistory from "./expenses/SettlementHistory"
 import NotificationsDropdown from "./NotificationsDropdown"
 import { 
   ExpenseDashboardData, 
@@ -43,6 +44,7 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false)
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [selectedExpense, setSelectedExpense] = useState<ExpenseSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string>('')
@@ -170,6 +172,13 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
 
                 <div className="flex items-center gap-3 animate-slide-up">
                   <NotificationsDropdown userId={user.id} />
+                  <button 
+                    onClick={() => setIsHistoryModalOpen(true)}
+                    className="roomeo-button-secondary flex items-center gap-2"
+                  >
+                    <span>📊</span>
+                    <span>History</span>
+                  </button>
                   <button 
                     onClick={() => setIsCreateModalOpen(true)}
                     className="roomeo-button-primary flex items-center gap-2"
@@ -456,6 +465,11 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
           onSubmitSettlement={handleSubmitSettlement}
         />
       )}
+
+      <SettlementHistory
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+      />
     </div>
   )
 }

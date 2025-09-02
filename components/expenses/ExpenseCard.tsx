@@ -112,10 +112,13 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
             onClick={() => onSettleUp(expense.group_id)}
             className="flex-1 roomeo-button-primary flex items-center justify-center gap-2"
           >
-            <span>💳</span> Venmo ${remainingAmount.toFixed(2)}
+            <span>💳</span> Pay ${remainingAmount.toFixed(2)}
           </button>
-          <button className="roomeo-button-secondary flex items-center gap-2 px-4">
-            <span>💰</span> PayPal
+          <button 
+            onClick={() => onSettleUp(expense.group_id)}
+            className="roomeo-button-secondary flex items-center gap-2 px-4"
+          >
+            <span>📊</span> Details
           </button>
         </div>
       )}

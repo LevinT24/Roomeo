@@ -28,6 +28,7 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     if (authError) {
@@ -46,6 +47,7 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccessMessage("");
     
     console.log("🔄 Starting email authentication...", { isSignUp, email, name });
     
@@ -65,10 +67,12 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
         console.log("🔄 Calling emailSignUp...");
         await emailSignUp(email, password, name);
         console.log("✅ Email signup completed");
-        setError(""); // Clear any previous errors
+        
+        // Clear errors and show success message
+        setError("");
+        setSuccessMessage("🎉 Account created! Please check your email inbox and click the verification link to activate your account. Once verified, you can sign in below.");
         setIsSignUp(false); // Switch to sign in mode
         setPassword(""); // Clear password for security
-        setError("Account created! Please check your email for confirmation, then sign in.");
       } else {
         console.log("🔄 Calling emailSignIn...");
         await emailSignIn(email, password);
@@ -78,11 +82,13 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
     } catch (error: any) {
       console.error("❌ Authentication error:", error);
       setError(error.message || "Authentication failed. Please try again.");
+      setSuccessMessage(""); // Clear any success message on error
     }
   };
 
   const handleGoogleAuth = async () => {
     setError("");
+    setSuccessMessage("");
     
     console.log("🔄 Starting Google authentication...");
     
@@ -174,6 +180,12 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
             </p>
           </div>
 
+          {successMessage && (
+            <div className="mb-4 md:mb-6 p-3 md:p-4 bg-green-100 border-2 border-green-500 text-green-700 font-bold text-center text-sm md:text-base">
+              {successMessage}
+            </div>
+          )}
+
           {error && (
             <div className="mb-4 md:mb-6 p-3 md:p-4 bg-red-100 border-2 border-red-500 text-red-700 font-bold text-center text-sm md:text-base">
               {error}
@@ -245,7 +257,11 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
 
               <div className="mt-4 md:mt-6 text-center">
                 <button
-                  onClick={() => setIsSignUp(!isSignUp)}
+                  onClick={() => {
+                    setIsSignUp(!isSignUp);
+                    setError("");
+                    setSuccessMessage("");
+                  }}
                   className="text-xs md:text-sm font-black text-[#44C76F] hover:text-[#44C76F]/80 transition-colors p-2"
                   disabled={loading}
                 >
