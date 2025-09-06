@@ -15,11 +15,12 @@ interface FriendsPanelProps {
   isOpen: boolean
   onClose: () => void
   user: User
+  onStartChat?: (friendId: string, friendName: string) => void
 }
 
 type ActiveView = 'friends' | 'search' | 'requests'
 
-export default function FriendsPanel({ isOpen, onClose, user }: FriendsPanelProps) {
+export default function FriendsPanel({ isOpen, onClose, user, onStartChat }: FriendsPanelProps) {
   const [activeView, setActiveView] = useState<ActiveView>('friends')
   const [pendingCount, setPendingCount] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -114,7 +115,7 @@ export default function FriendsPanel({ isOpen, onClose, user }: FriendsPanelProp
         )}
 
         {!loading && activeView === 'friends' && (
-          <FriendsList user={user} onRequestUpdate={handleRequestUpdate} />
+          <FriendsList user={user} onRequestUpdate={handleRequestUpdate} onStartChat={onStartChat} />
         )}
 
         {!loading && activeView === 'search' && (

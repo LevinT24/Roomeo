@@ -16,6 +16,7 @@ import type { User } from '@/types/user'
 interface FriendsListProps {
   user: User
   onRequestUpdate: () => void
+  onStartChat?: (friendId: string, friendName: string) => void
 }
 
 interface Friend {
@@ -26,7 +27,7 @@ interface Friend {
   friendsSince: string
 }
 
-export default function FriendsList({ user, onRequestUpdate }: FriendsListProps) {
+export default function FriendsList({ user, onRequestUpdate, onStartChat }: FriendsListProps) {
   const [friends, setFriends] = useState<Friend[]>([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -72,8 +73,11 @@ export default function FriendsList({ user, onRequestUpdate }: FriendsListProps)
   }
 
   const handleStartChat = (friendId: string, friendName: string) => {
-    // TODO: Integrate with existing chat system
-    console.log(`Starting chat with ${friendName} (${friendId})`)
+    if (onStartChat) {
+      onStartChat(friendId, friendName)
+    } else {
+      console.log(`Starting chat with ${friendName} (${friendId}) - no onStartChat callback provided`)
+    }
   }
 
   const formatFriendsSince = (dateString: string) => {

@@ -544,6 +544,7 @@ export default function Home() {
               <RoommateChatPage 
                 user={user as any} 
                 onBack={() => setCurrentPage("matches")} 
+                chatTarget={chatTarget}
               />
             )}
           </div>
@@ -559,6 +560,12 @@ export default function Home() {
             isOpen={friendsPanelOpen}
             onClose={() => setFriendsPanelOpen(false)}
             user={user as any}
+            onStartChat={(friendId, friendName) => {
+              console.log(`Starting chat with ${friendName} (${friendId}) from friends panel`)
+              setChatTarget({ sellerId: friendId })
+              setCurrentPage("chat")
+              setFriendsPanelOpen(false) // Close friends panel when navigating to chat
+            }}
           />
 
           <AppNavigation />
