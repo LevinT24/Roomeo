@@ -181,24 +181,31 @@ export default function MatchesPage({ user, onStartChat, onMatchRemoved }: Match
     }
 
     try {
+      console.log('🗑️ Removing match:', matchUser.name, matchUser.id)
       const result = await removeMatch(user.id, matchUser.id)
       
       if (result.success) {
-        // Remove the match from local state
+        console.log('✅ Match removal successful, updating UI...')
+        
+        // Remove the match from local state immediately for better UX
         setMatches(prev => prev.filter(m => m.id !== matchUser.id))
+        
+        // Show success feedback to user
+        alert(`✅ ${matchUser.name} has been removed from your matches and will appear in discovery again!`)
         
         // Notify parent component that a match was removed (to refresh swipe page data)
         if (onMatchRemoved) {
+          console.log('📢 Notifying parent component about match removal...')
           onMatchRemoved()
         }
         
-        console.log('✅ Match removed and swipe page will be refreshed')
+        console.log('✅ Match removal completed successfully')
       } else {
-        console.error('Failed to remove match:', result.error)
+        console.error('❌ Failed to remove match:', result.error)
         alert('Failed to remove match. Please try again.')
       }
     } catch (error) {
-      console.error('Error removing match:', error)
+      console.error('❌ Error removing match:', error)
       alert('Failed to remove match. Please try again.')
     }
   }

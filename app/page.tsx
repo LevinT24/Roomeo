@@ -529,9 +529,11 @@ export default function Home() {
                   setCurrentPage("chat")
                 }}
                 onMatchRemoved={() => {
-                  // Refresh swipe page when a match is removed
-                  setSwipeRefreshTrigger(prev => prev + 1)
-                  console.log('🔄 Triggering swipe page refresh due to match removal')
+                  // Add a small delay to ensure database transaction is committed
+                  setTimeout(() => {
+                    setSwipeRefreshTrigger(prev => prev + 1)
+                    console.log('🔄 Triggering swipe page refresh due to match removal')
+                  }, 500) // 500ms delay to ensure DB consistency
                 }}
               />
             )}

@@ -85,6 +85,7 @@ export function useAuth() {
           name: profile.name || supabaseUser.user_metadata?.full_name || "",
           userType: profile.usertype,
           profilePicture: profilePictureUrl,
+          profileVisible: profile.profilevisible ?? true, // Map database field to interface
           createdAt: profile.createdat ? new Date(profile.createdat) : undefined,
           updatedAt: profile.updatedat ? new Date(profile.updatedat) : undefined,
           age: profile.age,

@@ -165,7 +165,13 @@ export default function SwipePage({ user: propUser, refreshTrigger, onNavigateTo
 
   useEffect(() => {
     if (currentUser?.id) {
+      // Clear existing state first to ensure fresh data
+      setProfiles([])
+      setCurrentIndex(0)
+      setError(null)
+      // Fetch fresh data
       fetchOppositeTypeUsers()
+      console.log('🔄 SwipePage refreshing due to trigger change:', refreshTrigger)
     }
   }, [currentUser, fetchOppositeTypeUsers, refreshTrigger]) // Add refreshTrigger to dependencies
 
