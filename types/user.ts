@@ -16,6 +16,7 @@ export interface User {
   profilePicture?: string;
   userType?: 'seeker' | 'provider' | null;
   housingStatus?: 'looking' | 'offering' | 'flexible';
+  profileVisible?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -110,6 +111,7 @@ export const createFallbackUser = (supabaseUser: SupabaseUser): User => ({
   profilePicture: "",
   userType: null,
   housingStatus: undefined,
+  profileVisible: true,
   createdAt: new Date(),
   updatedAt: new Date(),
 });

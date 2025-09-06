@@ -26,10 +26,11 @@ interface User {
 interface SwipePageProps {
   user?: User // Make it optional since we'll fetch from useAuth
   refreshTrigger?: number // Add a trigger to force refresh when matches are removed
+  onNavigateToSettings?: () => void // Add callback to navigate to settings
 }
 
 
-export default function SwipePage({ user: propUser, refreshTrigger }: SwipePageProps = {}) {
+export default function SwipePage({ user: propUser, refreshTrigger, onNavigateToSettings }: SwipePageProps = {}) {
   const { user: authUser, logout } = useAuth()
   const [profiles, setProfiles] = useState<User[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -50,6 +51,27 @@ export default function SwipePage({ user: propUser, refreshTrigger }: SwipePageP
     try {
       setLoading(true)
       setError(null)
+
+      // Check if current user's profile is hidden - if so, block them from viewing others
+      const { data: currentUserData, error: userCheckError } = await supabase
+        .from('users')
+        .select('profilevisible')
+        .eq('id', currentUser.id)
+        .single()
+
+      if (userCheckError) {
+        console.error('Error checking user profile visibility:', userCheckError)
+        setError('Unable to verify profile status. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      if (currentUserData && !currentUserData.profilevisible) {
+        console.log('User profile is hidden, blocking discovery access')
+        setError('PROFILE_HIDDEN')
+        setLoading(false)
+        return
+      }
 
       // Use the userType from the authenticated user (already validated by main app)
       if (!currentUser.userType) {
@@ -74,11 +96,13 @@ export default function SwipePage({ user: propUser, refreshTrigger }: SwipePageP
           location,
           profilepicture,
           usertype,
-          preferences
+          preferences,
+          profilevisible
         `)
         .eq('usertype', targetUserType)
         .neq('id', currentUser.id) // Exclude current user
         .not('age', 'is', null) // Only include users who have completed their profile
+        .eq('profilevisible', true) // Only show profiles that are visible
 
 
       const { data: oppositeUsers, error: usersError } = await query
@@ -267,27 +291,56 @@ export default function SwipePage({ user: propUser, refreshTrigger }: SwipePageP
   // Error state
   if (error) {
     const isProfileSetupError = error.includes('User type not set')
+    const isProfileHidden = error === 'PROFILE_HIDDEN'
     
     return (
       <div className="bg-mint-cream min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6 animate-fade-in">
-          <div className="text-6xl mb-4">{isProfileSetupError ? '👤' : '⚠️'}</div>
+          <div className="text-6xl mb-4">
+            {isProfileSetupError ? '👤' : isProfileHidden ? '🔒' : '⚠️'}
+          </div>
           <h2 className="roomeo-heading text-3xl mb-4">
-            {isProfileSetupError ? 'Profile Setup Needed' : 'Oops!'}
+            {isProfileSetupError ? 'Profile Setup Needed' : isProfileHidden ? 'Profile Hidden' : 'Oops!'}
           </h2>
-          <p className="roomeo-body text-emerald-primary mb-6">{error}</p>
-          {isProfileSetupError ? (
+          {isProfileHidden ? (
             <div>
-              <p className="text-sm text-emerald-primary/70 mb-4">Redirecting to profile setup...</p>
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-primary/30 border-t-emerald-primary mx-auto"></div>
+              <p className="roomeo-body text-emerald-primary mb-4">
+                Your profile is currently hidden from discovery. To browse and match with others, you need to make your profile visible first.
+              </p>
+              <p className="text-sm text-emerald-primary/70 mb-6">
+                📌 Go to Settings → Privacy & Security → Profile Visibility to unhide your profile.
+              </p>
+              <button
+                onClick={() => {
+                  if (onNavigateToSettings) {
+                    onNavigateToSettings()
+                  } else {
+                    // Fallback - reload page and hope user navigates manually
+                    alert("Please go to Settings → Privacy & Security to unhide your profile")
+                  }
+                }}
+                className="roomeo-button-primary"
+              >
+                🔒 Go to Settings
+              </button>
             </div>
           ) : (
-            <button
-              onClick={fetchOppositeTypeUsers}
-              className="roomeo-button-primary"
-            >
-              Try Again
-            </button>
+            <>
+              <p className="roomeo-body text-emerald-primary mb-6">{error}</p>
+              {isProfileSetupError ? (
+                <div>
+                  <p className="text-sm text-emerald-primary/70 mb-4">Redirecting to profile setup...</p>
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-primary/30 border-t-emerald-primary mx-auto"></div>
+                </div>
+              ) : (
+                <button
+                  onClick={fetchOppositeTypeUsers}
+                  className="roomeo-button-primary"
+                >
+                  Try Again
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -513,7 +513,13 @@ export default function Home() {
             friendsPanelOpen && ['chat', 'marketplace', 'expenses'].includes(currentPage) 
               ? 'pr-0 lg:pr-80' : ''
           }`}>
-            {currentPage === "swipe" && <SwipePage user={user as any} refreshTrigger={swipeRefreshTrigger} />}
+            {currentPage === "swipe" && (
+              <SwipePage 
+                user={user as any} 
+                refreshTrigger={swipeRefreshTrigger} 
+                onNavigateToSettings={() => setCurrentPage("settings")}
+              />
+            )}
             {currentPage === "matches" && (
               <MatchesPage 
                 user={user as any} 

@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowLeft, Trash2, Settings, User, Shield, HelpCircle, Bell } from "lucide-react"
+import { ArrowLeft, Trash2, Settings, User, Shield, HelpCircle, Bell, Lock, Unlock, Eye, EyeOff } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { supabase } from "@/lib/supabase"
 
@@ -15,8 +15,59 @@ interface SettingsPageProps {
 export default function SettingsPage({ user, onBack }: SettingsPageProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [profileVisible, setProfileVisible] = useState(user?.profileVisible ?? true)
+  const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false)
   
   const { logout } = useAuth()
+
+  // Update local state when user prop changes
+  useEffect(() => {
+    setProfileVisible(user?.profileVisible ?? true)
+  }, [user?.profileVisible])
+
+  const handleToggleProfileVisibility = async () => {
+    if (!user?.id) {
+      alert("User ID not found. Please refresh and try again.")
+      return
+    }
+
+    setIsUpdatingVisibility(true)
+    const newVisibility = !profileVisible
+
+    try {
+      console.log("🔄 Updating profile visibility:", { 
+        userId: user.id, 
+        currentVisibility: profileVisible, 
+        newVisibility 
+      })
+
+      const { error } = await supabase
+        .from('users')
+        .update({ profilevisible: newVisibility })
+        .eq('id', user.id)
+
+      if (error) {
+        console.error("❌ Failed to update profile visibility:", error)
+        alert(`Failed to update profile visibility: ${error.message}`)
+        return
+      }
+
+      setProfileVisible(newVisibility)
+      console.log("✅ Profile visibility updated successfully")
+      
+      // Show confirmation message
+      const message = newVisibility 
+        ? "Profile activated! You can now browse and be discovered by others." 
+        : "Profile locked! You're now hidden from discovery and cannot browse others until you unhide."
+      alert(message)
+
+    } catch (error) {
+      console.error("❌ Exception updating profile visibility:", error)
+      alert(`Unexpected error: ${error.message || error}`)
+    } finally {
+      setIsUpdatingVisibility(false)
+    }
+  }
 
   const handleDeleteAccount = async () => {
     if (!user?.id) {
@@ -244,11 +295,86 @@ export default function SettingsPage({ user, onBack }: SettingsPageProps) {
                 <Shield className="h-5 w-5" />
                 PRIVACY & SECURITY
               </h3>
-              <div className="space-y-2">
+              <div className="space-y-3">
+                {/* Profile Visibility Toggle */}
+                <div className="bg-white border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 border-2 border-[#004D40] rounded-lg flex items-center justify-center shadow-[2px_2px_0px_0px_#004D40] transition-all ${
+                        profileVisible 
+                          ? 'bg-[#44C76F] text-[#004D40]' 
+                          : 'bg-red-100 text-red-600'
+                      }`}>
+                        {profileVisible ? (
+                          <Eye className="h-5 w-5" />
+                        ) : (
+                          <EyeOff className="h-5 w-5" />
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="font-black text-[#004D40] text-sm">
+                          {profileVisible ? 'PROFILE VISIBLE' : 'PROFILE HIDDEN'}
+                        </h4>
+                        <p className="text-xs font-bold text-[#004D40]/70">
+                          {profileVisible 
+                            ? 'You can browse and be discovered by others' 
+                            : 'Discovery blocked both ways'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Modern Toggle Switch */}
+                    <button
+                      onClick={handleToggleProfileVisibility}
+                      disabled={isUpdatingVisibility}
+                      className={`relative inline-flex h-8 w-14 items-center rounded-full border-2 border-[#004D40] shadow-[2px_2px_0px_0px_#004D40] transition-all hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#004D40] ${
+                        profileVisible 
+                          ? 'bg-[#44C76F]' 
+                          : 'bg-red-200'
+                      } ${isUpdatingVisibility ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                    >
+                      <span className="sr-only">Toggle profile visibility</span>
+                      <div className={`flex h-6 w-6 items-center justify-center rounded-full bg-white border-2 border-[#004D40] shadow-[1px_1px_0px_0px_#004D40] transition-all ${
+                        profileVisible ? 'translate-x-6' : 'translate-x-1'
+                      }`}>
+                        {isUpdatingVisibility ? (
+                          <div className="w-3 h-3 border border-[#004D40] border-t-transparent rounded-full animate-spin" />
+                        ) : profileVisible ? (
+                          <Lock className="h-3 w-3 text-[#44C76F]" />
+                        ) : (
+                          <Unlock className="h-3 w-3 text-red-600" />
+                        )}
+                      </div>
+                    </button>
+                  </div>
+                  
+                  {/* Status Description */}
+                  <div className={`mt-3 p-2 rounded border-2 ${
+                    profileVisible 
+                      ? 'border-[#44C76F] bg-[#44C76F]/10' 
+                      : 'border-red-300 bg-red-50'
+                  }`}>
+                    <p className={`text-xs font-bold ${
+                      profileVisible ? 'text-[#004D40]' : 'text-red-700'
+                    }`}>
+                      {profileVisible ? (
+                        <>
+                          <span className="font-black">ACTIVE:</span> Your profile appears in discovery and you can browse others. Full access to matching features.
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-black">LOCKED:</span> Your profile is hidden from discovery AND you cannot browse other profiles. Complete privacy mode.
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
                 <Button
                   onClick={() => {
                     // Could add privacy settings functionality here
-                    alert("Privacy settings functionality coming soon!")
+                    alert("Notification settings functionality coming soon!")
                   }}
                   className="w-full justify-start bg-white hover:bg-gray-50 text-[#004D40] font-black border-2 border-[#004D40] shadow-[3px_3px_0px_0px_#004D40] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#004D40] transition-all"
                 >
