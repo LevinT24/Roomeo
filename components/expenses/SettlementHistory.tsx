@@ -23,6 +23,7 @@ interface HistoryItem {
   type: 'sent' | 'received'
   payer_name?: string
   receiver_name?: string
+  source?: 'formal_settlement' | 'marked_payment'
 }
 
 interface AnalyticsData {
@@ -106,7 +107,10 @@ export default function SettlementHistory({ isOpen, onClose }: SettlementHistory
     }
   }
 
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = (type: string, source?: string) => {
+    if (source === 'marked_payment') {
+      return type === 'sent' ? '✅' : '📝'
+    }
     return type === 'sent' ? '📤' : '📥'
   }
 
@@ -226,14 +230,22 @@ export default function SettlementHistory({ isOpen, onClose }: SettlementHistory
                       <CardContent className="p-3 sm:p-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
                           <div className="flex items-center space-x-3 sm:space-x-4">
-                            <div className="text-xl sm:text-2xl">{getTypeIcon(item.type)}</div>
+                            <div className="text-xl sm:text-2xl">{getTypeIcon(item.type, item.source)}</div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-black text-xs sm:text-sm text-black truncate">{item.group_name}</h3>
+                              <h3 className="font-black text-xs sm:text-sm text-black truncate">
+                                {item.group_name}
+                                {item.source === 'marked_payment' && (
+                                  <span className="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded-full">
+                                    Manual Payment
+                                  </span>
+                                )}
+                              </h3>
                               <p className="text-xs text-gray-600 font-bold truncate">
                                 {item.type === 'sent' ? `To: ${item.receiver_name}` : `From: ${item.payer_name}`}
                               </p>
                               <p className="text-xs text-gray-500">
                                 {formatDate(item.created_at)} • {item.payment_method}
+                                {item.source === 'marked_payment' && ' (Marked as Paid)'}
                               </p>
                             </div>
                           </div>

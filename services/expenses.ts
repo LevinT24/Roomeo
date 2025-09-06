@@ -748,90 +748,145 @@ export async function markParticipantPayment(
   }
 }
 
-// Settlement History and Analytics
+// Settlement History and Analytics - Fixed to use expense_participants table
 export async function getSettlementHistory(userId?: string): Promise<{
   history: any[],
   analytics: any
 }> {
   try {
-    console.log("🔄 Fetching settlement history and analytics");
+    console.log("🔄 Fetching settlement history from expense_participants table");
 
     const user = await ensureAuthenticated();
     const targetUserId = userId || user.id;
+    
+    console.log("🔍 Target User ID:", targetUserId);
+    console.log("🔍 Auth User:", user);
+    console.log("🔍 Expected user from your data: 93facc69-9391-4c51-9718-364d7b8d80e0");
 
-    // Try simpler query first to avoid naming issues
-    const { data: historyData, error: historyError } = await supabase
-      .from('settlements')
-      .select('*')
-      .or(`payer_id.eq.${targetUserId},receiver_id.eq.${targetUserId}`)
-      .order('created_at', { ascending: false });
+    // First, let's see ALL settled participants in the database - try both TRUE and true
+    const { data: allSettledParticipants, error: allSettledError } = await supabase
+      .from('expense_participants')
+      .select('user_id, group_id, amount_owed, amount_paid, is_settled')
+      .in('is_settled', [true, 'TRUE', 'true']);
+
+    console.log("📊 ALL settled participants in database:", {
+      count: allSettledParticipants?.length || 0,
+      data: allSettledParticipants
+    });
+
+    // Get settled participants - show all settlements in groups where current user participates
+    // First get all groups where current user is a participant
+    const { data: userGroups, error: userGroupsError } = await supabase
+      .from('expense_participants')
+      .select('group_id')
+      .eq('user_id', targetUserId);
+
+    const groupIds = (userGroups || []).map(g => g.group_id);
+    
+    console.log("🔍 User's groups:", groupIds);
+
+    // Now get ALL settled participants from those groups
+    const { data: settledParticipants, error: settledError } = await supabase
+      .from('expense_participants')
+      .select(`
+        *,
+        expense_groups!group_id(
+          name,
+          created_by,
+          created_at,
+          users!created_by(name)
+        ),
+        users!user_id(name)
+      `)
+      .in('group_id', groupIds.length > 0 ? groupIds : [''])
+      .in('is_settled', [true, 'TRUE', 'true'])
+      .order('joined_at', { ascending: false });
+
+    if (settledError) {
+      console.error("❌ Error fetching settled participants:", settledError);
+      throw new Error(settledError.message || 'Failed to fetch settlement history');
+    }
+
+    console.log("📊 Settled participants found:", {
+      count: settledParticipants?.length || 0,
+      data: settledParticipants?.map(p => ({
+        group_name: (p.expense_groups as any)?.name,
+        amount_owed: p.amount_owed,
+        amount_paid: p.amount_paid,
+        is_settled: p.is_settled,
+        total_amount_from_group: (p.expense_groups as any)?.total_amount
+      }))
+    });
+
+    // Transform settled participants into settlement history
+    const settlementHistory = (settledParticipants || []).map(participant => {
+      const group = participant.expense_groups as any;
       
-    let enhancedHistoryData = historyData;
-    
-    // If basic query works, try to enhance with names
-    if (!historyError && historyData) {
-      const { data: dataWithJoins, error: joinError } = await supabase
-        .from('settlements')
-        .select(`
-          *,
-          expense_groups(name),
-          payer:users!payer_id(name),
-          receiver:users!receiver_id(name)
-        `)
-        .or(`payer_id.eq.${targetUserId},receiver_id.eq.${targetUserId}`)
-        .order('created_at', { ascending: false });
-        
-      if (!joinError && dataWithJoins) {
-        enhancedHistoryData = dataWithJoins;
+      // Convert database values to numbers and use the correct field
+      const amountOwed = parseFloat(participant.amount_owed) || 0;
+      const amountPaid = parseFloat(participant.amount_paid) || 0;
+      const groupTotal = parseFloat(group?.total_amount) || 0;
+      
+      // Use amount_paid if it's greater than 0, otherwise use amount_owed
+      let settledAmount = 0;
+      
+      if (amountPaid > 0) {
+        settledAmount = amountPaid;
+      } else if (amountOwed > 0) {
+        settledAmount = amountOwed;
+      } else if (groupTotal > 0) {
+        // Last resort: calculate equal split from group total
+        settledAmount = groupTotal / 2; // Assuming equal split
       }
-    }
+      
+      console.log(`🔍 Settlement calculation for ${group?.name}:`, {
+        raw_amount_owed: participant.amount_owed,
+        raw_amount_paid: participant.amount_paid,
+        parsed_amount_owed: amountOwed,
+        parsed_amount_paid: amountPaid,
+        group_total: groupTotal,
+        calculated_amount: settledAmount,
+        participant_data: participant
+      });
+      
+      // Determine if this is money you sent or received
+      const isCurrentUser = participant.user_id === targetUserId;
+      const transactionType = isCurrentUser ? 'sent' : 'received';
+      
+      return {
+        id: `settled_${participant.id}`,
+        group_name: group?.name || `Group ${participant.group_id.slice(0, 8)}...`,
+        amount: settledAmount,
+        payment_method: 'manual',
+        status: 'approved',
+        created_at: participant.joined_at,
+        approved_at: participant.joined_at,
+        type: transactionType, // 'sent' if you paid, 'received' if someone paid you
+        payer_name: participant.users?.name || `User ${participant.user_id.slice(0, 8)}...`,
+        receiver_name: group?.users?.name || 'Group Creator',
+        source: 'settled_payment'
+      };
+    });
 
-    if (historyError) {
-      console.error("❌ Error fetching settlement history:", historyError);
-      throw new Error(historyError.message || 'Failed to fetch settlement history');
-    }
-
-    // Transform data with names when available
-    const history = (enhancedHistoryData || []).map(settlement => ({
-      id: settlement.id,
-      group_name: settlement.expense_groups?.[0]?.name || `Group ${settlement.group_id.slice(0, 8)}...`,
-      amount: settlement.amount,
-      payment_method: settlement.payment_method,
-      status: settlement.status,
-      created_at: settlement.created_at,
-      approved_at: settlement.approved_at,
-      type: settlement.payer_id === targetUserId ? 'sent' : 'received',
-      payer_name: settlement.payer?.name || `User ${settlement.payer_id.slice(0, 8)}...`,
-      receiver_name: settlement.receiver?.name || `User ${settlement.receiver_id.slice(0, 8)}...`
-    }));
-
-    // Calculate analytics
-    const approvedSettlements = history.filter(h => h.status === 'approved');
-    const totalPaid = approvedSettlements.filter(h => h.type === 'sent').reduce((sum, h) => sum + h.amount, 0);
-    const totalReceived = approvedSettlements.filter(h => h.type === 'received').reduce((sum, h) => sum + h.amount, 0);
-    const totalTransactions = approvedSettlements.length;
+    // Calculate analytics properly
+    const totalPaid = settlementHistory.filter(h => h.type === 'sent').reduce((sum, h) => sum + h.amount, 0);
+    const totalReceived = settlementHistory.filter(h => h.type === 'received').reduce((sum, h) => sum + h.amount, 0);
+    const totalTransactions = settlementHistory.length;
     const averageAmount = totalTransactions > 0 ? (totalPaid + totalReceived) / totalTransactions : 0;
-
-    // Calculate most used payment method
-    const methodCounts = approvedSettlements.reduce((acc, h) => {
-      acc[h.payment_method] = (acc[h.payment_method] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    const mostUsedMethod = Object.entries(methodCounts)
-      .sort(([,a], [,b]) => (b as number) - (a as number))[0]?.[0] || 'cash';
 
     const analytics = {
       total_paid: totalPaid,
       total_received: totalReceived,
       total_transactions: totalTransactions,
       average_amount: averageAmount,
-      most_used_method: mostUsedMethod,
-      monthly_summary: [] // Could be enhanced later
+      most_used_method: 'manual',
+      monthly_summary: []
     };
 
-    console.log("✅ Settlement history retrieved:", history.length, "items");
-    return { history, analytics };
+    console.log("✅ Settlement history retrieved:", settlementHistory.length, "settled payments");
+    console.log("🔍 Settlement history items:", settlementHistory.map(h => ({ group_name: h.group_name, amount: h.amount, status: h.status })));
+    
+    return { history: settlementHistory, analytics };
 
   } catch (error) {
     console.error("❌ Exception fetching settlement history:", error);
