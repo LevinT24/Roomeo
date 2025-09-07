@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { useFriends } from "@/hooks/useFriends"
 import ExpenseCard from "./expenses/ExpenseCard"
@@ -9,6 +10,9 @@ import CreateExpenseModal from "./expenses/CreateExpenseModal"
 import SettlementModal from "./expenses/SettlementModal"
 import SettlementHistory from "./expenses/SettlementHistory"
 import NotificationsDropdown from "./NotificationsDropdown"
+import CreateEventModal from "./events/CreateEventModal"
+import EventCard from "./events/EventCard"
+import EventModal from "./events/EventModal"
 import { 
   ExpenseDashboardData, 
   ExpenseSummary, 
@@ -16,12 +20,24 @@ import {
   SubmitSettlementRequest 
 } from "@/types/expenses"
 import { 
+  EventListItem,
+  CreateEventRequest
+} from "@/types/events"
+import { 
   createExpenseGroup, 
   getExpenseDashboardData, 
   submitSettlement, 
   approveSettlement,
-  markParticipantPayment 
+  markParticipantPayment,
+  getAllRooms,
+  getRegularRooms,
+  getEventRooms,
+  getPendingSettlements
 } from "@/services/expenses"
+import { 
+  createEvent,
+  getUserEvents 
+} from "@/services/events"
 
 interface User {
   id: string
@@ -35,6 +51,8 @@ interface ExpensesPageProps {
 }
 
 export default function ExpensesPage({ user }: ExpensesPageProps) {
+  const router = useRouter()
+  
   const [dashboardData, setDashboardData] = useState<ExpenseDashboardData>({
     active_expenses: [],
     pending_settlements: [],
@@ -42,7 +60,14 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
     total_to_receive: 0
   })
   
+  const [events, setEvents] = useState<EventListItem[]>([])
+  const [allRooms, setAllRooms] = useState<ExpenseSummary[]>([])
+  const [roomFilter, setRoomFilter] = useState<'all' | 'regular' | 'event'>('all')
+  const [isLoadingRooms, setIsLoadingRooms] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isCreateEventModalOpen, setIsCreateEventModalOpen] = useState(false)
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false)
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false)
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [selectedExpense, setSelectedExpense] = useState<ExpenseSummary | null>(null)
@@ -51,18 +76,50 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
 
   const { friends } = useFriends()
 
-  // Fetch dashboard data
+  // Fetch dashboard data (both expenses and events)
   const fetchDashboardData = async () => {
     try {
       setIsLoading(true)
-      const dashboardData = await getExpenseDashboardData()
-      setDashboardData(dashboardData)
+      const [userEvents, allRoomsData, pendingSettlements] = await Promise.all([
+        getUserEvents(),
+        getAllRooms(), // Get all rooms with complete participant data
+        getPendingSettlements() // Get pending settlements separately
+      ])
+      
+      // Calculate dashboard totals from allRoomsData
+      const total_owed = allRoomsData.reduce((sum, expense) => 
+        sum + (expense.amount_owed - expense.amount_paid), 0
+      );
+
+      setDashboardData({
+        active_expenses: allRoomsData, // Use all rooms for balance calculations
+        pending_settlements: pendingSettlements,
+        total_owed,
+        total_to_receive: pendingSettlements.reduce((sum, settlement) => sum + settlement.amount, 0)
+      })
+      setEvents(userEvents)
+      setAllRooms(allRoomsData) // Store all rooms for filtering
     } catch (err) {
       console.error('Error fetching dashboard data:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load expenses')
+      setError(err instanceof Error ? err.message : 'Failed to load data')
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Filter rooms based on selected filter
+  const getFilteredRooms = (): ExpenseSummary[] => {
+    if (roomFilter === 'regular') {
+      return allRooms.filter(room => !room.event_id)
+    } else if (roomFilter === 'event') {
+      return allRooms.filter(room => room.event_id)
+    }
+    return allRooms // 'all' filter
+  }
+
+  // Handle filter change
+  const handleFilterChange = (filter: 'all' | 'regular' | 'event') => {
+    setRoomFilter(filter)
   }
 
   // Load data on component mount
@@ -83,6 +140,27 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to create expense group')
     }
+  }
+
+  // Create event
+  const handleCreateEvent = async (data: CreateEventRequest) => {
+    try {
+      const result = await createEvent(data)
+      if (result.success) {
+        // Refresh dashboard data
+        await fetchDashboardData()
+      } else {
+        throw new Error(result.message || 'Failed to create event')
+      }
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Failed to create event')
+    }
+  }
+
+  // Handle event click - open event modal
+  const handleEventClick = (eventId: string) => {
+    setSelectedEventId(eventId)
+    setIsEventModalOpen(true)
   }
 
   // Handle settle up
@@ -180,6 +258,13 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                     <span>History</span>
                   </button>
                   <button 
+                    onClick={() => setIsCreateEventModalOpen(true)}
+                    className="roomeo-button-secondary flex items-center gap-2"
+                  >
+                    <span>🎉</span>
+                    <span>Create Event</span>
+                  </button>
+                  <button 
                     onClick={() => setIsCreateModalOpen(true)}
                     className="roomeo-button-primary flex items-center gap-2"
                   >
@@ -259,8 +344,8 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                   <h2 className="roomeo-heading text-lg mb-4">📊 Summary</h2>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-3 bg-sage/10 rounded-lg">
-                      <span className="roomeo-body text-emerald-primary/70">🏠 Active Rooms</span>
-                      <span className="roomeo-body font-semibold text-emerald-primary">{dashboardData.active_expenses.length}</span>
+                      <span className="roomeo-body text-emerald-primary/70">🏠 Total Rooms</span>
+                      <span className="roomeo-body font-semibold text-emerald-primary">{allRooms.length}</span>
                     </div>
                     <div className="flex items-center justify-between p-3 bg-gold-accent/10 rounded-lg">
                       <span className="roomeo-body text-emerald-primary/70">⏳ Pending Settlements</span>
@@ -279,8 +364,12 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                     {(() => {
                       const friendDebts = new Map<string, { name: string, amount: number, profilePicture?: string }>()
                       
+                      // Use dashboardData.active_expenses for balance calculations (has full participant data)
+                      console.log('💰 Balance Debug - dashboardData.active_expenses:', dashboardData.active_expenses)
                       dashboardData.active_expenses.forEach(expense => {
+                        console.log('💰 Processing expense:', expense.group_name, 'participants:', expense.participants)
                         const userParticipant = expense.participants?.find(p => p.user_id === user.id)
+                        console.log('💰 User participant:', userParticipant)
                         if (userParticipant && userParticipant.amount_owed > userParticipant.amount_paid) {
                           const owedAmount = userParticipant.amount_owed - userParticipant.amount_paid
                           const creatorName = expense.created_by_name || 'Unknown'
@@ -329,8 +418,12 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                     {(() => {
                       const friendOwes = new Map<string, { name: string, amount: number, profilePicture?: string }>()
                       
+                      // Use dashboardData.active_expenses for balance calculations (has full participant data)
+                      console.log('💸 Friends Owe Debug - dashboardData.active_expenses:', dashboardData.active_expenses)
                       dashboardData.active_expenses.forEach(expense => {
+                        console.log('💸 Processing expense:', expense.group_name, 'participants:', expense.participants)
                         expense.participants?.forEach(participant => {
+                          console.log('💸 Processing participant:', participant.name, 'owes:', participant.amount_owed, 'paid:', participant.amount_paid)
                           if (participant.user_id !== user.id && participant.amount_owed > participant.amount_paid) {
                             const oweAmount = participant.amount_owed - participant.amount_paid
                             const existing = friendOwes.get(participant.user_id)
@@ -374,44 +467,124 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                 </div>
               </div>
 
-              {/* Active Expenses */}
-              {dashboardData.active_expenses.length > 0 ? (
+              {/* Events Section */}
+              {events.length > 0 && (
                 <section className="mb-10">
                   <div className="flex items-center gap-3 mb-6">
-                    <h2 className="roomeo-heading text-2xl">🏠 Active Rooms</h2>
+                    <h2 className="roomeo-heading text-2xl">🎉 Your Events</h2>
                     <div className="flex gap-2">
                       <button className="text-xs px-3 py-1.5 rounded-full bg-emerald-primary text-gold-accent shadow-soft">🍕 All</button>
-                      <button className="text-xs px-3 py-1.5 rounded-full bg-sage/20 text-emerald-primary hover:bg-sage/30 transition-colors">🏠 House</button>
-                      <button className="text-xs px-3 py-1.5 rounded-full bg-sage/20 text-emerald-primary hover:bg-sage/30 transition-colors">🚕 Travel</button>
-                      <button className="text-xs px-3 py-1.5 rounded-full bg-sage/20 text-emerald-primary hover:bg-sage/30 transition-colors">🎮 Fun</button>
+                      <button className="text-xs px-3 py-1.5 rounded-full bg-sage/20 text-emerald-primary hover:bg-sage/30 transition-colors">👑 Owned</button>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {dashboardData.active_expenses.map((expense, index) => (
-                      <div key={expense.group_id} className="animate-on-scroll" style={{animationDelay: `${index * 100}ms`}}>
-                        <ExpenseCard
-                          expense={expense}
-                          onSettleUp={handleSettleUp}
+                    {events.map((event, index) => (
+                      <div key={event.id} className="animate-on-scroll" style={{animationDelay: `${index * 100}ms`}}>
+                        <EventCard
+                          event={event}
+                          onClick={handleEventClick}
                           currentUserId={user.id}
-                          onMarkPaid={handleMarkPaid}
                         />
                       </div>
                     ))}
                   </div>
                 </section>
-              ) : (
-                <div className="roomeo-card text-center py-16 mb-10 animate-slide-up">
-                  <div className="text-6xl mb-4">💸</div>
-                  <h3 className="roomeo-heading text-xl mb-2">No active expenses</h3>
-                  <p className="roomeo-body text-emerald-primary/60 mb-8">Start splitting expenses with your friends!</p>
-                  <button 
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="roomeo-button-primary"
-                  >
-                    <span>🚀</span> Create Your First Room
-                  </button>
-                </div>
               )}
+
+              {/* Rooms Section with Filtering */}
+              <section className="mb-10">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <h2 className="roomeo-heading text-2xl">
+                      {roomFilter === 'all' ? '🏠 All Rooms' : 
+                       roomFilter === 'regular' ? '🏠 Regular Rooms' : '🎉 Event Rooms'}
+                    </h2>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleFilterChange('all')}
+                        className={`text-xs px-3 py-1.5 rounded-full transition-colors font-medium ${
+                          roomFilter === 'all' 
+                            ? 'bg-emerald-primary text-gold-accent shadow-soft' 
+                            : 'bg-sage/20 text-emerald-primary hover:bg-sage/30'
+                        }`}
+                      >
+                        🏠 All Rooms
+                      </button>
+                      <button 
+                        onClick={() => handleFilterChange('regular')}
+                        className={`text-xs px-3 py-1.5 rounded-full transition-colors font-medium ${
+                          roomFilter === 'regular' 
+                            ? 'bg-emerald-primary text-gold-accent shadow-soft' 
+                            : 'bg-sage/20 text-emerald-primary hover:bg-sage/30'
+                        }`}
+                      >
+                        💸 Regular Rooms
+                      </button>
+                      <button 
+                        onClick={() => handleFilterChange('event')}
+                        className={`text-xs px-3 py-1.5 rounded-full transition-colors font-medium ${
+                          roomFilter === 'event' 
+                            ? 'bg-emerald-primary text-gold-accent shadow-soft' 
+                            : 'bg-sage/20 text-emerald-primary hover:bg-sage/30'
+                        }`}
+                      >
+                        🎉 Event Rooms
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Display filtered rooms */}
+                {(() => {
+                  const currentRooms = getFilteredRooms();
+                  const roomType = roomFilter === 'all' ? 'rooms' : 
+                                   roomFilter === 'regular' ? 'regular rooms' : 'event rooms';
+                  
+                  if (currentRooms.length > 0) {
+                    return (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {currentRooms.map((expense, index) => (
+                          <div key={expense.group_id} className="animate-on-scroll" style={{animationDelay: `${index * 100}ms`}}>
+                            <ExpenseCard
+                              expense={expense}
+                              onSettleUp={handleSettleUp}
+                              currentUserId={user.id}
+                              onMarkPaid={handleMarkPaid}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="roomeo-card text-center py-16 animate-slide-up">
+                        <div className="text-6xl mb-4">
+                          {roomFilter === 'event' ? '🎉' : roomFilter === 'regular' ? '💸' : '🏠'}
+                        </div>
+                        <h3 className="roomeo-heading text-xl mb-2">
+                          No {roomType}
+                        </h3>
+                        <p className="roomeo-body text-emerald-primary/60 mb-8">
+                          {roomFilter === 'event' 
+                            ? 'Create an event first, then add rooms to it!'
+                            : roomFilter === 'regular' 
+                            ? 'Start splitting expenses with your friends!'
+                            : 'No rooms found. Create your first room or event!'
+                          }
+                        </p>
+                        {(roomFilter === 'all' || roomFilter === 'regular') && (
+                          <button 
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="roomeo-button-primary"
+                          >
+                            <span>🚀</span> Create Your First Room
+                          </button>
+                        )}
+                      </div>
+                    );
+                  }
+                })()}
+              </section>
 
               {/* Pending Settlements */}
               {dashboardData.pending_settlements.length > 0 && (
@@ -454,6 +627,18 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
         onCreateExpense={handleCreateExpense}
       />
 
+      {/* Create Event Modal */}
+      <CreateEventModal
+        isOpen={isCreateEventModalOpen}
+        onClose={() => setIsCreateEventModalOpen(false)}
+        friends={friends.map(f => ({
+          id: f.friendId,
+          name: f.name,
+          profilePicture: f.profilePicture || undefined
+        }))}
+        onCreateEvent={handleCreateEvent}
+      />
+
       {selectedExpense && (
         <SettlementModal
           isOpen={isSettlementModalOpen}
@@ -470,6 +655,19 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
         isOpen={isHistoryModalOpen}
         onClose={() => setIsHistoryModalOpen(false)}
       />
+
+      {/* Event Modal */}
+      {selectedEventId && (
+        <EventModal
+          isOpen={isEventModalOpen}
+          onClose={() => {
+            setIsEventModalOpen(false)
+            setSelectedEventId(null)
+          }}
+          user={user}
+          eventId={selectedEventId}
+        />
+      )}
     </div>
   )
 }

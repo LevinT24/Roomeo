@@ -125,7 +125,7 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
 
       {/* Participants Section */}
       {expense.participants && expense.participants.length > 0 && (
-        <div className="border-t border-sage/20 pt-4">
+        <div className="border-t border-sage/20 pt-4 mb-4">
           <h4 className="roomeo-heading text-sm mb-3 flex items-center gap-2">
             <span>👥</span> Friends Balance
           </h4>

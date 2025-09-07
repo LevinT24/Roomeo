@@ -128,6 +128,7 @@ export interface ExpenseSummary {
   created_by_id?: string // Added to identify creator
   created_at: string
   group_status: ExpenseStatus
+  event_id?: string // Added to identify event rooms vs regular rooms
   participants?: ExpenseParticipantSummary[]
   pending_settlement?: ParticipantPendingSettlement // Current user's pending settlement
   pending_settlements_count?: number // Total pending settlements for the group (for creator view)

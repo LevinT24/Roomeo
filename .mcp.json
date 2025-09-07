@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": ["@playwright/mcp"],
-      "cwd": "C:\\Users\\sufya\\OneDrive\\Desktop\\Start up 1\\my-newv"
-    }
-  }
-}
