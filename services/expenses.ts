@@ -1,4 +1,4 @@
-// services/expenses.ts - Updated getExpenseDashboardData function
+// services/expenses.ts - Fixed getExpenseDashboardData function
 import { supabase } from "@/lib/supabase";
 import {
   CreateExpenseGroupRequest,
@@ -27,11 +27,306 @@ async function ensureAuthenticated() {
   return user
 }
 
+// FIXED: Use the SQL function that already includes participants data
+export async function getExpenseSummary(userId?: string): Promise<ExpenseSummary[]> {
+  try {
+    console.log("📄 Fetching expense summary for user:", userId || "current user");
+
+    // Ensure user is authenticated  
+    const user = await ensureAuthenticated();
+
+    // Use the SQL function that has the correct structure with participants
+    const { data, error } = await supabase.rpc('get_expense_summary', {
+      p_user_id: userId || user.id
+    });
+
+    if (error) {
+      console.error("❌ Error fetching expense summary:", error);
+      throw new Error(error.message || "Failed to fetch expense summary");
+    }
+
+    console.log("✅ Expense summary retrieved:", data?.length || 0, "groups");
+    console.log("🔍 Sample expense with participants:", data?.[0]?.participants);
+    
+    return data || [];
+  } catch (error) {
+    console.error("❌ Exception fetching expense summary:", error);
+    return [];
+  }
+}
+
+// FIXED: Simplified function that properly fetches participant data
+async function getExpenseSummaryWithParticipants(userId: string, eventRooms?: boolean): Promise<ExpenseSummary[]> {
+  try {
+    console.log("📄 Fetching expense summary with participants", { userId, eventRooms });
+
+    // Build the base query
+    let query = supabase
+      .from('expense_groups')
+      .select(`
+        id,
+        name,
+        description,
+        total_amount,
+        created_by,
+        created_at,
+        status,
+        event_id,
+        users!expense_groups_created_by_fkey(name)
+      `)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+
+    // Apply event filtering
+    if (eventRooms === true) {
+      query = query.not('event_id', 'is', null);
+    } else if (eventRooms === false) {
+      query = query.is('event_id', null);
+    }
+
+    // Get all expense groups first
+    const { data: expenseGroups, error: expenseGroupsError } = await query;
+
+    if (expenseGroupsError) {
+      console.error("❌ Error fetching expense groups:", expenseGroupsError);
+      throw expenseGroupsError;
+    }
+
+    if (!expenseGroups || expenseGroups.length === 0) {
+      console.log("📋 No expense groups found");
+      return [];
+    }
+
+    // Get all participants for all groups in one query
+    const groupIds = expenseGroups.map(g => g.id);
+    const { data: allParticipants, error: participantsError } = await supabase
+      .from('expense_participants')
+      .select(`
+        group_id,
+        user_id,
+        amount_owed,
+        amount_paid,
+        is_settled,
+        users!inner(
+          name,
+          profilepicture
+        )
+      `)
+      .in('group_id', groupIds);
+
+    if (participantsError) {
+      console.error("❌ Error fetching participants:", participantsError);
+      throw participantsError;
+    }
+
+    console.log("🔍 All participants fetched:", allParticipants?.length || 0);
+
+    // Get pending settlements for all groups in one query
+    const { data: allSettlements, error: settlementsError } = await supabase
+      .from('settlements')
+      .select('*')
+      .in('group_id', groupIds)
+      .eq('status', 'pending');
+
+    if (settlementsError) {
+      console.error("❌ Error fetching settlements:", settlementsError);
+    }
+
+    // Group participants and settlements by group_id
+    const participantsByGroup = new Map();
+    const settlementsByGroup = new Map();
+
+    (allParticipants || []).forEach(participant => {
+      if (!participantsByGroup.has(participant.group_id)) {
+        participantsByGroup.set(participant.group_id, []);
+      }
+      participantsByGroup.get(participant.group_id).push(participant);
+    });
+
+    (allSettlements || []).forEach(settlement => {
+      if (!settlementsByGroup.has(settlement.group_id)) {
+        settlementsByGroup.set(settlement.group_id, []);
+      }
+      settlementsByGroup.get(settlement.group_id).push(settlement);
+    });
+
+    // Build the expense summary with participants
+    const expenseSummaries: ExpenseSummary[] = [];
+
+    for (const group of expenseGroups) {
+      const groupParticipants = participantsByGroup.get(group.id) || [];
+      const groupSettlements = settlementsByGroup.get(group.id) || [];
+      
+      // Find current user's participation
+      const userParticipant = groupParticipants.find(p => p.user_id === userId);
+      
+      // Skip groups where user is not a participant
+      if (!userParticipant) {
+        console.log(`⏭️ Skipping group ${group.name} - user not a participant`);
+        continue;
+      }
+
+      // Map participants to the correct format
+      const participants = groupParticipants.map(participant => ({
+        user_id: participant.user_id,
+        name: (participant as any).users?.name || 'Unknown User',
+        profile_picture: (participant as any).users?.profilepicture,
+        amount_owed: participant.amount_owed,
+        amount_paid: participant.amount_paid,
+        is_settled: participant.is_settled,
+        is_creator: participant.user_id === group.created_by
+      }));
+
+      // Find user's pending settlement
+      const userPendingSettlement = groupSettlements.find(s => s.payer_id === userId);
+
+      // Handle the case where users relationship might return an array
+      const creatorUser = Array.isArray((group as any).users) 
+        ? (group as any).users[0] 
+        : (group as any).users;
+
+      const expenseSummary: ExpenseSummary = {
+        group_id: group.id,
+        group_name: group.name,
+        group_description: group.description,
+        total_amount: group.total_amount,
+        amount_owed: userParticipant.amount_owed,
+        amount_paid: userParticipant.amount_paid,
+        is_settled: userParticipant.is_settled,
+        created_by_name: creatorUser?.name || 'Unknown',
+        created_by_id: group.created_by,
+        created_at: group.created_at,
+        group_status: group.status,
+        event_id: group.event_id,
+        participants: participants, // This is the key fix - ensuring participants are included
+        pending_settlement: userPendingSettlement ? {
+          settlement_id: userPendingSettlement.id,
+          amount: userPendingSettlement.amount,
+          payment_method: userPendingSettlement.payment_method,
+          status: userPendingSettlement.status,
+          created_at: userPendingSettlement.created_at
+        } : undefined,
+        pending_settlements_count: groupSettlements.length
+      };
+
+      expenseSummaries.push(expenseSummary);
+    }
+
+    console.log("✅ Expense summaries with participants:", expenseSummaries.length);
+    console.log("🔍 Sample participants in first group:", expenseSummaries[0]?.participants);
+    
+    return expenseSummaries;
+  } catch (error) {
+    console.error("❌ Exception fetching expense summary with participants:", error);
+    return [];
+  }
+}
+
+// FIXED: Updated room functions to use the new implementation
+export async function getAllRooms(userId?: string): Promise<ExpenseSummary[]> {
+  try {
+    console.log("📄 Fetching all rooms (regular + event)");
+    const user = await ensureAuthenticated();
+    const targetUserId = userId || user.id;
+    
+    const expenseSummary = await getExpenseSummaryWithParticipants(targetUserId); // Get all rooms
+    
+    console.log("✅ All rooms retrieved:", expenseSummary.length);
+    return expenseSummary;
+  } catch (error) {
+    console.error("❌ Exception fetching all rooms:", error);
+    return [];
+  }
+}
+
+export async function getRegularRooms(userId?: string): Promise<ExpenseSummary[]> {
+  try {
+    console.log("📄 Fetching regular rooms (event_id = NULL)");
+    const user = await ensureAuthenticated();
+    const targetUserId = userId || user.id;
+    
+    const expenseSummary = await getExpenseSummaryWithParticipants(targetUserId, false); // Regular rooms only
+    
+    console.log("✅ Regular rooms retrieved:", expenseSummary.length);
+    return expenseSummary;
+  } catch (error) {
+    console.error("❌ Exception fetching regular rooms:", error);
+    return [];
+  }
+}
+
+export async function getEventRooms(userId?: string): Promise<ExpenseSummary[]> {
+  try {
+    console.log("📄 Fetching event rooms (event_id IS NOT NULL)");
+    const user = await ensureAuthenticated();
+    const targetUserId = userId || user.id;
+    
+    const expenseSummary = await getExpenseSummaryWithParticipants(targetUserId, true); // Event rooms only
+    
+    console.log("✅ Event rooms retrieved:", expenseSummary.length);
+    return expenseSummary;
+  } catch (error) {
+    console.error("❌ Exception fetching event rooms:", error);
+    return [];
+  }
+}
+
+// FIXED: Simplified dashboard data function
+export async function getExpenseDashboardData(userId?: string): Promise<ExpenseDashboardData> {
+  try {
+    console.log("📄 Fetching expense dashboard data");
+
+    const user = await ensureAuthenticated();
+    const targetUserId = userId || user.id;
+
+    // Get all rooms with participants and pending settlements
+    const [allRooms, pendingSettlements] = await Promise.all([
+      getAllRooms(targetUserId),
+      getPendingSettlements(targetUserId)
+    ]);
+
+    // Calculate totals from all rooms
+    const total_owed = allRooms.reduce((sum, expense) => 
+      sum + (expense.amount_owed - expense.amount_paid), 0
+    );
+
+    const total_to_receive = pendingSettlements.reduce((sum, settlement) => 
+      sum + settlement.amount, 0
+    );
+
+    const dashboardData: ExpenseDashboardData = {
+      active_expenses: allRooms,
+      pending_settlements: pendingSettlements,
+      total_owed,
+      total_to_receive
+    };
+
+    console.log("✅ Dashboard data compiled:", {
+      active_expenses: dashboardData.active_expenses.length,
+      pending_settlements: dashboardData.pending_settlements.length,
+      total_owed: dashboardData.total_owed,
+      total_to_receive: dashboardData.total_to_receive,
+      sample_participants: dashboardData.active_expenses[0]?.participants?.length || 0
+    });
+
+    return dashboardData;
+  } catch (error) {
+    console.error("❌ Exception fetching dashboard data:", error);
+    return {
+      active_expenses: [],
+      pending_settlements: [],
+      total_owed: 0,
+      total_to_receive: 0
+    };
+  }
+}
+
+// Keep all other existing functions unchanged...
 export async function createExpenseGroup(
   data: CreateExpenseGroupRequest & { event_id?: string }
 ): Promise<CreateExpenseGroupResponse> {
   try {
-    console.log("🔄 Creating expense group:", data);
+    console.log("📄 Creating expense group:", data);
 
     // Ensure user is authenticated
     await ensureAuthenticated();
@@ -154,7 +449,7 @@ export async function submitSettlement(
   data: SubmitSettlementRequest
 ): Promise<SubmitSettlementResponse> {
   try {
-    console.log("🔄 Submitting settlement:", data);
+    console.log("📄 Submitting settlement:", data);
 
     // Ensure user is authenticated
     const user = await ensureAuthenticated();
@@ -171,7 +466,7 @@ export async function submitSettlement(
     }
 
     // Call database function to submit settlement
-    console.log("🔄 Calling submit_settlement function with params:", {
+    console.log("📄 Calling submit_settlement function with params:", {
       p_group_id: data.group_id,
       p_amount: data.amount,
       p_payment_method: data.payment_method,
@@ -264,7 +559,7 @@ export async function approveSettlement(
   data: ApproveSettlementRequest
 ): Promise<ApproveSettlementResponse> {
   try {
-    console.log("🔄 Approving settlement:", data);
+    console.log("📄 Approving settlement:", data);
 
     // Ensure user is authenticated
     await ensureAuthenticated();
@@ -324,34 +619,9 @@ export async function approveSettlement(
   }
 }
 
-export async function getExpenseSummary(userId?: string): Promise<ExpenseSummary[]> {
-  try {
-    console.log("🔄 Fetching expense summary for user:", userId || "current user");
-
-    // Ensure user is authenticated  
-    const user = await ensureAuthenticated();
-
-    // Use the original function that has the correct structure with participants
-    const { data, error } = await supabase.rpc('get_expense_summary', {
-      p_user_id: userId || user.id
-    });
-
-    if (error) {
-      console.error("❌ Error fetching expense summary:", error);
-      throw new Error(error.message || "Failed to fetch expense summary");
-    }
-
-    console.log("✅ Expense summary retrieved:", data?.length || 0, "groups");
-    return data || [];
-  } catch (error) {
-    console.error("❌ Exception fetching expense summary:", error);
-    return [];
-  }
-}
-
 export async function getPendingSettlements(userId?: string): Promise<PendingSettlement[]> {
   try {
-    console.log("🔄 Fetching pending settlements for user:", userId || "current user");
+    console.log("📄 Fetching pending settlements for user:", userId || "current user");
 
     const user = await ensureAuthenticated();
     const targetUserId = userId || user.id;
@@ -389,296 +659,40 @@ export async function getPendingSettlements(userId?: string): Promise<PendingSet
   }
 }
 
-// Get all rooms (both regular and event rooms)
-export async function getAllRooms(userId?: string): Promise<ExpenseSummary[]> {
+export async function markParticipantPayment(
+  groupId: string,
+  userId: string,
+  markAsPaid: boolean
+): Promise<{ success: boolean; message?: string }> {
   try {
-    console.log("🔄 Fetching all rooms (regular + event)");
-
-    // Ensure user is authenticated  
-    const user = await ensureAuthenticated();
-    const targetUserId = userId || user.id;
-
-    // Get expense summary with no filtering (all rooms)
-    const expenseSummary = await getExpenseSummaryWithPendingStatus(targetUserId); // undefined = all rooms
-
-    console.log("✅ All rooms retrieved:", expenseSummary.length);
-    return expenseSummary;
-  } catch (error) {
-    console.error("❌ Exception fetching all rooms:", error);
-    return [];
-  }
-}
-
-// Get regular rooms only (event_id = NULL)
-export async function getRegularRooms(userId?: string): Promise<ExpenseSummary[]> {
-  try {
-    console.log("🔄 Fetching regular rooms (event_id = NULL)");
-
-    // Ensure user is authenticated  
-    const user = await ensureAuthenticated();
-    const targetUserId = userId || user.id;
-
-    // Get expense summary filtered by event_id = NULL
-    const expenseSummary = await getExpenseSummaryWithPendingStatus(targetUserId, false); // false = regular rooms only
-
-    console.log("✅ Regular rooms retrieved:", expenseSummary.length);
-    return expenseSummary;
-  } catch (error) {
-    console.error("❌ Exception fetching regular rooms:", error);
-    return [];
-  }
-}
-
-// Get event rooms only (event_id IS NOT NULL)  
-export async function getEventRooms(userId?: string): Promise<ExpenseSummary[]> {
-  try {
-    console.log("🔄 Fetching event rooms (event_id IS NOT NULL)");
-
-    // Ensure user is authenticated  
-    const user = await ensureAuthenticated();
-    const targetUserId = userId || user.id;
-
-    // Get expense summary filtered by event_id IS NOT NULL
-    const expenseSummary = await getExpenseSummaryWithPendingStatus(targetUserId, true); // true = event rooms only
-
-    console.log("✅ Event rooms retrieved:", expenseSummary.length);
-    return expenseSummary;
-  } catch (error) {
-    console.error("❌ Exception fetching event rooms:", error);
-    return [];
-  }
-}
-
-export async function getExpenseDashboardData(userId?: string): Promise<ExpenseDashboardData> {
-  try {
-    console.log("🔄 Fetching enhanced expense dashboard data");
+    console.log(`📄 Marking participant payment: ${markAsPaid ? 'paid' : 'unpaid'}`, { groupId, userId });
 
     // Ensure user is authenticated
-    const user = await ensureAuthenticated();
-    const targetUserId = userId || user.id;
+    await ensureAuthenticated();
 
-    // Use the enhanced database function
-    const { data, error } = await supabase.rpc('get_expense_dashboard_data', {
-      p_user_id: targetUserId
+    // Call database function to mark payment
+    const { data: result, error } = await supabase.rpc('mark_participant_payment', {
+      p_group_id: groupId,
+      p_user_id: userId,
+      p_mark_as_paid: markAsPaid
     });
 
     if (error) {
-      console.error("❌ Error fetching dashboard data:", error);
-      
-      // Fallback to the original method if the enhanced function doesn't exist
-      if (error.message?.includes('function') || error.message?.includes('does not exist')) {
-        console.log("📋 Enhanced function not available, using fallback method");
-        
-        const [allRooms, pendingSettlements] = await Promise.all([
-          getAllRooms(targetUserId), // Get ALL rooms for balance calculations
-          getPendingSettlements(targetUserId)
-        ]);
-
-        // Calculate totals from ALL rooms (not just regular rooms)
-        const total_owed = allRooms.reduce((sum, expense) => 
-          sum + (expense.amount_owed - expense.amount_paid), 0
-        );
-
-        const total_to_receive = pendingSettlements.reduce((sum, settlement) => 
-          sum + settlement.amount, 0
-        );
-
-        return {
-          active_expenses: allRooms, // Return all rooms for balance calculations
-          pending_settlements: pendingSettlements,
-          total_owed,
-          total_to_receive
-        };
-      }
-      
-      throw new Error(error.message || "Failed to fetch dashboard data");
+      console.error("❌ Error marking participant payment:", error);
+      throw new Error(error.message || "Failed to mark participant payment");
     }
 
-    // Parse the JSONB response - keep ALL rooms for balance calculations
-    const allActiveExpenses = data.active_expenses || [];
+    console.log(`✅ Participant marked as ${markAsPaid ? 'paid' : 'unpaid'}`);
 
-    const dashboardData: ExpenseDashboardData = {
-      active_expenses: allActiveExpenses, // Keep ALL rooms for balance calculations
-      pending_settlements: data.pending_settlements || [],
-      total_owed: parseFloat(data.total_owed || 0),
-      total_to_receive: parseFloat(data.total_to_receive || 0)
-    };
-
-    console.log("✅ Enhanced dashboard data compiled:", {
-      active_expenses: dashboardData.active_expenses.length,
-      pending_settlements: dashboardData.pending_settlements.length,
-      total_owed: dashboardData.total_owed,
-      total_to_receive: dashboardData.total_to_receive
-    });
-
-    return dashboardData;
-  } catch (error) {
-    console.error("❌ Exception fetching dashboard data:", error);
     return {
-      active_expenses: [],
-      pending_settlements: [],
-      total_owed: 0,
-      total_to_receive: 0
+      success: true
     };
-  }
-}
-
-// Enhanced function to get expense summary with pending settlement status
-// eventRooms: true = only event rooms, false = only regular rooms, undefined = all rooms
-async function getExpenseSummaryWithPendingStatus(userId: string, eventRooms?: boolean): Promise<ExpenseSummary[]> {
-  try {
-    console.log("🔄 Fetching expense summary with pending status");
-
-    // Get basic expense summary
-    let query = supabase
-      .from('expense_groups')
-      .select(`
-        id,
-        name,
-        description,
-        total_amount,
-        created_by,
-        created_at,
-        status,
-        event_id,
-        expense_participants!inner(
-          amount_owed,
-          amount_paid,
-          is_settled
-        ),
-        users!expense_groups_created_by_fkey(
-          name
-        )
-      `)
-      .eq('expense_participants.user_id', userId)
-      .eq('status', 'active');
-
-    // Apply event_id filtering
-    if (eventRooms === true) {
-      // Only event rooms (event_id IS NOT NULL)
-      query = query.not('event_id', 'is', null);
-    } else if (eventRooms === false) {
-      // Only regular rooms (event_id IS NULL)
-      query = query.is('event_id', null);
-    }
-    // If eventRooms is undefined, get all rooms (no filtering)
-
-    const { data: expenses, error: expenseError } = await query
-      .order('created_at', { ascending: false });
-
-    if (expenseError) {
-      console.error("Error fetching expenses:", expenseError);
-      throw expenseError;
-    }
-
-    // Get pending settlements for each expense
-    const expensesWithPending = await Promise.all(
-      (expenses || []).map(async (expense) => {
-        // Get current user's pending settlement for this expense
-        const { data: pendingSettlement } = await supabase
-          .from('settlements')
-          .select('id, amount, payment_method, status, created_at')
-          .eq('group_id', expense.id)
-          .eq('payer_id', userId)
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        // Get all participants with their statuses
-        const { data: participants, error: participantsError } = await supabase
-          .from('expense_participants')
-          .select(`
-            user_id,
-            amount_owed,
-            amount_paid,
-            is_settled,
-            users!inner(
-              name,
-              profilePicture
-            )
-          `)
-          .eq('group_id', expense.id);
-
-        console.log(`🔍 Participants for ${expense.name}:`, participants, 'Error:', participantsError);
-
-        // Get pending settlements for all participants
-        const participantsWithPending = await Promise.all(
-          (participants || []).map(async (participant) => {
-            const { data: participantPending } = await supabase
-              .from('settlements')
-              .select('id, amount, payment_method, status, created_at')
-              .eq('group_id', expense.id)
-              .eq('payer_id', participant.user_id)
-              .eq('status', 'pending')
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .single();
-
-            return {
-              user_id: participant.user_id,
-              name: (participant as any).users.name,
-              profile_picture: (participant as any).users.profilePicture,
-              amount_owed: participant.amount_owed,
-              amount_paid: participant.amount_paid,
-              is_settled: participant.is_settled,
-              is_creator: participant.user_id === expense.created_by,
-              pending_settlement: participantPending ? {
-                settlement_id: participantPending.id,
-                amount: participantPending.amount,
-                payment_method: participantPending.payment_method,
-                status: participantPending.status,
-                created_at: participantPending.created_at
-              } : undefined
-            };
-          })
-        );
-
-        // Count all pending settlements for this expense
-        const { count: pendingCount } = await supabase
-          .from('settlements')
-          .select('*', { count: 'exact', head: true })
-          .eq('group_id', expense.id)
-          .eq('status', 'pending');
-
-        const expenseSummary: ExpenseSummary = {
-          group_id: expense.id,
-          group_name: expense.name,
-          group_description: expense.description,
-          total_amount: expense.total_amount,
-          amount_owed: expense.expense_participants[0].amount_owed,
-          amount_paid: expense.expense_participants[0].amount_paid,
-          is_settled: expense.expense_participants[0].is_settled,
-          created_by_name: (expense as any).users.name,
-          created_by_id: expense.created_by,
-          created_at: expense.created_at,
-          group_status: expense.status,
-          event_id: expense.event_id, // Include event_id for filtering
-          participants: participantsWithPending,
-          pending_settlement: pendingSettlement ? {
-            settlement_id: pendingSettlement.id,
-            amount: pendingSettlement.amount,
-            payment_method: pendingSettlement.payment_method,
-            status: pendingSettlement.status,
-            created_at: pendingSettlement.created_at
-          } : undefined,
-          pending_settlements_count: pendingCount || 0
-        };
-
-        console.log(`🎯 Final expense summary for ${expense.name}:`, {
-          participants: participantsWithPending.length,
-          participantsList: participantsWithPending
-        });
-
-        return expenseSummary;
-      })
-    );
-
-    console.log("✅ Enhanced expense summary retrieved:", expensesWithPending.length, "groups");
-    return expensesWithPending;
   } catch (error) {
-    console.error("❌ Exception fetching expense summary with pending status:", error);
-    return [];
+    console.error("❌ Exception marking participant payment:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to mark participant payment"
+    };
   }
 }
 
@@ -754,7 +768,7 @@ export function subscribeToExpenseUpdates(
   userId: string,
   onUpdate: (payload: any) => void
 ) {
-  console.log("🔄 Setting up expense real-time subscriptions");
+  console.log("📄 Setting up expense real-time subscriptions");
 
   // Subscribe to settlements changes (both as payer and receiver)
   const settlementsSubscription = supabase
@@ -801,59 +815,92 @@ export function subscribeToExpenseUpdates(
 
 // Helper function to refresh dashboard data after settlement actions
 export async function refreshDashboardAfterSettlement(userId?: string): Promise<ExpenseDashboardData> {
-  console.log("🔄 Refreshing dashboard data after settlement action");
+  console.log("📄 Refreshing dashboard data after settlement action");
   return await getExpenseDashboardData(userId);
 }
 
-// Debug function to check settlement creation
-export async function debugSettlementCreation(): Promise<void> {
+// Get room details by ID for event context (includes all participants)
+export async function getRoomDetailsById(roomId: string): Promise<ExpenseSummary | null> {
   try {
-    const { data, error } = await supabase.rpc('test_settlement_creation');
-    
-    if (error) {
-      console.error("❌ Error running debug function:", error);
-    } else {
-      console.log("🔍 Debug info:", data);
-    }
-  } catch (error) {
-    console.error("❌ Exception in debug function:", error);
-  }
-}
-
-export async function markParticipantPayment(
-  groupId: string,
-  userId: string,
-  markAsPaid: boolean
-): Promise<{ success: boolean; message?: string }> {
-  try {
-    console.log(`🔄 Marking participant payment: ${markAsPaid ? 'paid' : 'unpaid'}`, { groupId, userId });
+    console.log("📄 Fetching room details by ID:", roomId);
 
     // Ensure user is authenticated
     await ensureAuthenticated();
 
-    // Call database function to mark payment
-    const { data: result, error } = await supabase.rpc('mark_participant_payment', {
-      p_group_id: groupId,
-      p_user_id: userId,
-      p_mark_as_paid: markAsPaid
-    });
+    // Call database to get room details with all participants
+    const { data, error } = await supabase
+      .from('expense_groups')
+      .select(`
+        id,
+        name,
+        description,
+        total_amount,
+        status,
+        created_at,
+        created_by,
+        event_id,
+        creator:users!expense_groups_created_by_fkey (
+          id,
+          name,
+          profilepicture
+        ),
+        expense_participants (
+          user_id,
+          amount_owed,
+          amount_paid,
+          is_settled,
+          participant:users!expense_participants_user_id_fkey (
+            id,
+            name,
+            profilepicture
+          )
+        )
+      `)
+      .eq('id', roomId)
+      .single();
 
     if (error) {
-      console.error("❌ Error marking participant payment:", error);
-      throw new Error(error.message || "Failed to mark participant payment");
+      console.error("❌ Error fetching room details:", error);
+      if (error.code === 'PGRST116') {
+        return null; // Room not found
+      }
+      throw new Error(error.message || "Failed to fetch room details");
     }
 
-    console.log(`✅ Participant marked as ${markAsPaid ? 'paid' : 'unpaid'}`);
+    if (!data) {
+      return null;
+    }
 
-    return {
-      success: true
+    // Transform the data to match ExpenseSummary interface
+    const roomDetails: ExpenseSummary = {
+      group_id: data.id,
+      group_name: data.name,
+      group_description: data.description,
+      total_amount: data.total_amount,
+      amount_owed: 0, // Will be calculated for current user if they're a participant
+      amount_paid: 0, // Will be calculated for current user if they're a participant
+      is_settled: data.status === 'settled',
+      created_by_name: (data as any).creator?.name || 'Unknown',
+      created_by_id: data.created_by,
+      created_at: data.created_at,
+      group_status: data.status,
+      pending_settlements_count: 0,
+      participants: data.expense_participants.map(p => ({
+        user_id: p.user_id,
+        name: (p as any).participant?.name || 'Unknown User',
+        profile_picture: (p as any).participant?.profilepicture,
+        amount_owed: p.amount_owed,
+        amount_paid: p.amount_paid,
+        is_settled: p.is_settled,
+        is_creator: p.user_id === data.created_by
+      }))
     };
+
+    console.log("✅ Room details retrieved:", roomDetails);
+    return roomDetails;
   } catch (error) {
-    console.error("❌ Exception marking participant payment:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to mark participant payment"
-    };
+    console.error("❌ Exception fetching room details:", error);
+    return null;
   }
 }
 
@@ -863,7 +910,7 @@ export async function getSettlementHistory(userId?: string): Promise<{
   analytics: any
 }> {
   try {
-    console.log("🔄 Fetching settlement history from expense_participants table");
+    console.log("📄 Fetching settlement history from expense_participants table");
 
     const user = await ensureAuthenticated();
     const targetUserId = userId || user.id;
@@ -1010,7 +1057,7 @@ export async function exportExpenseReport(
   typeFilter: 'all' | 'sent' | 'received' = 'all'
 ): Promise<void> {
   try {
-    console.log(`🔄 Exporting expense report as ${format}`);
+    console.log(`📄 Exporting expense report as ${format}`);
 
     // Ensure user is authenticated
     const user = await ensureAuthenticated();
@@ -1086,89 +1133,4 @@ function downloadFile(content: string, filename: string, mimeType: string): void
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
-}
-
-// Get room details by ID for event context (includes all participants)
-export async function getRoomDetailsById(roomId: string): Promise<ExpenseSummary | null> {
-  try {
-    console.log("🔄 Fetching room details by ID:", roomId);
-
-    // Ensure user is authenticated
-    await ensureAuthenticated();
-
-    // Call database to get room details with all participants
-    const { data, error } = await supabase
-      .from('expense_groups')
-      .select(`
-        id,
-        name,
-        description,
-        total_amount,
-        status,
-        created_at,
-        created_by,
-        event_id,
-        users!expense_groups_created_by_fkey (
-          id,
-          name,
-          profilepicture
-        ),
-        expense_participants (
-          user_id,
-          amount_owed,
-          amount_paid,
-          is_settled,
-          users!expense_participants_user_id_fkey (
-            id,
-            name,
-            profilepicture
-          )
-        )
-      `)
-      .eq('id', roomId)
-      .single();
-
-    if (error) {
-      console.error("❌ Error fetching room details:", error);
-      if (error.code === 'PGRST116') {
-        return null; // Room not found
-      }
-      throw new Error(error.message || "Failed to fetch room details");
-    }
-
-    if (!data) {
-      return null;
-    }
-
-    // Transform the data to match ExpenseSummary interface
-    const roomDetails: ExpenseSummary = {
-      group_id: data.id,
-      group_name: data.name,
-      group_description: data.description,
-      total_amount: data.total_amount,
-      amount_owed: 0, // Will be calculated for current user if they're a participant
-      amount_paid: 0, // Will be calculated for current user if they're a participant
-      is_settled: data.status === 'settled',
-      created_by_name: data.users?.name || 'Unknown',
-      created_by_id: data.created_by,
-      created_at: data.created_at,
-      group_status: data.status,
-      pending_settlements_count: 0,
-      participants: data.expense_participants.map(p => ({
-        user_id: p.user_id,
-        name: p.users?.name || 'Unknown User',
-        profile_picture: p.users?.profilepicture,
-        amount_owed: p.amount_owed,
-        amount_paid: p.amount_paid,
-        is_settled: p.is_settled,
-        is_creator: p.user_id === data.created_by
-      }))
-    };
-
-    console.log("✅ Room details retrieved:", roomDetails);
-    return roomDetails;
-  } catch (error) {
-    console.error("❌ Exception fetching room details:", error);
-    return null;
-  }
 }
