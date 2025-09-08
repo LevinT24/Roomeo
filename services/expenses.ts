@@ -191,9 +191,9 @@ async function getExpenseSummaryWithParticipants(userId: string, eventRooms?: bo
         group_name: group.name,
         group_description: group.description,
         total_amount: group.total_amount,
-        // For creators: they don't owe anything, they're collecting money
-        amount_owed: isCreator ? 0 : (userParticipant?.amount_owed || 0),
-        amount_paid: isCreator ? 0 : (userParticipant?.amount_paid || 0),
+        // For creators: show their fair share and what they actually paid
+        amount_owed: userParticipant?.amount_owed || 0,
+        amount_paid: userParticipant?.amount_paid || 0,
         // For creators: room is settled when everyone else has paid their share
         is_settled: isCreator 
           ? participants.every(p => p.user_id === userId || p.is_settled)

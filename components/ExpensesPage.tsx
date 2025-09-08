@@ -8,6 +8,7 @@ import ExpenseCard from "./expenses/ExpenseCard"
 import SettlementCard from "./expenses/SettlementCard"
 import CreateExpenseModal from "./expenses/CreateExpenseModal"
 import SettlementModal from "./expenses/SettlementModal"
+import ExpenseDetailsModal from "./expenses/ExpenseDetailsModal"
 import SettlementHistory from "./expenses/SettlementHistory"
 import NotificationsDropdown from "./NotificationsDropdown"
 import CreateEventModal from "./events/CreateEventModal"
@@ -69,6 +70,7 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false)
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false)
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [selectedExpense, setSelectedExpense] = useState<ExpenseSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -163,12 +165,21 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
     setIsEventModalOpen(true)
   }
 
-  // Handle settle up
+  // Handle settle up (for participants)
   const handleSettleUp = (groupId: string) => {
     const expense = dashboardData.active_expenses.find(exp => exp.group_id === groupId)
     if (expense) {
       setSelectedExpense(expense)
       setIsSettlementModalOpen(true)
+    }
+  }
+
+  // Handle view details (for creators)
+  const handleViewDetails = (groupId: string) => {
+    const expense = dashboardData.active_expenses.find(exp => exp.group_id === groupId)
+    if (expense) {
+      setSelectedExpense(expense)
+      setIsDetailsModalOpen(true)
     }
   }
 
@@ -550,6 +561,7 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                               onSettleUp={handleSettleUp}
                               currentUserId={user.id}
                               onMarkPaid={handleMarkPaid}
+                              onViewDetails={handleViewDetails}
                             />
                           </div>
                         ))}
@@ -640,15 +652,28 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
       />
 
       {selectedExpense && (
-        <SettlementModal
-          isOpen={isSettlementModalOpen}
-          onClose={() => {
-            setIsSettlementModalOpen(false)
-            setSelectedExpense(null)
-          }}
-          expense={selectedExpense}
-          onSubmitSettlement={handleSubmitSettlement}
-        />
+        <>
+          <SettlementModal
+            isOpen={isSettlementModalOpen}
+            onClose={() => {
+              setIsSettlementModalOpen(false)
+              setSelectedExpense(null)
+            }}
+            expense={selectedExpense}
+            onSubmitSettlement={handleSubmitSettlement}
+          />
+          
+          <ExpenseDetailsModal
+            isOpen={isDetailsModalOpen}
+            onClose={() => {
+              setIsDetailsModalOpen(false)
+              setSelectedExpense(null)
+            }}
+            expense={selectedExpense}
+            currentUserId={user.id}
+            onMarkPaid={handleMarkPaid}
+          />
+        </>
       )}
 
       <SettlementHistory

@@ -12,6 +12,7 @@ import { getRoomDetailsById, submitSettlement, markParticipantPayment } from "@/
 import ExpenseCard from "../expenses/ExpenseCard"
 import SettlementCard from "../expenses/SettlementCard"
 import SettlementModal from "../expenses/SettlementModal"
+import ExpenseDetailsModal from "../expenses/ExpenseDetailsModal"
 
 interface User {
   id: string
@@ -36,6 +37,7 @@ export default function EventRoomView({
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false)
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
 
   // Fetch room data using room details by ID (includes all participants)
   const fetchRoomData = async () => {
@@ -167,6 +169,7 @@ export default function EventRoomView({
             onSettleUp={handleSettleUp}
             currentUserId={user.id}
             onMarkPaid={handleMarkPaid}
+            onViewDetails={() => setIsDetailsModalOpen(true)}
           />
         </div>
 
@@ -267,14 +270,24 @@ export default function EventRoomView({
         )}
       </div>
 
-      {/* REUSE EXACT SettlementModal - same as ExpensesPage.tsx */}
+      {/* REUSE EXACT Modals - same as ExpensesPage.tsx */}
       {roomData && (
-        <SettlementModal
-          isOpen={isSettlementModalOpen}
-          onClose={() => setIsSettlementModalOpen(false)}
-          expense={roomData}
-          onSubmitSettlement={handleSubmitSettlement}
-        />
+        <>
+          <SettlementModal
+            isOpen={isSettlementModalOpen}
+            onClose={() => setIsSettlementModalOpen(false)}
+            expense={roomData}
+            onSubmitSettlement={handleSubmitSettlement}
+          />
+          
+          <ExpenseDetailsModal
+            isOpen={isDetailsModalOpen}
+            onClose={() => setIsDetailsModalOpen(false)}
+            expense={roomData}
+            currentUserId={user.id}
+            onMarkPaid={handleMarkPaid}
+          />
+        </>
       )}
     </div>
   )
