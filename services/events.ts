@@ -14,8 +14,7 @@ import {
   EventWithDetails,
   EventListItem,
   EventDetailsResponse,
-  CreateEventExpenseGroupRequest,
-  CreateEventExpenseGroupResponse
+  CreateEventExpenseGroupRequest
 } from "@/types/events"
 import { CreateExpenseGroupResponse } from "@/types/expenses"
 
@@ -459,4 +458,4 @@ export function subscribeToEventUpdates(
 }
 
 // Export convenience type
-export type { CreateEventExpenseGroupResponse }
+export type { CreateExpenseGroupResponse as CreateEventExpenseGroupResponse }

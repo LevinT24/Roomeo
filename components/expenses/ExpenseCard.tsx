@@ -5,8 +5,13 @@ import { Badge } from "@/components/ui/badge"
 import { ExpenseCardProps, ExpenseParticipantSummary } from "@/types/expenses"
 
 export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMarkPaid }: ExpenseCardProps) {
-  const remainingAmount = expense.amount_owed - expense.amount_paid
-  const isSettled = expense.is_settled || remainingAmount <= 0.01
+  // Check if current user is the creator
+  const isCreator = currentUserId === expense.created_by_id
+  
+  // For creators: they don't owe anything, they're owed money
+  // For participants: they owe their share minus what they've paid
+  const remainingAmount = isCreator ? 0 : (expense.amount_owed - expense.amount_paid)
+  const isSettled = expense.is_settled || (isCreator ? false : remainingAmount <= 0.01)
 
   const getStatusColor = () => {
     if (isSettled) return "bg-roomeo-success/10 text-roomeo-success border-roomeo-success/20"
@@ -67,26 +72,47 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
           <p className="roomeo-heading text-xl text-emerald-primary">${expense.total_amount.toFixed(2)}</p>
         </div>
         <div className="text-center">
-          <p className="roomeo-body text-emerald-primary/60 text-sm">🎯 Your Share</p>
-          <p className="roomeo-heading text-xl text-emerald-primary">${expense.amount_owed.toFixed(2)}</p>
+          <p className="roomeo-body text-emerald-primary/60 text-sm">{isCreator ? "🎯 Your Share" : "🎯 Your Share"}</p>
+          <p className="roomeo-heading text-xl text-emerald-primary">
+            ${expense.amount_owed.toFixed(2)}
+          </p>
         </div>
       </div>
 
       <div className="flex items-center justify-between mb-5">
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <span className="roomeo-body text-emerald-primary/60 text-sm">✅ Paid:</span>
-            <span className="roomeo-body text-roomeo-success font-semibold">
-              ${expense.amount_paid.toFixed(2)}
-            </span>
-          </div>
-          {!isSettled && (
-            <div className="flex items-center gap-2">
-              <span className="roomeo-body text-emerald-primary/60 text-sm">⏳ Remaining:</span>
-              <span className="roomeo-body text-roomeo-danger font-semibold">
-                ${remainingAmount.toFixed(2)}
-              </span>
-            </div>
+          {isCreator ? (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="roomeo-body text-emerald-primary/60 text-sm">💰 You Paid:</span>
+                <span className="roomeo-body text-roomeo-success font-semibold">
+                  ${expense.amount_paid.toFixed(2)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="roomeo-body text-emerald-primary/60 text-sm">⏳ Still Owed:</span>
+                <span className="roomeo-body text-roomeo-danger font-semibold">
+                  ${(expense.total_amount - (expense.participants?.reduce((sum, p) => sum + p.amount_paid, 0) || 0)).toFixed(2)}
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="roomeo-body text-emerald-primary/60 text-sm">✅ Paid:</span>
+                <span className="roomeo-body text-roomeo-success font-semibold">
+                  ${expense.amount_paid.toFixed(2)}
+                </span>
+              </div>
+              {!isSettled && (
+                <div className="flex items-center gap-2">
+                  <span className="roomeo-body text-emerald-primary/60 text-sm">⏳ Remaining:</span>
+                  <span className="roomeo-body text-roomeo-danger font-semibold">
+                    ${remainingAmount.toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -96,17 +122,23 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
             <div 
               className="bg-gradient-to-r from-moss-green to-roomeo-success h-3 rounded-full transition-all duration-500 ease-out"
               style={{ 
-                width: `${expense.amount_owed > 0 ? Math.min((expense.amount_paid / expense.amount_owed) * 100, 100) : 0}%` 
+                width: isCreator 
+                  ? `${expense.total_amount > 0 ? Math.min(((expense.participants?.reduce((sum, p) => sum + p.amount_paid, 0) || 0) / expense.total_amount) * 100, 100) : 0}%`
+                  : `${expense.amount_owed > 0 ? Math.min((expense.amount_paid / expense.amount_owed) * 100, 100) : 0}%`
               }}
             ></div>
           </div>
           <p className="roomeo-body text-emerald-primary/50 text-xs mt-1 text-center">
-            {expense.amount_owed > 0 ? ((expense.amount_paid / expense.amount_owed) * 100).toFixed(0) : '0'}% paid
+            {isCreator 
+              ? `${expense.total_amount > 0 ? (((expense.participants?.reduce((sum, p) => sum + p.amount_paid, 0) || 0) / expense.total_amount) * 100).toFixed(0) : '0'}% collected`
+              : `${expense.amount_owed > 0 ? ((expense.amount_paid / expense.amount_owed) * 100).toFixed(0) : '0'}% paid`
+            }
           </p>
         </div>
       </div>
 
-      {!isSettled && remainingAmount > 0 && expense.amount_owed > 0 && (
+      {/* Only show Pay button for non-creators who have remaining balance */}
+      {!isCreator && !isSettled && remainingAmount > 0 && expense.amount_owed > 0 && (
         <div className="flex gap-3 mb-4">
           <button 
             onClick={() => onSettleUp(expense.group_id)}
@@ -119,6 +151,18 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
             className="roomeo-button-secondary flex items-center gap-2 px-4"
           >
             <span>📊</span> Details
+          </button>
+        </div>
+      )}
+      
+      {/* Show details button for creators */}
+      {isCreator && (
+        <div className="flex gap-3 mb-4">
+          <button 
+            onClick={() => onSettleUp(expense.group_id)}
+            className="roomeo-button-secondary flex items-center justify-center gap-2 w-full"
+          >
+            <span>📊</span> View Details
           </button>
         </div>
       )}

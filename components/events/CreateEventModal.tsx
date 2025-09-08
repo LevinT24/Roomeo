@@ -263,7 +263,7 @@ export default function CreateExpenseModal({
                 Add Additional Friends ({formData.participants.length} selected)
               </label>
               <p className="text-xs text-emerald-primary/60 mb-2">
-                Optional: Add friends who aren't event members to this specific room
+                Optional: Add friends who aren&apos;t event members to this specific room
               </p>
               <div className="max-h-32 overflow-y-auto border border-sage/30 rounded-lg">
                 {availableFriends.map((friend) => (

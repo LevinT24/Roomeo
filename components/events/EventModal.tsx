@@ -216,14 +216,6 @@ export default function EventModal({ isOpen, onClose, user, eventId }: EventModa
           profilePicture: f.profilePicture || undefined
         }))}
         onCreateExpense={handleCreateRoom}
-        eventContext={event ? {
-          eventId: event.id,
-          eventName: event.name,
-          eventMembers: event.members.map(m => ({
-            user_id: m.user_id,
-            name: m.user?.name || 'Unknown'
-          }))
-        } : undefined}
       />
     </div>
   )

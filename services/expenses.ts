@@ -159,10 +159,11 @@ async function getExpenseSummaryWithParticipants(userId: string, eventRooms?: bo
       
       // Find current user's participation
       const userParticipant = groupParticipants.find(p => p.user_id === userId);
+      const isCreator = group.created_by === userId;
       
-      // Skip groups where user is not a participant
-      if (!userParticipant) {
-        console.log(`⏭️ Skipping group ${group.name} - user not a participant`);
+      // Skip groups where user is not a participant or creator
+      if (!userParticipant && !isCreator) {
+        console.log(`⏭️ Skipping group ${group.name} - user not a participant or creator`);
         continue;
       }
 
@@ -190,9 +191,13 @@ async function getExpenseSummaryWithParticipants(userId: string, eventRooms?: bo
         group_name: group.name,
         group_description: group.description,
         total_amount: group.total_amount,
-        amount_owed: userParticipant.amount_owed,
-        amount_paid: userParticipant.amount_paid,
-        is_settled: userParticipant.is_settled,
+        // For creators: they don't owe anything, they're collecting money
+        amount_owed: isCreator ? 0 : (userParticipant?.amount_owed || 0),
+        amount_paid: isCreator ? 0 : (userParticipant?.amount_paid || 0),
+        // For creators: room is settled when everyone else has paid their share
+        is_settled: isCreator 
+          ? participants.every(p => p.user_id === userId || p.is_settled)
+          : (userParticipant?.is_settled || false),
         created_by_name: creatorUser?.name || 'Unknown',
         created_by_id: group.created_by,
         created_at: group.created_at,

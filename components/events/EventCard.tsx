@@ -22,7 +22,7 @@ export default function EventCard({
   currentUserId 
 }: EventCardProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const isOwner = event.user_role === 'owner'
+  const isOwner = event.role === 'owner'
 
   const formatDateRange = (startDate?: string, endDate?: string) => {
     if (!startDate && !endDate) return null
@@ -119,16 +119,16 @@ export default function EventCard({
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div className="text-center p-3 bg-sage/10 rounded-lg">
-            <div className="text-lg font-bold text-emerald-primary">{event.rooms_count || 0}</div>
+            <div className="text-lg font-bold text-emerald-primary">{event.stats?.room_count || 0}</div>
             <div className="text-xs text-emerald-primary/60">🏠 Rooms</div>
           </div>
           <div className="text-center p-3 bg-sage/10 rounded-lg">
-            <div className="text-lg font-bold text-emerald-primary">{event.member_count || 0}</div>
+            <div className="text-lg font-bold text-emerald-primary">{event.stats?.member_count || 0}</div>
             <div className="text-xs text-emerald-primary/60">👥 Members</div>
           </div>
           <div className="text-center p-3 bg-sage/10 rounded-lg">
             <div className="text-lg font-bold text-emerald-primary">
-              ${(event.total_amount || 0).toFixed(0)}
+              ${(event.stats?.total_amount || 0).toFixed(0)}
             </div>
             <div className="text-xs text-emerald-primary/60">💰 Total</div>
           </div>

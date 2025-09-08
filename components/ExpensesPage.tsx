@@ -636,7 +636,7 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
           name: f.name,
           profilePicture: f.profilePicture || undefined
         }))}
-        onCreateEvent={handleCreateEvent}
+        onCreateExpense={handleCreateEvent}
       />
 
       {selectedExpense && (

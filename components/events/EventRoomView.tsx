@@ -79,7 +79,6 @@ export default function EventRoomView({
       const result = await submitSettlement(data)
       if (result.success) {
         await fetchRoomData() // Refresh data
-        return result
       } else {
         throw new Error(result.message || 'Failed to submit settlement')
       }

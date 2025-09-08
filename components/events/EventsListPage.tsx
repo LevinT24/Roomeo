@@ -259,7 +259,7 @@ export default function EventsListPage({ user, onEventClick }: EventsListPagePro
           name: f.name,
           profilePicture: f.profilePicture || undefined
         }))}
-        onCreateEvent={handleCreateEvent}
+        onCreateExpense={handleCreateEvent}
       />
     </div>
   )
