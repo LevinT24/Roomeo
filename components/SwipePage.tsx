@@ -58,17 +58,6 @@ export default function SwipePage({ user: propUser, refreshTrigger, onNavigateTo
     }
   }
 
-  // Show locked page for quick_access users
-  if (isSwipeLocked) {
-    return (
-      <LockedSwipePage 
-        onUpgrade={handleUpgrade}
-        userType={currentUser?.userType || ''}
-        lockReason="upgrade_required"
-      />
-    )
-  }
-
   const fetchOppositeTypeUsers = useCallback(async () => {
     if (!currentUser?.id) {
       setError("User not found")
@@ -203,6 +192,16 @@ export default function SwipePage({ user: propUser, refreshTrigger, onNavigateTo
     }
   }, [currentUser, fetchOppositeTypeUsers, refreshTrigger]) // Add refreshTrigger to dependencies
 
+  // Show locked page for quick_access users
+  if (isSwipeLocked) {
+    return (
+      <LockedSwipePage 
+        onUpgrade={handleUpgrade}
+        userType={currentUser?.userType || ''}
+        lockReason="upgrade_required"
+      />
+    )
+  }
 
   const handleSwipe = async (liked: boolean) => {
     const currentProfile = profiles[currentIndex]

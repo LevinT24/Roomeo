@@ -126,11 +126,11 @@ export default function UpgradeFlow({ onComplete, onCancel }: UpgradeFlowProps) 
             <div className="w-32 h-3 bg-[#44C76F] mx-auto transform skew-x-12 mb-6"></div>
 
             <p className="text-lg font-bold text-[#004D40] mb-6 leading-tight">
-              Ready to unlock the full Roomio experience? You'll get access to roommate matching while keeping all your existing data!
+              Ready to unlock the full Roomio experience? You&apos;ll get access to roommate matching while keeping all your existing data!
             </p>
 
             <div className="bg-[#F2F5F1] border-2 border-[#004D40] p-4 mb-6 text-left">
-              <h3 className="font-black text-[#004D40] mb-3 text-center">🎉 WHAT YOU'LL UNLOCK:</h3>
+              <h3 className="font-black text-[#004D40] mb-3 text-center">🎉 WHAT YOU&apos;LL UNLOCK:</h3>
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
                   <Zap className="h-4 w-4 text-[#44C76F] flex-shrink-0" />
@@ -149,7 +149,7 @@ export default function UpgradeFlow({ onComplete, onCancel }: UpgradeFlowProps) 
 
             <div className="bg-[#44C76F]/20 border-2 border-[#44C76F] p-3 mb-6 rounded">
               <p className="text-sm font-black text-[#004D40]">
-                💾 DON'T WORRY - All your marketplace listings, expenses, and chat history will be preserved!
+                💾 DON&apos;T WORRY - All your marketplace listings, expenses, and chat history will be preserved!
               </p>
             </div>
 
@@ -157,7 +157,7 @@ export default function UpgradeFlow({ onComplete, onCancel }: UpgradeFlowProps) 
               onClick={() => setCurrentStep(2)}
               className="w-full bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black text-xl py-4 border-4 border-[#004D40] shadow-[6px_6px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[3px_3px_0px_0px_#004D40] transition-all"
             >
-              🚀 LET'S UPGRADE!
+              🚀 LET&apos;S UPGRADE!
             </Button>
           </CardContent>
         </Card>
@@ -257,7 +257,7 @@ export default function UpgradeFlow({ onComplete, onCancel }: UpgradeFlowProps) 
             </h1>
 
             <p className="text-lg font-bold text-[#004D40] mb-6">
-              You've selected <span className="text-[#44C76F]">{selectedUserType === "provider" ? "PROVIDER" : "SEEKER"}</span> mode
+              You&apos;ve selected <span className="text-[#44C76F]">{selectedUserType === "provider" ? "PROVIDER" : "SEEKER"}</span> mode
               {budget && <span> with a ${budget} budget</span>}.
             </p>
 

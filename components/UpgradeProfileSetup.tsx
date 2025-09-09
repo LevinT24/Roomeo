@@ -125,7 +125,7 @@ export default function UpgradeProfileSetup({ userType, onComplete, onBack }: Up
               <ul className="text-xs font-bold text-[#004D40] space-y-1">
                 {userType === "provider" ? (
                   <>
-                    <li>• Include utilities if they're covered</li>
+                    <li>• Include utilities if they&apos;re covered</li>
                     <li>• Consider market rates in your area</li>
                     <li>• You can update this anytime in settings</li>
                   </>

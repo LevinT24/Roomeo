@@ -282,7 +282,7 @@ export default function SettingsPage({ user, onBack, onUpgrade }: SettingsPagePr
               </p>
 
               <div className="bg-[#F2F5F1] border-2 border-[#004D40] p-3 mb-4 text-left rounded">
-                <p className="font-black text-[#004D40] text-sm mb-2">✨ YOU'LL GET ACCESS TO:</p>
+                <p className="font-black text-[#004D40] text-sm mb-2">✨ YOU&apos;LL GET ACCESS TO:</p>
                 <ul className="space-y-1 text-xs font-bold text-[#004D40]">
                   <li>• Swipe through potential roommates</li>
                   <li>• Match with compatible people</li>

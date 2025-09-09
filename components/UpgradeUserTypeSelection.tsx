@@ -52,7 +52,7 @@ export default function UpgradeUserTypeSelection({ onSelect, onCancel }: Upgrade
               WHAT&apos;S YOUR HOUSING SITUATION?
             </h3>
             <p className="text-lg font-bold text-[#004D40]">
-              This determines what kind of roommate matches you'll see
+              This determines what kind of roommate matches you&apos;ll see
             </p>
           </div>
 
