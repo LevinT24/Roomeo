@@ -137,8 +137,8 @@ export default function EventModal({ isOpen, onClose, user, eventId }: EventModa
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-2 lg:p-4">
-      <div className="bg-mint-cream rounded-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden animate-fade-in shadow-2xl">
+    <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-2 lg:p-4 pb-24 sm:pb-4">
+      <div className="bg-mint-cream rounded-2xl w-full max-w-6xl max-h-[calc(100vh-8rem)] sm:max-h-[calc(100vh-6rem)] flex flex-col animate-fade-in shadow-2xl">
         
         {/* Modal Header - Compact */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-sage/20 flex-shrink-0">
@@ -158,8 +158,8 @@ export default function EventModal({ isOpen, onClose, user, eventId }: EventModa
           </button>
         </div>
 
-        {/* Modal Content - Single scroll area */}
-        <div className="flex-1 overflow-hidden">
+        {/* Modal Content - Scrollable area */}
+        <div className="flex-1 overflow-y-auto min-h-0">
           {isLoading ? (
             <div className="h-full flex items-center justify-center">
               <div className="text-center animate-fade-in">
@@ -182,7 +182,7 @@ export default function EventModal({ isOpen, onClose, user, eventId }: EventModa
               </div>
             </div>
           ) : (
-            <div className="h-full flex">
+            <div className="flex min-h-full">
               {/* Left Sidebar - Event Info - Fixed width, internal scroll only for members */}
               <div className="w-72 flex-shrink-0 border-r border-sage/20 bg-sage/5">
                 <EventSidebar
