@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/useAuth"
 import { supabase } from "@/lib/supabase"
+import LockedSwipePage from "@/components/LockedSwipePage"
 
 interface User {
   id: string
@@ -20,17 +21,18 @@ interface User {
     vegetarian: boolean
     pets: boolean
   }
-  userType?: "seeker" | "provider" | null
+  userType?: "seeker" | "provider" | "quick_access" | null
 }
 
 interface SwipePageProps {
   user?: User // Make it optional since we'll fetch from useAuth
   refreshTrigger?: number // Add a trigger to force refresh when matches are removed
   onNavigateToSettings?: () => void // Add callback to navigate to settings
+  onUpgrade?: () => void // Add callback to trigger upgrade flow
 }
 
 
-export default function SwipePage({ user: propUser, refreshTrigger, onNavigateToSettings }: SwipePageProps = {}) {
+export default function SwipePage({ user: propUser, refreshTrigger, onNavigateToSettings, onUpgrade }: SwipePageProps = {}) {
   const { user: authUser, logout } = useAuth()
   const [profiles, setProfiles] = useState<User[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -40,6 +42,32 @@ export default function SwipePage({ user: propUser, refreshTrigger, onNavigateTo
 
   // Use the user from props or auth
   const currentUser = propUser || authUser
+
+  // Check if swipe page should be locked for quick_access users
+  const isSwipeLocked = currentUser?.userType === 'quick_access'
+
+  // Handle upgrade flow for locked users
+  const handleUpgrade = () => {
+    if (onUpgrade) {
+      onUpgrade() // Trigger upgrade flow directly
+    } else if (onNavigateToSettings) {
+      onNavigateToSettings() // Navigate to settings where upgrade button will be
+    } else {
+      // Fallback: could navigate to settings directly or show upgrade modal
+      console.log("🔄 User wants to upgrade from Quick Access")
+    }
+  }
+
+  // Show locked page for quick_access users
+  if (isSwipeLocked) {
+    return (
+      <LockedSwipePage 
+        onUpgrade={handleUpgrade}
+        userType={currentUser?.userType || ''}
+        lockReason="upgrade_required"
+      />
+    )
+  }
 
   const fetchOppositeTypeUsers = useCallback(async () => {
     if (!currentUser?.id) {

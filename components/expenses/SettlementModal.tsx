@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SettleUpModalProps, PaymentMethod } from "@/types/expenses"
+import { supabase } from "@/lib/supabase"
 
 export default function SettlementModal({ 
   isOpen, 
@@ -74,12 +75,22 @@ export default function SettlementModal({
   }
 
   const uploadImage = async (file: File): Promise<string> => {
+    // Get session token for authentication
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session?.access_token) {
+      throw new Error('No valid session found')
+    }
+
     const formData = new FormData()
     formData.append('file', file)
     formData.append('type', 'settlement_proof')
 
     const response = await fetch('/api/upload', {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`
+      },
       body: formData
     })
 

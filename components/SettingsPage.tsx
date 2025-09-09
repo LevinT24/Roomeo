@@ -10,9 +10,10 @@ import { supabase } from "@/lib/supabase"
 interface SettingsPageProps {
   user: any
   onBack: () => void
+  onUpgrade?: () => void
 }
 
-export default function SettingsPage({ user, onBack }: SettingsPageProps) {
+export default function SettingsPage({ user, onBack, onUpgrade }: SettingsPageProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [profileVisible, setProfileVisible] = useState(user?.profileVisible ?? true)
@@ -263,6 +264,52 @@ export default function SettingsPage({ user, onBack }: SettingsPageProps) {
             </div>
           </CardContent>
         </Card>
+
+        {/* Upgrade Section for Quick Access Users */}
+        {user?.userType === 'quick_access' && (
+          <Card className="border-4 border-[#44C76F] shadow-[8px_8px_0px_0px_#44C76F] bg-[#44C76F]/10">
+            <CardContent className="p-6 text-center">
+              <div className="w-16 h-16 bg-[#44C76F] border-4 border-[#004D40] rounded-full flex items-center justify-center mx-auto mb-4 shadow-[6px_6px_0px_0px_#004D40] animate-pulse">
+                <Unlock className="h-8 w-8 text-[#004D40]" />
+              </div>
+              
+              <h3 className="text-xl font-black text-[#004D40] mb-3">
+                🚀 UPGRADE TO FULL FEATURES
+              </h3>
+              
+              <p className="text-[#004D40] font-bold mb-4 leading-tight">
+                Unlock roommate matching, swiping, and access to the matches page!
+              </p>
+
+              <div className="bg-[#F2F5F1] border-2 border-[#004D40] p-3 mb-4 text-left rounded">
+                <p className="font-black text-[#004D40] text-sm mb-2">✨ YOU'LL GET ACCESS TO:</p>
+                <ul className="space-y-1 text-xs font-bold text-[#004D40]">
+                  <li>• Swipe through potential roommates</li>
+                  <li>• Match with compatible people</li>
+                  <li>• View detailed profiles & photos</li>
+                  <li>• Access the matches page</li>
+                </ul>
+              </div>
+              
+              <Button
+                onClick={() => {
+                  if (onUpgrade) {
+                    onUpgrade()
+                  } else {
+                    alert("Upgrade functionality not available")
+                  }
+                }}
+                className="w-full bg-[#44C76F] hover:bg-[#44C76F]/80 text-[#004D40] font-black text-lg py-4 px-6 border-4 border-[#004D40] shadow-[6px_6px_0px_0px_#004D40] hover:translate-x-1 hover:translate-y-1 hover:shadow-[3px_3px_0px_0px_#004D40] transition-all"
+              >
+                🔓 UNLOCK FULL FEATURES
+              </Button>
+              
+              <p className="text-xs font-bold text-[#004D40] opacity-70 mt-3">
+                Keep all your marketplace listings, expenses, and chat history!
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Settings Options */}
         <div className="space-y-4">

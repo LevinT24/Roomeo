@@ -1,13 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerComponentClient({ cookies })
+    // Get token from headers
+    const authHeader = request.headers.get("Authorization")
+    if (!authHeader?.startsWith("Bearer ")) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const token = authHeader.split(" ")[1]
     
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // Initialize Supabase client with anon key first to verify user
+    const supabaseAuth = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+    
+    // Verify token and get user
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token)
     
     if (authError || !user) {
       return NextResponse.json(
@@ -15,6 +29,12 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    // Use service role key for storage operations to bypass RLS
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     // Parse form data
     const formData = await request.formData()
@@ -52,7 +72,8 @@ export async function POST(request: NextRequest) {
     const fileBuffer = await file.arrayBuffer()
 
     // Upload to Supabase Storage (using existing room-photos bucket)
-    const filePath = `settlement_proofs/${fileName}`
+    // Try without subfolder first to test
+    const filePath = fileName
     
     const { data, error: uploadError } = await supabase.storage
       .from('room-photos')

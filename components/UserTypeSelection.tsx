@@ -8,7 +8,7 @@ import { updateUserProfile } from "@/services/supabase";
 
 export default function UserTypeSelection({ onComplete }: { onComplete: () => void }) {
   const { user } = useAuth()
-  const [selectedType, setSelectedType] = useState<"provider" | "seeker" | null>(null)
+  const [selectedType, setSelectedType] = useState<"provider" | "seeker" | "quick_access" | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -101,10 +101,10 @@ export default function UserTypeSelection({ onComplete }: { onComplete: () => vo
             </div>
           )}
 
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <div className="grid md:grid-cols-3 gap-4 mb-8">
             <div
               onClick={() => !loading && setSelectedType("provider")}
-              className={`p-8 border-4 border-[#004D40] cursor-pointer transition-all transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#004D40] ${
+              className={`p-6 border-4 border-[#004D40] cursor-pointer transition-all transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#004D40] ${
                 selectedType === "provider"
                   ? "bg-[#44C76F] text-[#004D40] shadow-[8px_8px_0px_0px_#004D40]"
                   : "bg-[#F2F5F1] text-[#004D40] shadow-[6px_6px_0px_0px_#004D40] hover:bg-[#B7C8B5]"
@@ -112,11 +112,11 @@ export default function UserTypeSelection({ onComplete }: { onComplete: () => vo
             >
               <div className="text-center">
                 <div
-                  className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] ${
+                  className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] ${
                     selectedType === "provider" ? "bg-[#F2F5F1] text-[#44C76F]" : "bg-[#44C76F] text-[#004D40]"
                   }`}
                 >
-                  <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -124,12 +124,12 @@ export default function UserTypeSelection({ onComplete }: { onComplete: () => vo
                     />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-black mb-4 transform -skew-x-1">I HAVE A PLACE</h3>
-                <p className="font-bold leading-tight">
+                <h3 className="text-xl font-black mb-3 transform -skew-x-1">I HAVE A PLACE</h3>
+                <p className="font-bold leading-tight text-sm">
                   I own or rent a place and I&apos;m looking for a roommate to share it with
                 </p>
                 {selectedType === "provider" && (
-                  <div className="mt-4 text-sm font-black text-[#004D40] bg-[#F2F5F1] p-2 border-2 border-[#004D40]">
+                  <div className="mt-3 text-sm font-black text-[#004D40] bg-[#F2F5F1] p-2 border-2 border-[#004D40]">
                     ✓ SELECTED
                   </div>
                 )}
@@ -138,7 +138,7 @@ export default function UserTypeSelection({ onComplete }: { onComplete: () => vo
 
             <div
               onClick={() => !loading && setSelectedType("seeker")}
-              className={`p-8 border-4 border-[#004D40] cursor-pointer transition-all transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#004D40] ${
+              className={`p-6 border-4 border-[#004D40] cursor-pointer transition-all transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#004D40] ${
                 selectedType === "seeker"
                   ? "bg-[#44C76F] text-[#004D40] shadow-[8px_8px_0px_0px_#004D40]"
                   : "bg-[#F2F5F1] text-[#004D40] shadow-[6px_6px_0px_0px_#004D40] hover:bg-[#B7C8B5]"
@@ -146,11 +146,11 @@ export default function UserTypeSelection({ onComplete }: { onComplete: () => vo
             >
               <div className="text-center">
                 <div
-                  className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] ${
+                  className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] ${
                     selectedType === "seeker" ? "bg-[#F2F5F1] text-[#44C76F]" : "bg-[#44C76F] text-[#004D40]"
                   }`}
                 >
-                  <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -158,12 +158,46 @@ export default function UserTypeSelection({ onComplete }: { onComplete: () => vo
                     />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-black mb-4 transform -skew-x-1">I&apos;M LOOKING FOR A PLACE</h3>
-                <p className="font-bold leading-tight">
+                <h3 className="text-xl font-black mb-3 transform -skew-x-1">I&apos;M LOOKING FOR A PLACE</h3>
+                <p className="font-bold leading-tight text-sm">
                   I need to find a room or place to share with someone who already has one
                 </p>
                 {selectedType === "seeker" && (
-                  <div className="mt-4 text-sm font-black text-[#004D40] bg-[#F2F5F1] p-2 border-2 border-[#004D40]">
+                  <div className="mt-3 text-sm font-black text-[#004D40] bg-[#F2F5F1] p-2 border-2 border-[#004D40]">
+                    ✓ SELECTED
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div
+              onClick={() => !loading && setSelectedType("quick_access")}
+              className={`p-6 border-4 border-[#004D40] cursor-pointer transition-all transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0px_0px_#004D40] ${
+                selectedType === "quick_access"
+                  ? "bg-[#44C76F] text-[#004D40] shadow-[8px_8px_0px_0px_#004D40]"
+                  : "bg-[#F2F5F1] text-[#004D40] shadow-[6px_6px_0px_0px_#004D40] hover:bg-[#B7C8B5]"
+              } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              <div className="text-center">
+                <div
+                  className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-[#004D40] shadow-[4px_4px_0px_0px_#004D40] ${
+                    selectedType === "quick_access" ? "bg-[#F2F5F1] text-[#44C76F]" : "bg-[#44C76F] text-[#004D40]"
+                  }`}
+                >
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M13 10V3L4 14h7v7l9-11h-7z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-black mb-3 transform -skew-x-1">QUICK ACCESS</h3>
+                <p className="font-bold leading-tight text-sm">
+                  I just want to use marketplace, expenses & chat features
+                </p>
+                {selectedType === "quick_access" && (
+                  <div className="mt-3 text-sm font-black text-[#004D40] bg-[#F2F5F1] p-2 border-2 border-[#004D40]">
                     ✓ SELECTED
                   </div>
                 )}
@@ -182,7 +216,7 @@ export default function UserTypeSelection({ onComplete }: { onComplete: () => vo
                 SETTING UP...
               </div>
             ) : (
-              "CONTINUE TO MATCHING"
+              selectedType === "quick_access" ? "CONTINUE TO QUICK ACCESS" : "CONTINUE TO MATCHING"
             )}
           </Button>
 
@@ -191,7 +225,9 @@ export default function UserTypeSelection({ onComplete }: { onComplete: () => vo
               <p className="text-sm font-bold text-[#004D40] bg-[#F2F5F1] p-3 border-2 border-[#004D40] shadow-[2px_2px_0px_0px_#004D40]">
                 {selectedType === "provider" 
                   ? "🏠 You'll see people looking for places to share"
-                  : "🔍 You'll see people who have places available"
+                  : selectedType === "seeker"
+                  ? "🔍 You'll see people who have places available"
+                  : "⚡ You'll get marketplace, expenses & chat access only"
                 }
               </p>
             </div>

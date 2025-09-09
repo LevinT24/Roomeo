@@ -11,23 +11,18 @@ class SupabaseStorage {
 
   getItem(key: string): string | null {
     try {
-      console.log('🔍 CustomStorage.getItem called for key:', key)
-      
       // Try localStorage first (primary storage)
       if (typeof window !== 'undefined' && window.localStorage) {
         const item = window.localStorage.getItem(key)
-        console.log('🔍 localStorage item:', item ? 'found' : 'not found')
         if (item) {
           // Validate the stored data
           try {
             const parsed = JSON.parse(item)
             if (parsed && parsed.access_token && parsed.refresh_token) {
-              console.log('✅ Valid session found in localStorage')
               return item
             }
           } catch {
             // Invalid JSON, remove it
-            console.warn('⚠️ Invalid session JSON in localStorage, removing...')
             window.localStorage.removeItem(key)
           }
         }
@@ -48,18 +43,13 @@ class SupabaseStorage {
 
   setItem(key: string, value: string): void {
     try {
-      console.log('💾 CustomStorage.setItem called for key:', key)
-      
       // Validate the value before storing
       try {
         const parsed = JSON.parse(value)
         if (!parsed || !parsed.access_token) {
-          console.warn('⚠️ Invalid session data, not storing')
           return
         }
-        console.log('✅ Valid session data, storing...')
       } catch {
-        console.warn('⚠️ Invalid JSON session data')
         return
       }
 
@@ -108,13 +98,6 @@ class SupabaseStorage {
 
 const customStorage = new SupabaseStorage()
 
-// Debug: Log config to check if env vars are loaded (only in development)
-if (process.env.NODE_ENV === 'development') {
-  console.log('🔍 Supabase Config Check:', {
-    url: !!supabaseUrl,
-    anonKey: !!supabaseAnonKey,
-  });
-}
 
 // Check if all required config values are present
 if (!supabaseUrl || !supabaseAnonKey) {
@@ -143,8 +126,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     // Use implicit flow for better compatibility with Next.js SSR
     flowType: 'implicit',
     
-    // Debug logging in development
-    debug: process.env.NODE_ENV === 'development'
+    // Debug logging disabled to reduce console noise
+    debug: false
   },
   
   // Global options
@@ -274,7 +257,6 @@ export const sessionUtils = {
 export const autoRecovery = {
   // Attempt to recover session automatically
   recoverSession: async () => {
-    console.log('🔄 Attempting automatic session recovery...')
 
     try {
       // Check if session exists but is invalid

@@ -11,6 +11,7 @@ import SettlementModal from "./expenses/SettlementModal"
 import ExpenseDetailsModal from "./expenses/ExpenseDetailsModal"
 import SettlementHistory from "./expenses/SettlementHistory"
 import NotificationsDropdown from "./NotificationsDropdown"
+import ProofReviewDropdown from "./ProofReviewDropdown"
 import CreateEventModal from "./events/CreateEventModal"
 import EventCard from "./events/EventCard"
 import EventModal from "./events/EventModal"
@@ -129,6 +130,7 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
     fetchDashboardData()
   }, [])
 
+
   // Create expense group
   const handleCreateExpense = async (data: CreateExpenseGroupRequest) => {
     try {
@@ -220,8 +222,6 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
   // Mark participant as paid/unpaid (creator only)
   const handleMarkPaid = async (groupId: string, userId: string, paid: boolean) => {
     try {
-      console.log('Mark paid:', { groupId, userId, paid })
-      
       const result = await markParticipantPayment(groupId, userId, paid)
       if (result.success) {
         // Refresh dashboard data to show updated payment status
@@ -230,7 +230,6 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
         throw new Error(result.message || `Failed to mark participant as ${paid ? 'paid' : 'unpaid'}`)
       }
     } catch (err) {
-      console.error('Error marking payment status:', err)
       setError(err instanceof Error ? err.message : 'Failed to update payment status')
     }
   }
@@ -261,6 +260,7 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
 
                 <div className="flex items-center gap-3 animate-slide-up">
                   <NotificationsDropdown userId={user.id} />
+                  <ProofReviewDropdown userId={user.id} />
                   <button 
                     onClick={() => setIsHistoryModalOpen(true)}
                     className="roomeo-button-secondary flex items-center gap-2"
@@ -332,22 +332,6 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                       </p>
                     </div>
                     
-                    {dashboardData.total_to_receive > 0 && (
-                      <>
-                        <hr className="my-2 border-sage/20" />
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="roomeo-body font-semibold">Pending Approvals</p>
-                            <p className="roomeo-body text-sm text-gold-accent font-medium">
-                              ${dashboardData.total_to_receive.toFixed(2)} awaiting review
-                            </p>
-                          </div>
-                          <p className="text-xl font-bold text-gold-accent">
-                            +${dashboardData.total_to_receive.toFixed(2)}
-                          </p>
-                        </div>
-                      </>
-                    )}
                   </div>
                 </div>
 
@@ -376,11 +360,8 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                       const friendDebts = new Map<string, { name: string, amount: number, profilePicture?: string }>()
                       
                       // Use dashboardData.active_expenses for balance calculations (has full participant data)
-                      console.log('💰 Balance Debug - dashboardData.active_expenses:', dashboardData.active_expenses)
                       dashboardData.active_expenses.forEach(expense => {
-                        console.log('💰 Processing expense:', expense.group_name, 'participants:', expense.participants)
                         const userParticipant = expense.participants?.find(p => p.user_id === user.id)
-                        console.log('💰 User participant:', userParticipant)
                         if (userParticipant && userParticipant.amount_owed > userParticipant.amount_paid) {
                           const owedAmount = userParticipant.amount_owed - userParticipant.amount_paid
                           const creatorName = expense.created_by_name || 'Unknown'
@@ -430,11 +411,8 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                       const friendOwes = new Map<string, { name: string, amount: number, profilePicture?: string }>()
                       
                       // Use dashboardData.active_expenses for balance calculations (has full participant data)
-                      console.log('💸 Friends Owe Debug - dashboardData.active_expenses:', dashboardData.active_expenses)
                       dashboardData.active_expenses.forEach(expense => {
-                        console.log('💸 Processing expense:', expense.group_name, 'participants:', expense.participants)
                         expense.participants?.forEach(participant => {
-                          console.log('💸 Processing participant:', participant.name, 'owes:', participant.amount_owed, 'paid:', participant.amount_paid)
                           if (participant.user_id !== user.id && participant.amount_owed > participant.amount_paid) {
                             const oweAmount = participant.amount_owed - participant.amount_paid
                             const existing = friendOwes.get(participant.user_id)
@@ -603,11 +581,6 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                 <section>
                   <div className="flex items-center gap-3 mb-6">
                     <h2 className="roomeo-heading text-2xl">⏳ Pending Settlements</h2>
-                    <div className="flex items-center gap-2">
-                      <div className="text-xs px-3 py-1.5 rounded-full bg-gold-accent/20 text-gold-accent font-medium">
-                        💳 Payment Required
-                      </div>
-                    </div>
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {dashboardData.pending_settlements.map((settlement, index) => (

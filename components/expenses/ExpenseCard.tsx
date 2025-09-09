@@ -15,12 +15,14 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
 
   const getStatusColor = () => {
     if (isSettled) return "bg-roomeo-success/10 text-roomeo-success border-roomeo-success/20"
+    if (expense.pending_settlement && expense.pending_settlement.status === 'pending') return "bg-yellow-50 text-yellow-700 border-yellow-200"
     if (remainingAmount > 0) return "bg-sage/10 text-roomeo-danger border-sage/20"
     return "bg-sage/10 text-emerald-primary border-sage/20"
   }
 
   const getStatusText = () => {
     if (isSettled) return "✅ Settled"
+    if (expense.pending_settlement && expense.pending_settlement.status === 'pending') return "⏳ Pending Approval"
     if (remainingAmount > 0) return "💳 Outstanding"
     return "🎉 Complete"
   }
@@ -141,8 +143,9 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
         </div>
       )}
 
-      {/* Only show Pay button for non-creators who have remaining balance */}
-      {!isCreator && !isSettled && remainingAmount > 0 && expense.amount_owed > 0 && (
+      {/* Only show Pay button for non-creators who have remaining balance and no pending settlement */}
+      {!isCreator && !isSettled && remainingAmount > 0 && expense.amount_owed > 0 && 
+       !(expense.pending_settlement && expense.pending_settlement.status === 'pending') && (
         <div className="flex gap-3 mb-4">
           <button 
             onClick={() => onSettleUp(expense.group_id)}
@@ -158,18 +161,38 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
           </button>
         </div>
       )}
+
+      {/* Show pending settlement status for non-creators */}
+      {!isCreator && expense.pending_settlement && expense.pending_settlement.status === 'pending' && (
+        <div className="flex gap-3 mb-4">
+          <div className="flex-1 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="roomeo-body text-yellow-800 font-medium">⏳ Payment Pending Approval</p>
+                <p className="roomeo-body text-yellow-600 text-sm">
+                  ${expense.pending_settlement.amount.toFixed(2)} via {expense.pending_settlement.payment_method}
+                </p>
+              </div>
+              <div className="text-yellow-600">
+                <span className="text-sm">📋</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Show details button for creators */}
       {isCreator && (
         <div className="flex gap-3 mb-4">
           <button 
             onClick={() => onViewDetails ? onViewDetails(expense.group_id) : onSettleUp(expense.group_id)}
-            className="roomeo-button-secondary flex items-center justify-center gap-2 w-full"
+            className="roomeo-button-secondary flex items-center justify-center gap-2 w-full relative"
           >
             <span>📊</span> View Details
           </button>
         </div>
       )}
+
 
       {/* Participants Section */}
       {expense.participants && expense.participants.length > 0 && (

@@ -2,7 +2,7 @@
   "use client"
 
   import type React from "react"
-  import { useState } from "react"
+  import { useState, useEffect } from "react"
   import Image from "next/image"
   import { useAuth } from "@/hooks/useAuth"
   import { Button } from "@/components/ui/button"
@@ -18,7 +18,7 @@
   export default function ProfileSetup({ onComplete }: { onComplete: () => void }) {
     const { user, refreshUser } = useAuth()
     const [step, setStep] = useState(1)
-    const [userType, setUserType] = useState<"seeker" | "provider" | null>(null)
+    const [userType, setUserType] = useState<"seeker" | "provider" | "quick_access" | null>(null)
     const [profileImage, setProfileImage] = useState<File | null>(null)
     const [imagePreview, setImagePreview] = useState<string>("")
     const [selectedAvatar, setSelectedAvatar] = useState<string>("")
@@ -43,6 +43,17 @@
 
     // Generate avatar list with URL encoding for production
     const avatars = getAvailableAvatars()
+
+    // Initialize userType from user data if already set (from UserTypeSelection)
+    useEffect(() => {
+      if (user?.userType) {
+        setUserType(user.userType)
+        // Skip step 1 if userType is already set
+        if (step === 1) {
+          setStep(2)
+        }
+      }
+    }, [user?.userType, step])
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
@@ -114,6 +125,10 @@
           usertype: userType, // Fixed: use lowercase to match database
           name: user.name || "",
           email: user.email || "",
+          // Track profile completion status for quick_access users
+          profile_completion_status: userType === "quick_access" ? {
+            budget_skipped: !budget || budget === ""
+          } : {},
         };
 
         console.log("🔍 Profile picture being saved:", photoUrl);
@@ -471,6 +486,11 @@
                   placeholder="Monthly budget in $"
                   className="w-full border-4 border-[#004D40] font-bold focus:border-[#44C76F] bg-[#F2F5F1]"
                 />
+                {userType === "quick_access" && (
+                  <p className="mt-2 text-sm font-bold text-[#44C76F] bg-[#F2F5F1] p-2 border-2 border-[#44C76F] rounded">
+                    💡 Budget is optional for Quick Access users. You can add it later if you upgrade to roommate matching.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -541,7 +561,7 @@
                   if (userType === "provider") {
                     setStep(4); // Go to room photos step for providers
                   } else {
-                    handleSubmit(); // Complete setup for seekers
+                    handleSubmit(); // Complete setup for seekers and quick_access users
                   }
                 }}
                 disabled={!age || !userType || loading}

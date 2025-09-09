@@ -21,6 +21,7 @@ import SettingsMenu from "@/components/SettingsMenu"
 import ProfilePreview from "@/components/ProfilePreview"
 import SettingsPage from "@/components/SettingsPage"
 import SessionRecovery from "@/components/SessionRecovery"
+import UpgradeFlow from "@/components/UpgradeFlow"
 import { useState, useEffect } from "react"
 import LoadingSpinner from "@/components/LoadingSpinner"
 import ErrorBoundary from "@/components/ErrorBoundary"
@@ -34,6 +35,7 @@ export default function Home() {
     "landing" | "auth" | "swipe" | "matches" | "marketplace" | 
     "expenses" | "chat" | "profile-setup" | "user-type" | "profile-preview" | "settings"
   >("landing")
+  const [showUpgradeFlow, setShowUpgradeFlow] = useState(false)
   const [authMode, setAuthMode] = useState<"signup" | "signin">("signup")
   const [friendsPanelOpen, setFriendsPanelOpen] = useState(false)
   const [chatTarget, setChatTarget] = useState<{sellerId: string, listingId?: string} | null>(null)
@@ -325,6 +327,31 @@ export default function Home() {
         <SettingsPage 
           user={user as any}
           onBack={() => setCurrentPage("swipe")}
+          onUpgrade={() => {
+            console.log("🚀 Starting upgrade flow from settings")
+            setShowUpgradeFlow(true)
+          }}
+        />
+        <SessionRecoveryOverlay />
+      </>
+    );
+  }
+
+  // Show upgrade flow
+  if (showUpgradeFlow) {
+    return (
+      <>
+        <UpgradeFlow
+          onComplete={() => {
+            console.log("✅ Upgrade completed successfully")
+            setShowUpgradeFlow(false)
+            // Refresh the page to reflect new user type
+            window.location.reload()
+          }}
+          onCancel={() => {
+            console.log("❌ Upgrade cancelled")
+            setShowUpgradeFlow(false)
+          }}
         />
         <SessionRecoveryOverlay />
       </>
@@ -335,35 +362,50 @@ export default function Home() {
   if (user && currentPage !== "landing") {
     console.log("📱 Showing app page:", currentPage);
 
-    const AppNavigation = () => (
-      <div className="fixed bottom-0 left-0 right-0 bg-[#F2F5F1] border-t-4 border-[#004D40] px-2 py-2 z-50 safe-area-inset-bottom">
-        <div className="flex justify-around max-w-md mx-auto">
-          {[
-            { page: "swipe", icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z", label: "DISCOVER", shortLabel: "SWIPE" },
-            { page: "matches", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z", label: "MATCHES", shortLabel: "MATCH" },
-            { page: "chat", icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z", label: "CHAT", shortLabel: "CHAT" },
-            { page: "marketplace", icon: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z", label: "MARKET", shortLabel: "SHOP" },
-            { page: "expenses", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1", label: "EXPENSES", shortLabel: "SPLIT" }
-          ].map(({ page, icon, label, shortLabel }) => (
-            <button
-              key={page}
-              onClick={() => setCurrentPage(page as any)}
-              className={`flex flex-col items-center py-2 px-1 sm:px-2 rounded-lg transition-colors font-black min-w-0 ${
-                currentPage === page ? "text-[#004D40] bg-[#44C76F]/20" : "text-[#004D40]"
-              }`}
-            >
-              <svg className="w-5 h-5 sm:w-6 sm:h-6 mb-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d={icon} />
-              </svg>
-              <span className="text-[10px] sm:text-xs font-black leading-tight">
-                <span className="hidden sm:inline">{label}</span>
-                <span className="sm:hidden">{shortLabel}</span>
-              </span>
-            </button>
-          ))}
+    const AppNavigation = () => {
+      // Get navigation tabs based on user type
+      const getNavigationTabs = () => {
+        const allTabs = [
+          { page: "swipe", icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z", label: "DISCOVER", shortLabel: "SWIPE" },
+          { page: "matches", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z", label: "MATCHES", shortLabel: "MATCH" },
+          { page: "chat", icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z", label: "CHAT", shortLabel: "CHAT" },
+          { page: "marketplace", icon: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z", label: "MARKET", shortLabel: "SHOP" },
+          { page: "expenses", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1", label: "EXPENSES", shortLabel: "SPLIT" }
+        ]
+        
+        // For quick_access users, hide matches tab (show 4 tabs)
+        if (user?.userType === 'quick_access') {
+          return allTabs.filter(tab => tab.page !== 'matches')
+        }
+        
+        // For regular users, show all 5 tabs
+        return allTabs
+      }
+
+      return (
+        <div className="fixed bottom-0 left-0 right-0 bg-[#F2F5F1] border-t-4 border-[#004D40] px-2 py-2 z-50 safe-area-inset-bottom">
+          <div className="flex justify-around max-w-md mx-auto">
+            {getNavigationTabs().map(({ page, icon, label, shortLabel }) => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page as any)}
+                className={`flex flex-col items-center py-2 px-1 sm:px-2 rounded-lg transition-colors font-black min-w-0 ${
+                  currentPage === page ? "text-[#004D40] bg-[#44C76F]/20" : "text-[#004D40]"
+                }`}
+              >
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 mb-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d={icon} />
+                </svg>
+                <span className="text-[10px] sm:text-xs font-black leading-tight">
+                  <span className="hidden sm:inline">{label}</span>
+                  <span className="sm:hidden">{shortLabel}</span>
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
-    );
+      )
+    };
 
     return (
       <ErrorBoundary>
@@ -518,6 +560,10 @@ export default function Home() {
                 user={user as any} 
                 refreshTrigger={swipeRefreshTrigger} 
                 onNavigateToSettings={() => setCurrentPage("settings")}
+                onUpgrade={() => {
+                  console.log("🚀 Starting upgrade flow from swipe page")
+                  setShowUpgradeFlow(true)
+                }}
               />
             )}
             {currentPage === "matches" && (

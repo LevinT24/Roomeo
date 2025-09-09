@@ -14,7 +14,7 @@ export interface User {
   preferences?: UserPreferences;
   hobbies?: string[];
   profilePicture?: string;
-  userType?: 'seeker' | 'provider' | null;
+  userType?: 'seeker' | 'provider' | 'quick_access' | null;
   housingStatus?: 'looking' | 'offering' | 'flexible';
   profileVisible?: boolean;
   createdAt?: Date;
@@ -33,7 +33,7 @@ export interface UserPreferences {
 }
 
 // User role types
-export type UserRole = 'seeker' | 'provider'
+export type UserRole = 'seeker' | 'provider' | 'quick_access'
 
 // Profile form data types
 export interface ProfileFormData {
