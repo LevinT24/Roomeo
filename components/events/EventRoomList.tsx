@@ -3,7 +3,10 @@
 
 "use client"
 
+import { useState } from "react"
 import { ExpenseSummary } from "@/types/expenses"
+
+type RoomFilter = 'all' | 'active' | 'settled'
 
 interface EventRoomListProps {
   rooms: ExpenseSummary[]
@@ -20,6 +23,19 @@ export default function EventRoomList({
   isLoading = false,
   emptyMessage = "No rooms yet"
 }: EventRoomListProps) {
+  const [roomFilter, setRoomFilter] = useState<RoomFilter>('all')
+
+  // Filter rooms based on selected filter
+  const getFilteredRooms = (): ExpenseSummary[] => {
+    switch (roomFilter) {
+      case 'active':
+        return rooms.filter(room => !room.is_settled)
+      case 'settled':
+        return rooms.filter(room => room.is_settled)
+      default:
+        return rooms
+    }
+  }
   
   if (isLoading) {
     return (
@@ -46,47 +62,104 @@ export default function EventRoomList({
       {/* Header - More compact */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="roomeo-heading text-xl text-emerald-primary">
-          🏠 Rooms ({rooms.length})
+          🏠 Rooms ({getFilteredRooms().length})
         </h2>
         
         {/* Filter buttons - More compact */}
         <div className="flex gap-1">
-          <button className="text-xs px-2 py-1 rounded-full bg-emerald-primary text-gold-accent">
+          <button 
+            onClick={() => setRoomFilter('all')}
+            className={`text-xs px-2 py-1 rounded-full transition-colors ${
+              roomFilter === 'all'
+                ? 'bg-emerald-primary text-gold-accent'
+                : 'bg-sage/20 text-emerald-primary hover:bg-sage/30'
+            }`}
+          >
             All
           </button>
-          <button className="text-xs px-2 py-1 rounded-full bg-sage/20 text-emerald-primary hover:bg-sage/30 transition-colors">
+          <button 
+            onClick={() => setRoomFilter('active')}
+            className={`text-xs px-2 py-1 rounded-full transition-colors ${
+              roomFilter === 'active'
+                ? 'bg-emerald-primary text-gold-accent'
+                : 'bg-sage/20 text-emerald-primary hover:bg-sage/30'
+            }`}
+          >
             Active
           </button>
-          <button className="text-xs px-2 py-1 rounded-full bg-sage/20 text-emerald-primary hover:bg-sage/30 transition-colors">
+          <button 
+            onClick={() => setRoomFilter('settled')}
+            className={`text-xs px-2 py-1 rounded-full transition-colors ${
+              roomFilter === 'settled'
+                ? 'bg-emerald-primary text-gold-accent'
+                : 'bg-sage/20 text-emerald-primary hover:bg-sage/30'
+            }`}
+          >
             Settled
           </button>
         </div>
       </div>
 
       {/* Rooms List */}
-      {rooms.length === 0 ? (
-        <div className="roomeo-card text-center py-8">
-          <div className="text-3xl mb-3 opacity-50">🏠</div>
-          <h3 className="roomeo-heading text-lg text-emerald-primary mb-2">{emptyMessage}</h3>
-          <p className="roomeo-body text-emerald-primary/60 mb-4 text-sm">
-            Create your first room to start tracking expenses for this event
-          </p>
-          <button
-            onClick={onCreateRoom}
-            className="roomeo-button-primary text-sm py-2 px-4"
-          >
-            ➕ Create Your First Room
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {rooms.map((room, index) => (
-            <div
-              key={room.group_id}
-              className="roomeo-card hover:shadow-md transition-all duration-200 cursor-pointer group"
-              onClick={() => onRoomClick(room.group_id)}
-            >
-              <div className="p-3">
+      {(() => {
+        const filteredRooms = getFilteredRooms()
+        
+        if (rooms.length === 0) {
+          // No rooms at all in the event
+          return (
+            <div className="roomeo-card text-center py-8">
+              <div className="text-3xl mb-3 opacity-50">🏠</div>
+              <h3 className="roomeo-heading text-lg text-emerald-primary mb-2">{emptyMessage}</h3>
+              <p className="roomeo-body text-emerald-primary/60 mb-4 text-sm">
+                Create your first room to start tracking expenses for this event
+              </p>
+              <button
+                onClick={onCreateRoom}
+                className="roomeo-button-primary text-sm py-2 px-4"
+              >
+                ➕ Create Your First Room
+              </button>
+            </div>
+          )
+        } else if (filteredRooms.length === 0) {
+          // No rooms match the current filter
+          return (
+            <div className="roomeo-card text-center py-8">
+              <div className="text-3xl mb-3 opacity-50">
+                {roomFilter === 'active' ? '💰' : roomFilter === 'settled' ? '✅' : '🏠'}
+              </div>
+              <h3 className="roomeo-heading text-lg text-emerald-primary mb-2">
+                No {roomFilter === 'all' ? 'rooms' : roomFilter} rooms
+              </h3>
+              <p className="roomeo-body text-emerald-primary/60 mb-4 text-sm">
+                {roomFilter === 'active' 
+                  ? 'All rooms in this event have been settled'
+                  : roomFilter === 'settled'
+                  ? 'No rooms have been settled yet'
+                  : 'No rooms found for this filter'
+                }
+              </p>
+              {roomFilter === 'active' && (
+                <button
+                  onClick={onCreateRoom}
+                  className="roomeo-button-primary text-sm py-2 px-4"
+                >
+                  ➕ Add New Room
+                </button>
+              )}
+            </div>
+          )
+        }
+        
+        return (
+          <div className="space-y-2">
+            {filteredRooms.map((room, index) => (
+              <div
+                key={room.group_id}
+                className="roomeo-card hover:shadow-md transition-all duration-200 cursor-pointer group"
+                onClick={() => onRoomClick(room.group_id)}
+              >
+                <div className="p-3">
                 {/* Room Header - Compact */}
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
@@ -169,7 +242,8 @@ export default function EventRoomList({
             </div>
           </button>
         </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

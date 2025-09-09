@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { EventWithDetails, CreateEventExpenseGroupRequest } from "@/types/events"
 import { ExpenseSummary, CreateExpenseGroupRequest } from "@/types/expenses"
-import { getEventDetails, createEventExpenseGroup } from "@/services/events"
+import { getEventDetails, createEventExpenseGroup, addEventMember } from "@/services/events"
 import { createExpenseGroup } from "@/services/expenses"
 import { useFriends } from "@/hooks/useFriends"
 
@@ -13,6 +13,7 @@ import EventRoomList from "./EventRoomList"
 import SlidingRoomPanel from "./SlidingRoomPanel"
 import EventRoomView from "./EventRoomView"
 import CreateExpenseModal from "../expenses/CreateExpenseModal"
+import InviteEventMembersModal from "./InviteEventMembersModal"
 
 interface User {
   id: string
@@ -37,6 +38,7 @@ export default function EventModal({ isOpen, onClose, user, eventId }: EventModa
   
   // Modal states
   const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false)
+  const [isInviteMembersModalOpen, setIsInviteMembersModalOpen] = useState(false)
 
   const { friends } = useFriends()
 
@@ -100,10 +102,35 @@ export default function EventModal({ isOpen, onClose, user, eventId }: EventModa
     setSelectedRoomId(null)
   }
 
+  // Handle invite members
+  const handleInviteMembers = async (userIds: string[]) => {
+    try {
+      // Add each selected user to the event
+      const invitePromises = userIds.map(userId =>
+        addEventMember(eventId, { user_id: userId, role: 'member' })
+      )
+      
+      const results = await Promise.all(invitePromises)
+      
+      // Check if any invitations failed
+      const failedInvites = results.filter(result => !result.success)
+      if (failedInvites.length > 0) {
+        throw new Error(`Failed to invite ${failedInvites.length} member(s)`)
+      }
+      
+      // Refresh event data to show new members
+      await fetchEventData()
+      setIsInviteMembersModalOpen(false)
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Failed to invite members')
+    }
+  }
+
   // Handle modal close
   const handleClose = () => {
     setIsPanelOpen(false)
     setSelectedRoomId(null)
+    setIsInviteMembersModalOpen(false)
     onClose()
   }
 
@@ -162,7 +189,7 @@ export default function EventModal({ isOpen, onClose, user, eventId }: EventModa
                   event={event}
                   onCreateRoom={() => setIsCreateRoomModalOpen(true)}
                   onEditEvent={() => {}} // TODO: Implement if needed
-                  onInviteMembers={() => {}} // TODO: Implement if needed
+                  onInviteMembers={() => setIsInviteMembersModalOpen(true)}
                   onDeleteEvent={() => {}} // TODO: Implement if needed
                   currentUserId={user.id}
                 />
@@ -217,6 +244,21 @@ export default function EventModal({ isOpen, onClose, user, eventId }: EventModa
         }))}
         onCreateExpense={handleCreateRoom}
       />
+
+      {/* Invite Members Modal */}
+      {event && (
+        <InviteEventMembersModal
+          isOpen={isInviteMembersModalOpen}
+          onClose={() => setIsInviteMembersModalOpen(false)}
+          event={event}
+          availableFriends={friends.map(f => ({
+            id: f.friendId,
+            name: f.name,
+            profilePicture: f.profilePicture || undefined
+          }))}
+          onInviteMembers={handleInviteMembers}
+        />
+      )}
     </div>
   )
 }
