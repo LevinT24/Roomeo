@@ -5,6 +5,8 @@
 
 import { EventWithDetails } from "@/types/events"
 import { useState } from "react"
+import SimplifiedDebtsModal from "./SimplifiedDebtsModal"
+import EventAnalyticsModal from "./EventAnalyticsModal"
 
 interface EventSidebarProps {
   event: EventWithDetails | null
@@ -24,6 +26,8 @@ export default function EventSidebar({
   currentUserId
 }: EventSidebarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isSimplifiedDebtsOpen, setIsSimplifiedDebtsOpen] = useState(false)
+  const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false)
   
   if (!event) {
     return (
@@ -133,6 +137,80 @@ export default function EventSidebar({
         </div>
       </div>
 
+      {/* Event Balance Summary */}
+      <div className="p-3 border-b border-sage/20">
+        {(() => {
+          // Calculate balance totals across all rooms in the event
+          let youOwe = 0
+          let youAreOwed = 0
+
+          event.rooms.forEach(room => {
+            // Find current user's participation in this room
+            const currentUserParticipant = room.participants?.find(p => p.user_id === currentUserId)
+            
+            if (currentUserParticipant) {
+              // Calculate what current user owes in this room
+              const userOwes = Math.max(0, currentUserParticipant.amount_owed - currentUserParticipant.amount_paid)
+              youOwe += userOwes
+            }
+
+            // If current user is the creator of this room, calculate what others owe them
+            if (room.created_by_id === currentUserId && room.participants) {
+              room.participants.forEach(participant => {
+                if (participant.user_id !== currentUserId) {
+                  const participantOwes = Math.max(0, participant.amount_owed - participant.amount_paid)
+                  youAreOwed += participantOwes
+                }
+              })
+            }
+          })
+
+          const netBalance = youAreOwed - youOwe
+
+          return (
+            <div className="bg-white/50 rounded-xl p-3 shadow-sm">
+              <h3 className="roomeo-heading text-xs text-emerald-primary mb-2 text-center">
+                💰 Your Balance
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
+                <div className="p-2 bg-alert-red/10 rounded-lg">
+                  <p className="text-xs text-emerald-primary/60">You Owe</p>
+                  <p className={`text-sm font-bold ${youOwe > 0 ? 'text-alert-red' : 'text-emerald-primary'}`}>
+                    ${youOwe.toFixed(2)}
+                  </p>
+                </div>
+                <div className="p-2 bg-roomeo-success/10 rounded-lg">
+                  <p className="text-xs text-emerald-primary/60">You&apos;re Owed</p>
+                  <p className={`text-sm font-bold ${youAreOwed > 0 ? 'text-roomeo-success' : 'text-emerald-primary'}`}>
+                    ${youAreOwed.toFixed(2)}
+                  </p>
+                </div>
+                <div className="p-2 bg-sage/10 rounded-lg">
+                  <p className="text-xs text-emerald-primary/60">Net Balance</p>
+                  <p className={`text-sm font-bold ${
+                    netBalance > 0 ? 'text-roomeo-success' : 
+                    netBalance < 0 ? 'text-alert-red' : 'text-emerald-primary'
+                  }`}>
+                    {netBalance >= 0 ? '+' : ''}${netBalance.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+        
+        {/* Simplify Debts Button */}
+        <div className="mt-3">
+          <button
+            onClick={() => setIsSimplifiedDebtsOpen(true)}
+            className="w-full roomeo-button-secondary flex items-center justify-center gap-2 text-xs py-2"
+          >
+            <span>🔄</span>
+            <span>Simplify Debts</span>
+          </button>
+        </div>
+      </div>
+
       {/* Action Buttons - Compact */}
       <div className="p-3 border-b border-sage/20">
         <button
@@ -184,6 +262,17 @@ export default function EventSidebar({
         </div>
       </div>
 
+      {/* Analytics & Insights Button */}
+      <div className="border-t border-sage/20 p-3">
+        <button
+          onClick={() => setIsAnalyticsModalOpen(true)}
+          className="w-full roomeo-button-secondary flex items-center justify-center gap-2 text-sm py-3"
+        >
+          <span>📊</span>
+          <span>Analytics & Insights</span>
+        </button>
+      </div>
+
       {/* Click away to close menu */}
       {isMenuOpen && (
         <div 
@@ -191,6 +280,26 @@ export default function EventSidebar({
           onClick={() => setIsMenuOpen(false)}
         />
       )}
+      
+      {/* Simplified Debts Modal */}
+      <SimplifiedDebtsModal
+        isOpen={isSimplifiedDebtsOpen}
+        onClose={() => setIsSimplifiedDebtsOpen(false)}
+        event={event}
+        currentUserId={currentUserId}
+        onSettleNow={async (debts) => {
+          // TODO: Implement settlement logic
+          console.log('Settling debts:', debts)
+        }}
+      />
+
+      {/* Analytics Modal */}
+      <EventAnalyticsModal
+        isOpen={isAnalyticsModalOpen}
+        onClose={() => setIsAnalyticsModalOpen(false)}
+        event={event}
+        currentUserId={currentUserId}
+      />
     </div>
   )
 }
