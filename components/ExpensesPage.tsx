@@ -110,14 +110,20 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
     }
   }
 
-  // Filter rooms based on selected filter
+  // Filter rooms based on selected filter - only show active rooms
   const getFilteredRooms = (): ExpenseSummary[] => {
+    let filteredRooms: ExpenseSummary[]
+    
     if (roomFilter === 'regular') {
-      return allRooms.filter(room => !room.event_id)
+      filteredRooms = allRooms.filter(room => !room.event_id)
     } else if (roomFilter === 'event') {
-      return allRooms.filter(room => room.event_id)
+      filteredRooms = allRooms.filter(room => room.event_id)
+    } else {
+      filteredRooms = allRooms // 'all' filter
     }
-    return allRooms // 'all' filter
+    
+    // Only return active rooms - settled rooms go to history
+    return filteredRooms.filter(room => !room.is_settled)
   }
 
   // Handle filter change
@@ -339,8 +345,8 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                   <h2 className="roomeo-heading text-lg mb-4">📊 Summary</h2>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-3 bg-sage/10 rounded-lg">
-                      <span className="roomeo-body text-emerald-primary/70">🏠 Total Rooms</span>
-                      <span className="roomeo-body font-semibold text-emerald-primary">{allRooms.length}</span>
+                      <span className="roomeo-body text-emerald-primary/70">🏠 Active Rooms</span>
+                      <span className="roomeo-body font-semibold text-emerald-primary">{getFilteredRooms().length}</span>
                     </div>
                     <div className="flex items-center justify-between p-3 bg-gold-accent/10 rounded-lg">
                       <span className="roomeo-body text-emerald-primary/70">⏳ Pending Settlements</span>
@@ -523,11 +529,11 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                   </div>
                 </div>
 
-                {/* Display filtered rooms */}
+                {/* Display filtered active rooms only */}
                 {(() => {
                   const currentRooms = getFilteredRooms();
-                  const roomType = roomFilter === 'all' ? 'rooms' : 
-                                   roomFilter === 'regular' ? 'regular rooms' : 'event rooms';
+                  const roomType = roomFilter === 'all' ? 'active rooms' : 
+                                   roomFilter === 'regular' ? 'active regular rooms' : 'active event rooms';
                   
                   if (currentRooms.length > 0) {
                     return (
@@ -546,6 +552,11 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                       </div>
                     );
                   } else {
+                    // Check if there are any settled rooms to mention in empty state
+                    const allFilteredRooms = roomFilter === 'regular' ? allRooms.filter(room => !room.event_id) :
+                                             roomFilter === 'event' ? allRooms.filter(room => room.event_id) : allRooms;
+                    const settledCount = allFilteredRooms.filter(room => room.is_settled).length;
+                    
                     return (
                       <div className="roomeo-card text-center py-16 animate-slide-up">
                         <div className="text-6xl mb-4">
@@ -554,14 +565,25 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                         <h3 className="roomeo-heading text-xl mb-2">
                           No {roomType}
                         </h3>
-                        <p className="roomeo-body text-emerald-primary/60 mb-8">
+                        <p className="roomeo-body text-emerald-primary/60 mb-4">
                           {roomFilter === 'event' 
                             ? 'Create an event first, then add rooms to it!'
                             : roomFilter === 'regular' 
                             ? 'Start splitting expenses with your friends!'
-                            : 'No rooms found. Create your first room or event!'
+                            : 'No active rooms found. Create your first room or event!'
                           }
                         </p>
+                        {settledCount > 0 && (
+                          <p className="roomeo-body text-emerald-primary/60 mb-8">
+                            💡 You have {settledCount} settled room{settledCount !== 1 ? 's' : ''} in your{' '}
+                            <button 
+                              onClick={() => setIsHistoryModalOpen(true)}
+                              className="roomeo-interactive"
+                            >
+                              History
+                            </button>
+                          </p>
+                        )}
                         {(roomFilter === 'all' || roomFilter === 'regular') && (
                           <button 
                             onClick={() => setIsCreateModalOpen(true)}
