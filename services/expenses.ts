@@ -1139,3 +1139,48 @@ function downloadFile(content: string, filename: string, mimeType: string): void
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+// Delete expense group (room)
+export async function deleteExpenseGroup(groupId: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    console.log("🗑️ Deleting expense group:", groupId);
+
+    const user = await ensureAuthenticated();
+
+    // First check if user is the creator
+    const { data: group, error: fetchError } = await supabase
+      .from('expense_groups')
+      .select('created_by, name')
+      .eq('id', groupId)
+      .single();
+
+    if (fetchError) {
+      console.error("❌ Error fetching group:", fetchError);
+      throw new Error('Group not found');
+    }
+
+    if (group.created_by !== user.id) {
+      throw new Error('Only the creator can delete this room');
+    }
+
+    // Delete the group (cascade will handle participants and settlements)
+    const { error } = await supabase
+      .from('expense_groups')
+      .delete()
+      .eq('id', groupId);
+
+    if (error) {
+      console.error("❌ Error deleting group:", error);
+      throw new Error(error.message || 'Failed to delete room');
+    }
+
+    console.log("✅ Room deleted successfully");
+    return { success: true, message: 'Room deleted successfully' };
+  } catch (error) {
+    console.error("❌ Exception deleting room:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to delete room'
+    };
+  }
+}

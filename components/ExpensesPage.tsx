@@ -15,6 +15,7 @@ import ProofReviewDropdown from "./ProofReviewDropdown"
 import CreateEventModal from "./events/CreateEventModal"
 import EventCard from "./events/EventCard"
 import EventModal from "./events/EventModal"
+import DeleteConfirmationModal from "./DeleteConfirmationModal"
 import { 
   ExpenseDashboardData, 
   ExpenseSummary, 
@@ -34,7 +35,8 @@ import {
   getAllRooms,
   getRegularRooms,
   getEventRooms,
-  getPendingSettlements
+  getPendingSettlements,
+  deleteExpenseGroup
 } from "@/services/expenses"
 import { 
   createEvent,
@@ -76,6 +78,9 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
   const [selectedExpense, setSelectedExpense] = useState<ExpenseSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string>('')
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [roomToDelete, setRoomToDelete] = useState<ExpenseSummary | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const { friends } = useFriends()
 
@@ -238,6 +243,42 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update payment status')
     }
+  }
+
+  // Delete room handlers
+  const handleDeleteRoom = (groupId: string) => {
+    const roomToDelete = allRooms.find(room => room.group_id === groupId)
+    if (roomToDelete) {
+      setRoomToDelete(roomToDelete)
+      setIsDeleteModalOpen(true)
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!roomToDelete) return
+    
+    try {
+      setIsDeleting(true)
+      const result = await deleteExpenseGroup(roomToDelete.group_id)
+      
+      if (result.success) {
+        // Refresh dashboard data
+        await fetchDashboardData()
+        setIsDeleteModalOpen(false)
+        setRoomToDelete(null)
+      } else {
+        throw new Error(result.message || 'Failed to delete room')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete room')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleCancelDelete = () => {
+    setIsDeleteModalOpen(false)
+    setRoomToDelete(null)
   }
 
   if (isLoading) {
@@ -546,6 +587,7 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
                               currentUserId={user.id}
                               onMarkPaid={handleMarkPaid}
                               onViewDetails={handleViewDetails}
+                              onDelete={handleDeleteRoom}
                             />
                           </div>
                         ))}
@@ -674,6 +716,16 @@ export default function ExpensesPage({ user }: ExpensesPageProps) {
       <SettlementHistory
         isOpen={isHistoryModalOpen}
         onClose={() => setIsHistoryModalOpen(false)}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        title="Delete Room"
+        message={`Are you sure you want to delete "${roomToDelete?.group_name}"? This action cannot be undone and will remove all associated data.`}
+        isLoading={isDeleting}
       />
 
       {/* Event Modal */}

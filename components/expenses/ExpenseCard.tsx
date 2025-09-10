@@ -2,9 +2,10 @@
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Trash2 } from "lucide-react"
 import { ExpenseCardProps, ExpenseParticipantSummary } from "@/types/expenses"
 
-export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMarkPaid, onViewDetails }: ExpenseCardProps) {
+export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMarkPaid, onViewDetails, onDelete }: ExpenseCardProps) {
   // Check if current user is the creator
   const isCreator = currentUserId === expense.created_by_id
   
@@ -181,15 +182,23 @@ export default function ExpenseCard({ expense, onSettleUp, currentUserId, onMark
         </div>
       )}
       
-      {/* Show details button for creators */}
+      {/* Show details and delete buttons for creators */}
       {isCreator && (
         <div className="flex gap-3 mb-4">
           <button 
             onClick={() => onViewDetails ? onViewDetails(expense.group_id) : onSettleUp(expense.group_id)}
-            className="roomeo-button-secondary flex items-center justify-center gap-2 w-full relative"
+            className="roomeo-button-secondary flex items-center justify-center gap-2 flex-1"
           >
             <span>📊</span> View Details
           </button>
+          {onDelete && (
+            <button 
+              onClick={() => onDelete(expense.group_id)}
+              className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       )}
 

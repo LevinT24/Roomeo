@@ -162,6 +162,7 @@ export interface ExpenseCardProps {
   currentUserId: string
   onMarkPaid?: (groupId: string, userId: string, paid: boolean) => void
   onViewDetails?: (groupId: string) => void
+  onDelete?: (groupId: string) => void
 }
 
 export interface SettlementCardProps {

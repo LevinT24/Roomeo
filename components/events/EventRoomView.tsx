@@ -6,13 +6,14 @@
 
 import { useState, useEffect } from "react"
 import { ExpenseSummary, SubmitSettlementRequest } from "@/types/expenses"
-import { getRoomDetailsById, submitSettlement, markParticipantPayment } from "@/services/expenses"
+import { getRoomDetailsById, submitSettlement, markParticipantPayment, deleteExpenseGroup } from "@/services/expenses"
 
 // Import existing components - REUSE EVERYTHING
 import ExpenseCard from "../expenses/ExpenseCard"
 import SettlementCard from "../expenses/SettlementCard"
 import SettlementModal from "../expenses/SettlementModal"
 import ExpenseDetailsModal from "../expenses/ExpenseDetailsModal"
+import DeleteConfirmationModal from "../DeleteConfirmationModal"
 
 interface User {
   id: string
@@ -38,6 +39,8 @@ export default function EventRoomView({
   const [error, setError] = useState('')
   const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Fetch room data using room details by ID (includes all participants)
   const fetchRoomData = async () => {
@@ -102,6 +105,37 @@ export default function EventRoomView({
       console.error('Error marking payment status:', err)
       setError(err instanceof Error ? err.message : 'Failed to update payment status')
     }
+  }
+
+  // Delete room handlers
+  const handleDeleteRoom = () => {
+    setIsDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!roomData) return
+    
+    try {
+      setIsDeleting(true)
+      const result = await deleteExpenseGroup(roomData.group_id)
+      
+      if (result.success) {
+        // Close modal and navigate back (could be handled by parent component)
+        setIsDeleteModalOpen(false)
+        // Note: Navigation back to event list should be handled by parent component
+        window.history.back() // Simple fallback
+      } else {
+        throw new Error(result.message || 'Failed to delete room')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete room')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleCancelDelete = () => {
+    setIsDeleteModalOpen(false)
   }
 
   if (isLoading) {
@@ -170,6 +204,7 @@ export default function EventRoomView({
             currentUserId={user.id}
             onMarkPaid={handleMarkPaid}
             onViewDetails={() => setIsDetailsModalOpen(true)}
+            onDelete={handleDeleteRoom}
           />
         </div>
 
@@ -286,6 +321,16 @@ export default function EventRoomView({
             expense={roomData}
             currentUserId={user.id}
             onMarkPaid={handleMarkPaid}
+          />
+
+          {/* Delete Confirmation Modal */}
+          <DeleteConfirmationModal
+            isOpen={isDeleteModalOpen}
+            onClose={handleCancelDelete}
+            onConfirm={handleConfirmDelete}
+            title="Delete Room"
+            message={`Are you sure you want to delete "${roomData.group_name}"? This action cannot be undone and will remove all associated data.`}
+            isLoading={isDeleting}
           />
         </>
       )}
