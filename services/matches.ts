@@ -166,28 +166,30 @@ export const getMutualMatches = async (userId: string): Promise<{ success: boole
 }
 
 /**
- * Remove a match (delete BOTH directions of the like records) so both users can see each other in discovery again
+ * Remove a match (delete only the current user's like record) so they can re-match later
  */
 export const removeMatch = async (userId: string, matchedUserId: string): Promise<{ success: boolean; error?: string }> => {
   try {
-    console.log(`🗑️ Removing match between ${userId} and ${matchedUserId} (bidirectional)`)
+    console.log(`🗑️ Removing match from ${userId} to ${matchedUserId} (unidirectional)`)
     
-    // Delete BOTH directions of the match to ensure complete removal
-    // This removes: A -> B AND B -> A
+    // Delete only the current user's like record (A -> B)
+    // Keep the other person's like record (B -> A) so if A likes B again, they immediately match
     const { error } = await supabase
       .from('matches')
       .delete()
-      .or(`and(user_id.eq.${userId},matched_user_id.eq.${matchedUserId},liked.eq.true),and(user_id.eq.${matchedUserId},matched_user_id.eq.${userId},liked.eq.true)`)
+      .eq('user_id', userId)
+      .eq('matched_user_id', matchedUserId)
+      .eq('liked', true)
 
     if (error) {
-      console.error('Error removing bidirectional match:', error)
+      console.error('Error removing match:', error)
       return { success: false, error: error.message }
     }
 
-    console.log('✅ Bidirectional match removed successfully - both users will see each other in discovery again')
+    console.log('✅ Match removed successfully - user can re-match by liking again')
     return { success: true }
   } catch (error) {
-    console.error('Unexpected error removing bidirectional match:', error)
+    console.error('Unexpected error removing match:', error)
     return { success: false, error: 'Failed to remove match' }
   }
 }
