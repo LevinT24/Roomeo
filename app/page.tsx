@@ -417,7 +417,7 @@ export default function Home() {
                 <div className="w-6 h-6 md:w-8 md:h-8 bg-[#44C76F] border-2 border-[#004D40] transform rotate-3 flex items-center justify-center shadow-[2px_2px_0px_0px_#004D40]">
                   <span className="text-[#004D40] font-black text-xs md:text-sm transform -rotate-3">R</span>
                 </div>
-                <span className="font-black text-sm md:text-lg tracking-tight transform -skew-x-6 text-[#004D40]">ROOMIO</span>
+                <span className="font-black text-sm md:text-lg tracking-tight transform -skew-x-6 text-[#004D40]">ROOMEO</span>
               </div>
               <div className="flex items-center space-x-3">
                 
@@ -761,7 +761,7 @@ export default function Home() {
             <div className="w-8 h-8 md:w-12 md:h-12 bg-[#44C76F] border-2 md:border-4 border-[#F2F5F1] transform rotate-3 flex items-center justify-center shadow-[2px_2px_0px_0px_#F2F5F1] md:shadow-[4px_4px_0px_0px_#F2F5F1]">
               <span className="text-[#004D40] font-black text-sm md:text-xl transform -rotate-3">R</span>
             </div>
-            <span className="font-black text-lg md:text-2xl tracking-tight transform -skew-x-6 text-[#F2F5F1]">ROOMIO</span>
+            <span className="font-black text-lg md:text-2xl tracking-tight transform -skew-x-6 text-[#F2F5F1]">ROOMEO</span>
           </div>
         </button>
         <nav className="ml-auto flex gap-2 md:gap-8 items-center">
@@ -870,7 +870,7 @@ export default function Home() {
               <div className="space-y-8">
                 <div className="space-y-4">
                   <h2 className="text-4xl md:text-6xl font-black tracking-tighter leading-none transform -skew-x-3">
-                    WHY ROOMIO DOMINATES
+                    WHY ROOMEO DOMINATES
                   </h2>
                   <div className="w-32 h-2 bg-[#004D40] transform skew-x-12"></div>
                   <p className="text-xl md:text-2xl font-bold leading-tight">
@@ -983,21 +983,21 @@ export default function Home() {
                 <div className="inline-flex items-center gap-4 bg-[#F2F5F1] text-[#004D40] px-8 py-6 border-4 border-[#44C76F] shadow-[8px_8px_0px_0px_#44C76F] transform hover:translate-x-2 hover:translate-y-2 hover:shadow-[4px_4px_0px_0px_#44C76F] transition-all">
                   <Mail className="h-8 w-8 text-[#44C76F]" />
                   <Link
-                    href="mailto:hello@roomio.com"
+                    href="mailto:hello@roomeo.com"
                     className="font-black text-2xl hover:text-[#44C76F] transition-colors"
                   >
-                    HELLO@ROOMIO.COM
+                    HELLO@ROOMEO.COM
                   </Link>
                 </div>
                 <div className="inline-flex items-center gap-4 bg-[#F2F5F1] text-[#004D40] px-8 py-6 border-4 border-[#44C76F] shadow-[8px_8px_0px_0px_#44C76F] transform hover:translate-x-2 hover:translate-y-2 hover:shadow-[4px_4px_0px_0px_#44C76F] transition-all">
                   <Instagram className="h-8 w-8 text-[#44C76F]" />
                   <Link
-                    href="https://www.instagram.com/roomio.app/"
+                    href="https://www.instagram.com/roomeo.app/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-black text-2xl hover:text-[#44C76F] transition-colors"
                   >
-                    @ROOMIO.APP
+                    @ROOMEO.APP
                   </Link>
                 </div>
               </div>
@@ -1010,10 +1010,10 @@ export default function Home() {
       <footer className="bg-[#004D40] border-t-4 border-[#44C76F] py-8">
         <div className="container px-4 md:px-6">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <p className="font-black text-[#F2F5F1]">© {new Date().getFullYear()} ROOMIO. ALL RIGHTS RESERVED.</p>
+            <p className="font-black text-[#F2F5F1]">© {new Date().getFullYear()} ROOMEO. ALL RIGHTS RESERVED.</p>
             <nav className="flex gap-8">
               <Link
-                href="https://www.instagram.com/roomio.app/"
+                href="https://www.instagram.com/roomeo.app/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-black text-[#F2F5F1] hover:text-[#44C76F] transition-colors flex items-center gap-2"
