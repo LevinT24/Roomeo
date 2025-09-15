@@ -807,7 +807,7 @@ export default function Home() {
                 <div className="inline-block">
                   <Badge className="mb-4 md:mb-6 bg-[#D4AF37] text-[#004D40] font-black text-sm md:text-lg px-4 py-2 md:px-6 md:py-3 border-2 md:border-4 border-[#F2F5F1] shadow-[3px_3px_0px_0px_#F2F5F1] md:shadow-[6px_6px_0px_0px_#F2F5F1] transform rotate-1">
                     <Flame className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" />
-                    <span className="hidden sm:inline">NO BULLSH*T. NO FAKE PROFILES.</span>
+                    <span className="hidden sm:inline">VERIFIED PROFILES. REAL CONNECTIONS.</span>
                     <span className="sm:hidden">REAL PROFILES ONLY</span>
                   </Badge>
                 </div>
