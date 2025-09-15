@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 
 interface AuthPageProps {
@@ -29,6 +30,7 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   useEffect(() => {
     if (authError) {
@@ -48,9 +50,9 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
     e.preventDefault();
     setError("");
     setSuccessMessage("");
-    
+
     console.log("🔄 Starting email authentication...", { isSignUp, email, name });
-    
+
     if (!email || !password) {
       console.log("❌ Missing email or password");
       setError("Email and password are required");
@@ -67,7 +69,7 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
         console.log("🔄 Calling emailSignUp...");
         await emailSignUp(email, password, name);
         console.log("✅ Email signup completed");
-        
+
         // Clear errors and show success message
         setError("");
         setSuccessMessage("🎉 Account created! Please check your email inbox and click the verification link to activate your account. Once verified, you can sign in below.");
@@ -81,7 +83,17 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
       }
     } catch (error: any) {
       console.error("❌ Authentication error:", error);
-      setError(error.message || "Authentication failed. Please try again.");
+
+      // Handle Google OAuth account detection
+      if (error.message.includes('Invalid login credentials') ||
+          error.message.includes('Invalid email or password')) {
+        setError(
+          `It looks like you signed up with Google. Please use the "Continue with Google" button instead, or ` +
+          `click "Forgot Password?" below to set a password for email login.`
+        );
+      } else {
+        setError(error.message || "Authentication failed. Please try again.");
+      }
       setSuccessMessage(""); // Clear any success message on error
     }
   };
@@ -89,15 +101,15 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
   const handleGoogleAuth = async () => {
     setError("");
     setSuccessMessage("");
-    
+
     console.log("🔄 Starting Google authentication...");
-    
+
     if (authError) {
       console.log("❌ Auth error detected:", authError);
       setError(authError);
       return;
     }
-    
+
     try {
       console.log("🔄 Calling googleSignIn...");
       await googleSignIn();
@@ -106,6 +118,34 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
     } catch (error: any) {
       console.error("❌ Google authentication error:", error);
       setError(error.message || "Google authentication failed");
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setError("");
+    setSuccessMessage("");
+
+    if (!email) {
+      setError("Please enter your email address first");
+      return;
+    }
+
+    try {
+      console.log("🔄 Sending password reset email...");
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+      });
+
+      if (error) throw error;
+
+      setSuccessMessage(
+        "📧 Password reset email sent! Check your inbox and click the link to set a new password. " +
+        "After setting your password, you can sign in with email and password."
+      );
+      setShowForgotPassword(false);
+    } catch (error: any) {
+      console.error("❌ Password reset error:", error);
+      setError(error.message || "Failed to send password reset email");
     }
   };
 
@@ -253,7 +293,43 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
                 >
                   {loading ? "PROCESSING..." : isSignUp ? "CREATE ACCOUNT" : "SIGN IN"}
                 </Button>
+
+                {!isSignUp && (
+                  <div className="mt-3 md:mt-4 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPassword(!showForgotPassword)}
+                      className="text-xs md:text-sm font-black text-[#44C76F] hover:text-[#44C76F]/80 transition-colors underline"
+                      disabled={loading}
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+                )}
               </form>
+
+              {showForgotPassword && (
+                <div className="mt-4 md:mt-6 p-3 md:p-4 bg-blue-50 border-2 border-blue-200 rounded">
+                  <h4 className="text-sm md:text-base font-black text-[#004D40] mb-2 md:mb-3">RESET PASSWORD</h4>
+                  <p className="text-xs md:text-sm text-[#004D40] mb-2 md:mb-3">Enter your email to receive a password reset link:</p>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleForgotPassword}
+                      disabled={loading || !email}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs md:text-sm py-2 px-3 border-2 border-[#004D40] shadow-[2px_2px_0px_0px_#004D40] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[1px_1px_0px_0px_#004D40] transition-all disabled:opacity-50"
+                    >
+                      {loading ? "SENDING..." : "SEND RESET EMAIL"}
+                    </Button>
+                    <Button
+                      onClick={() => setShowForgotPassword(false)}
+                      disabled={loading}
+                      className="bg-gray-500 hover:bg-gray-600 text-white font-bold text-xs md:text-sm py-2 px-3 border-2 border-[#004D40] shadow-[2px_2px_0px_0px_#004D40] transform hover:translate-x-1 hover:translate-y-1 hover:shadow-[1px_1px_0px_0px_#004D40] transition-all"
+                    >
+                      CANCEL
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-4 md:mt-6 text-center">
                 <button
@@ -261,6 +337,7 @@ export default function AuthPage({ onBack, onSuccess, initialMode = "signup" }: 
                     setIsSignUp(!isSignUp);
                     setError("");
                     setSuccessMessage("");
+                    setShowForgotPassword(false);
                   }}
                   className="text-xs md:text-sm font-black text-[#44C76F] hover:text-[#44C76F]/80 transition-colors p-2"
                   disabled={loading}

@@ -23,6 +23,7 @@ import SettingsPage from "@/components/SettingsPage"
 import SessionRecovery from "@/components/SessionRecovery"
 import UpgradeFlow from "@/components/UpgradeFlow"
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import LoadingSpinner from "@/components/LoadingSpinner"
 import ErrorBoundary from "@/components/ErrorBoundary"
 import DebugInfo from "@/components/DebugInfo"
@@ -31,8 +32,9 @@ import { normalizeAvatarUrl, getFallbackAvatarUrl } from "@/lib/avatarUtils"
 
 export default function Home() {
   const { user, loading, logout, error: authError, sessionValid } = useAuth()
+  const searchParams = useSearchParams()
   const [currentPage, setCurrentPage] = useState<
-    "landing" | "auth" | "swipe" | "matches" | "marketplace" | 
+    "landing" | "auth" | "swipe" | "matches" | "marketplace" |
     "expenses" | "chat" | "profile-setup" | "user-type" | "profile-preview" | "settings"
   >("landing")
   const [showUpgradeFlow, setShowUpgradeFlow] = useState(false)
@@ -43,6 +45,7 @@ export default function Home() {
   const [showUpdateAccount, setShowUpdateAccount] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const [swipeRefreshTrigger, setSwipeRefreshTrigger] = useState(0) // Add refresh trigger for SwipePage
+  const [urlMessage, setUrlMessage] = useState<{type: 'error' | 'success', text: string} | null>(null)
   const [updateData, setUpdateData] = useState({
     name: "",
     age: "",
@@ -51,14 +54,51 @@ export default function Home() {
     budget: ""
   })
 
+  // Handle URL parameters for auth messages
+  useEffect(() => {
+    const urlError = searchParams?.get('error')
+    const urlErrorDescription = searchParams?.get('error_description')
+    const urlMessage = searchParams?.get('message')
+
+    if (urlError) {
+      setUrlMessage({
+        type: 'error',
+        text: urlErrorDescription || urlError
+      })
+
+      // Clear URL parameters after showing message
+      const url = new URL(window.location.href)
+      url.searchParams.delete('error')
+      url.searchParams.delete('error_description')
+      window.history.replaceState({}, '', url.toString())
+    } else if (urlMessage) {
+      setUrlMessage({
+        type: 'success',
+        text: urlMessage
+      })
+
+      // Clear URL parameters after showing message
+      const url = new URL(window.location.href)
+      url.searchParams.delete('message')
+      window.history.replaceState({}, '', url.toString())
+    }
+
+    // Auto-hide message after 8 seconds
+    if (urlError || urlMessage) {
+      setTimeout(() => {
+        setUrlMessage(null)
+      }, 8000)
+    }
+  }, [searchParams])
+
   // Debug logging
   useEffect(() => {
     console.log("🔍 App State:", {
-      user: user ? { 
-        id: user.id, 
-        name: user.name, 
-        age: user.age, 
-        userType: user.userType, 
+      user: user ? {
+        id: user.id,
+        name: user.name,
+        age: user.age,
+        userType: user.userType,
         preferences: !!user.preferences,
         profilePicture: user.profilePicture
       } : null,
@@ -67,7 +107,7 @@ export default function Home() {
       authError,
       sessionValid
     });
-    
+
     if (user?.profilePicture) {
       console.log("🖼️ Current user profile picture URL:", user.profilePicture);
     }
@@ -410,8 +450,32 @@ export default function Home() {
     return (
       <ErrorBoundary>
         <div className="min-h-screen bg-[#F2F5F1]">
+          {/* URL Message Banner */}
+          {urlMessage && (
+            <div className={`fixed top-0 left-0 right-0 z-50 p-4 ${
+              urlMessage.type === 'error'
+                ? 'bg-red-100 border-b-4 border-red-500 text-red-700'
+                : 'bg-green-100 border-b-4 border-green-500 text-green-700'
+            }`}>
+              <div className="flex justify-between items-center max-w-4xl mx-auto">
+                <p className="font-bold text-sm md:text-base">
+                  {urlMessage.type === 'error' ? '❌ ' : '✅ '}
+                  {urlMessage.text}
+                </p>
+                <button
+                  onClick={() => setUrlMessage(null)}
+                  className="ml-4 font-black text-lg hover:opacity-70 transition-opacity"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Settings Header */}
-          <div className="fixed top-0 left-0 right-0 bg-[#F2F5F1] border-b-4 border-[#004D40] px-4 py-3 z-40">
+          <div className={`fixed left-0 right-0 bg-[#F2F5F1] border-b-4 border-[#004D40] px-4 py-3 z-40 ${
+            urlMessage ? 'top-16' : 'top-0'
+          }`}>
             <div className="flex justify-between items-center w-full">
               <div className="flex items-center space-x-2 md:space-x-3">
                 <div className="w-6 h-6 md:w-8 md:h-8 bg-[#44C76F] border-2 border-[#004D40] transform rotate-3 flex items-center justify-center shadow-[2px_2px_0px_0px_#004D40]">
@@ -551,7 +615,9 @@ export default function Home() {
           </div>
 
           {/* Main Content with top padding */}
-          <div className={`pt-16 md:pt-20 pb-20 transition-all duration-300 ${
+          <div className={`pb-20 transition-all duration-300 ${
+            urlMessage ? 'pt-32 md:pt-36' : 'pt-16 md:pt-20'
+          } ${
             friendsPanelOpen && ['chat', 'marketplace', 'expenses'].includes(currentPage) 
               ? 'pr-0 lg:pr-80' : ''
           }`}>

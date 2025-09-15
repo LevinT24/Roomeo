@@ -406,35 +406,38 @@ export function useAuth() {
 
       if (error) {
         console.log("SignIn error details:", error);
-        
+
         // Handle various authentication errors with user-friendly messages
         if (error.message.includes('Invalid login credentials')) {
-          throw new Error('Invalid email or password. Please check your credentials and try again.');
+          throw new Error(
+            `Invalid email or password. If you signed up with Google, please use "Continue with Google" instead. ` +
+            `You can also use "Forgot Password?" to set up email/password login for your Google account.`
+          );
         }
-        
-        if (error.message.includes('Email not confirmed') || 
+
+        if (error.message.includes('Email not confirmed') ||
             error.message.includes('email_not_confirmed') ||
             error.message.includes('signup_disabled')) {
           throw new Error('Please check your email and click the verification link to activate your account, then try signing in again.');
         }
-        
-        if (error.message.includes('API key') || 
+
+        if (error.message.includes('API key') ||
             error.message.includes('invalid_api_key') ||
             error.message.includes('authentication failed') ||
             error.message.includes('unauthorized')) {
           throw new Error('Please check your email for a verification link and activate your account before signing in.');
         }
-        
+
         // Generic fallback for other auth-related errors
         if (error.message.includes('auth') || error.message.includes('token')) {
           throw new Error('Please verify your email address by clicking the link we sent you, then try signing in again.');
         }
-        
+
         throw error;
       }
 
       console.log("Signin successful:", data.user?.id);
-      
+
     } catch (error: any) {
       console.error("Signin error:", error);
       setState(prev => ({ ...prev, error: error.message, loading: false }));
